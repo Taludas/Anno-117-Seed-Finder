@@ -1,0 +1,19 @@
+# Large reverse-engineering traces, extracted saves and temporary tooling.
+# They remain on disk but are not part of the product history.
+.research/
+
+# .NET build intermediates
+**/bin/
+**/obj/
+
+# Generated search results
+treffer.txt
+**/treffer.txt
+
+# Editor and OS files
+.vs/
+.vscode/
+*.user
+*.suo
+Thumbs.db
+Desktop.ini

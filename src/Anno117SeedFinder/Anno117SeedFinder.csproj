@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>Anno117SeedFinder</AssemblyName>
+    <RootNamespace>Anno117SeedFinder</RootNamespace>
+    <DebugType>embedded</DebugType>
+  </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="island-masks.txt" />
+    <Resource Include="layouts\*.jpg" />
+    <Resource Include="icons\*.png" />
+  </ItemGroup>
+</Project>
