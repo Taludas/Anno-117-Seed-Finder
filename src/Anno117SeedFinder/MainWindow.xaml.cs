@@ -12,7 +12,7 @@ public partial class MainWindow:Window
  string? lastOutput;
  readonly DispatcherTimer cinisWarningTimer=new(){Interval=TimeSpan.FromSeconds(3)};
  CheckBox[] cinisChecks=[];
- string? loadedSeedListPath;bool overwriteConfirmed;bool running;
+ bool running;
  bool profileControlsReady;
  // The advanced fertility filters: one row per AdvancedFilter; the sliders count in steps of AdvancedStep tiles.
  const int AdvancedStep=500;
@@ -141,9 +141,11 @@ public partial class MainWindow:Window
    // Sequential filtering: with the option on, the search runs over the seeds now in the table instead of a range.
    var tableSeeds=ChkTableSeeds.IsChecked==true?GridResults.Items.OfType<SearchResultRow>().Select(row=>row.Seed).Distinct().ToArray():null;
    if(tableSeeds is not null&&tableSeeds.Length==0)throw new ArgumentException(Localization.Instance["NoSeedsInTable"]);
-   if(tableSeeds is not null&&!ConfirmOverwriteOfLoadedList())return;
    if(tableSeeds is not null){previousRows=GridResults.Items.OfType<SearchResultRow>().ToArray();previousSorting=GridResults.Items.SortDescriptions.ToArray();}
-   var request=new SearchRequest(tableSeeds is null?ParseSeed(TxtFirstSeed,Localization.Instance["FirstSeed"]):(int)tableSeeds.Min(),tableSeeds is null?ParseSeed(TxtMaxSeed,Localization.Instance["LastSeed"]):(int)tableSeeds.Max(),ParsePositive(TxtThreads,Localization.Instance["Threads"]),ParseNonNegative(TxtLimit,Localization.Instance["MaxHits"]),TxtOutput.Text,cinisSlot1,selected,activeProfile.Dlc01&&ChkMaxSites.IsChecked==true,conditions,activeProfile,
+   // The search start time is stamped into the actual output file name, so forgetting to change the output
+   // box between two searches no longer silently overwrites the previous run's results (see TimestampedFileName).
+   var outputPath=TimestampedFileName(TxtOutput.Text,DateTime.Now);
+   var request=new SearchRequest(tableSeeds is null?ParseSeed(TxtFirstSeed,Localization.Instance["FirstSeed"]):(int)tableSeeds.Min(),tableSeeds is null?ParseSeed(TxtMaxSeed,Localization.Instance["LastSeed"]):(int)tableSeeds.Max(),ParsePositive(TxtThreads,Localization.Instance["Threads"]),ParseNonNegative(TxtLimit,Localization.Instance["MaxHits"]),outputPath,cinisSlot1,selected,activeProfile.Dlc01&&ChkMaxSites.IsChecked==true,conditions,activeProfile,
     ActiveMinimum(ChkMinGoldSites,CmbMinGoldSites),ActiveMinimum(ChkMinSturgeonSites,CmbMinSturgeonSites),ActiveMinimum(ChkMinLatiumMountainSites,CmbMinLatiumMountainSites),ActiveMinimum(ChkMinLatiumRiverSites,CmbMinLatiumRiverSites),ActiveMinimum(ChkMinAlbionMountainSites,CmbMinAlbionMountainSites),ActiveAreaMinimum(ChkMinLatiumArea,SldMinLatiumArea),ActiveAreaMinimum(ChkMinAlbionArea,SldMinAlbionArea),ActiveAreaMinimum(ChkMinAlbionSwampArea,SldMinAlbionSwampArea),CurrentFertilitySetting(),CurrentSlotSetting(),
     ActiveMinimum(ChkMinMineralMines,CmbMinMineralMines),ActiveMinimum(ChkMinCopperMines,CmbMinCopperMines),ActiveMinimum(ChkMinSilverMines,CmbMinSilverMines),ActiveMinimum(ChkMinMarbleSites,CmbMinMarbleSites),ActiveMinimum(ChkMinGoldMines,CmbMinGoldMines),ActiveMinimum(ChkMinTinMines,CmbMinTinMines),tableSeeds,ActiveAdvancedMinimums());
    SetRunning(true);GridResults.ItemsSource=null;SearchProgress.Value=0;LblProgress.Text=Localization.Instance["SearchStarting"];
@@ -226,7 +228,9 @@ public partial class MainWindow:Window
   if(GridResults.ItemsSource is not IEnumerable<SearchResultRow> rows)return;
   try
   {
-   var dialog=new SaveFileDialog{Title=Localization.Instance["SaveCsvTitle"],Filter=Localization.Instance["CsvFilter"],FileName="seeds.csv",InitialDirectory=Path.GetDirectoryName(Path.GetFullPath(TxtOutput.Text))};
+   // Timestamped by default for the same reason as the search output file: clicking through without renaming
+   // must not silently overwrite an earlier export.
+   var dialog=new SaveFileDialog{Title=Localization.Instance["SaveCsvTitle"],Filter=Localization.Instance["CsvFilter"],FileName=TimestampedFileName("seeds.csv",DateTime.Now),InitialDirectory=Path.GetDirectoryName(Path.GetFullPath(TxtOutput.Text))};
    if(dialog.ShowDialog(this)!=true)return;
    // Sorted exactly as displayed, so an exported table matches what the user sees.
    var ordered=GridResults.Items.OfType<SearchResultRow>().ToArray();
@@ -272,7 +276,7 @@ public partial class MainWindow:Window
     Parallel.For(0,seeds.Length,index=>rows[index]=SeedSearcher.Describe(seeds[index],profile,setting,slots));
     return rows;
    });
-   ShowResults(hits);loadedSeedListPath=Path.GetFullPath(dialog.FileName);overwriteConfirmed=false;SearchProgress.Value=100;LblProgress.Text=Localization.Instance.Format("SeedsLoadedFormat",hits.Length.ToString("N0"),Path.GetFileName(dialog.FileName));
+   ShowResults(hits);SearchProgress.Value=100;LblProgress.Text=Localization.Instance.Format("SeedsLoadedFormat",hits.Length.ToString("N0"),Path.GetFileName(dialog.FileName));
   }
   catch(Exception error){LblProgress.Text=Localization.Instance["GenericError"];MessageBox.Show(this,error.Message,Localization.Instance["SeedListLoadFailedTitle"],MessageBoxButton.OK,MessageBoxImage.Error);}
   finally{SetRunning(false);}
@@ -434,6 +438,16 @@ public partial class MainWindow:Window
   ShowResults([]);
   return dictionaryOk&&dataOk&&bindingOk;
  }
+ // The search output and the CSV export must never overwrite an earlier run just because the file name was left
+ // unchanged - each gets the moment it started stamped into its name.
+ internal bool SmokeTimestampedOutput()
+ {
+  var first=new DateTime(2026,9,23,15,4,5,123);var second=first.AddMilliseconds(1);
+  var plain=TimestampedFileName(Path.Combine("C:\\out","treffer.txt"),first);
+  var repeated=TimestampedFileName(Path.Combine("C:\\out","treffer.txt"),second);
+  var csvDefault=TimestampedFileName("seeds.csv",first);
+  return plain==Path.Combine("C:\\out","treffer_2026-09-23_15-04-05-123.txt")&&csvDefault=="seeds_2026-09-23_15-04-05-123.csv"&&plain!=repeated;
+ }
  internal bool SmokeDlcToggle(){ChkDlc01.IsChecked=false;var hidden=!activeProfile.Dlc01&&CinisCard.Visibility==Visibility.Collapsed&&CinisResultsColumn.Visibility==Visibility.Collapsed&&Grid.GetColumnSpan(SearchRangeCard)==2&&!CmbSlot1.IsEnabled;ChkDlc01.IsChecked=true;return hidden&&activeProfile.Dlc01&&CinisCard.Visibility==Visibility.Visible&&CinisResultsColumn.Visibility==Visibility.Visible&&CmbSlot1.IsEnabled;}
  // The option needs seeds in the table; its label shows how many. While a search runs it stays disabled and keeps its label.
  void UpdateTableSeedsOption()
@@ -449,12 +463,18 @@ public partial class MainWindow:Window
  {
   var rangeEditable=ChkTableSeeds.IsChecked!=true;BtnMinSeed.IsEnabled=rangeEditable;BtnMaxSeed.IsEnabled=rangeEditable;TxtFirstSeed.IsEnabled=rangeEditable;TxtMaxSeed.IsEnabled=rangeEditable;
  }
- // The search writes its hits to the output file. If that is the seed list that was just loaded, ask once before replacing it.
- bool ConfirmOverwriteOfLoadedList()
+ // Inserts a moment in time before the file extension, so a name left unchanged between two runs never overwrites the
+ // previous one: "treffer.txt" + 2026-09-23 15:04:05.123 -> "treffer_2026-09-23_15-04-05-123.txt". Millisecond
+ // resolution (not just seconds) so that two very short, quickly repeated searches - a tiny test range finishes in
+ // well under a second - still get distinct files. Used for the search output file (stamped with the search's start
+ // time) and for the CSV export's default file name.
+ internal static string TimestampedFileName(string path,DateTime timestamp)
  {
-  if(loadedSeedListPath is null||overwriteConfirmed||!string.Equals(Path.GetFullPath(TxtOutput.Text),loadedSeedListPath,StringComparison.OrdinalIgnoreCase))return true;
-  var answer=MessageBox.Show(this,Localization.Instance.Format("OverwriteLoadedListFormat",loadedSeedListPath),Localization.Instance["OverwriteLoadedListTitle"],MessageBoxButton.YesNo,MessageBoxImage.Question);
-  overwriteConfirmed=answer==MessageBoxResult.Yes;return overwriteConfirmed;
+  var directory=Path.GetDirectoryName(path);
+  var name=Path.GetFileNameWithoutExtension(path);
+  var extension=Path.GetExtension(path);
+  var stamped=$"{name}_{timestamp:yyyy-MM-dd_HH-mm-ss-fff}{extension}";
+  return string.IsNullOrEmpty(directory)?stamped:Path.Combine(directory,stamped);
  }
  void SetRunning(bool value){running=value;BtnRun.IsEnabled=!value;BtnPreview.IsEnabled=!value;BtnCancel.IsEnabled=value;BtnLoadSeedList.IsEnabled=!value;BtnAddSeedToTable.IsEnabled=!value;BtnExportCsv.IsEnabled=!value&&GridResults.Items.Count>0;BtnLoadPreset.IsEnabled=!value;BtnSavePreset.IsEnabled=!value;var rangeEditable=!value&&ChkTableSeeds.IsChecked!=true;BtnMinSeed.IsEnabled=rangeEditable;BtnMaxSeed.IsEnabled=rangeEditable;TxtPreviewSeed.IsEnabled=!value;TxtFirstSeed.IsEnabled=rangeEditable;TxtMaxSeed.IsEnabled=rangeEditable;UpdateTableSeedsOption();TxtThreads.IsEnabled=!value;TxtLimit.IsEnabled=!value;TxtOutput.IsEnabled=!value;CmbStartMode.IsEnabled=!value;ChkDlc01.IsEnabled=!value;CmbFertilitySetting.IsEnabled=!value;CmbMapTemplate.IsEnabled=!value;CmbMapSize.IsEnabled=!value;CmbSlot1.IsEnabled=!value&&activeProfile.Dlc01;foreach(var box in cinisChecks)box.IsEnabled=!value&&activeProfile.Dlc01;ChkMaxSites.IsEnabled=!value&&activeProfile.Dlc01;ConditionsArea.IsEnabled=!value;}
  void CancelSearch(object sender,RoutedEventArgs e)=>cancellation?.Cancel();

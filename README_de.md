@@ -105,7 +105,7 @@ Mit den „Hinzufügen"-Schaltflächen legst du eine Bedingungszeile an und wäh
 | **Erster / letzter Seed** | Der zu durchsuchende Bereich. Die Schaltflächen daneben springen auf den kleinsten und größten vom Spiel akzeptierten Seed. |
 | **Threads** | Wie viele Prozessorthreads genutzt werden. Mehr ist schneller; lass dem Rechner einen Thread, wenn du nebenher arbeiten willst. |
 | **Maximale Treffer** | Nach so vielen passenden Seeds anhalten. `0` heißt „alle finden". |
-| **Ausgabedatei** | Wohin die passenden Seeds geschrieben werden. |
+| **Ausgabedatei** | Wohin die passenden Seeds geschrieben werden. Der Zeitpunkt, zu dem die Suche startet, wird in den tatsächlichen Dateinamen eingetragen (`treffer.txt` wird zu `treffer_2026-09-23_15-04-05-123.txt`); ein unverändert gelassenes Feld überschreibt so nie das Ergebnis der vorherigen Suche. |
 | **Nur die Seeds der Ergebnistabelle durchsuchen** | Lässt die Suche über die Seeds laufen, die gerade in der Tabelle stehen, statt über den Bereich (siehe „Schrittweise filtern“ unten). Nur verfügbar, solange die Tabelle Seeds enthält. |
 
 **Start** führt die Suche aus, **Abbrechen** hält sie vorzeitig an. Treffer erscheinen laufend in der Tabelle.
@@ -117,7 +117,8 @@ Die Tabelle listet jeden passenden Seed mit seinen Kennzahlen: bebaubare Kacheln
 - **Vorschau** – Seed eintippen und Vorschau drücken, um beide Regionen als Karte zu sehen: jede Insel genau dort, wo das Spiel sie hinsetzt, und so gedreht, wie das Spiel sie dreht, mit ihrem Draufsicht-Bild, dazu die Dekorationsinseln und die Drittanbieter-Inseln (Händler und Räuber). Beim Darüberfahren erscheinen Fruchtbarkeiten und Bauplätze; die Rahmenfarbe zeigt die Rolle. Der Rand der normalen Karte und der des Prophecies-of-Ash-Bereichs sind als echte Rechtecke eingezeichnet. Das geht für jeden Seed, auch ohne Suche. **Zufall** setzt einen zufälligen gültigen Seed in das Feld.
 - **Seed hinzufügen** – einen einzelnen, bestimmten Seed ohne Suche in die Tabelle aufnehmen.
 - **Seed-Liste laden** – eine Liste von Seeds aus einer Datei einlesen und alle in der Ergebnistabelle auswerten. Eine Textdatei mit einem Seed pro Zeile (wie die Ausgabedatei `treffer.txt`) und eine von der App exportierte CSV-Datei funktionieren beide; weitere Spalten werden ignoriert. Die Seeds tragen kein Kartenprofil: stelle das Profil ein, mit dem sie gefunden wurden, bevor du sie lädst.
-- **CSV exportieren** – die Ergebnistabelle als Tabellendatei schreiben.
+- **CSV exportieren** – die Ergebnistabelle als Tabellendatei schreiben. Der vorgeschlagene Dateiname trägt denselben
+  Zeitstempel, sodass ein Klick auf Speichern ohne Umbenennen trotzdem jede Exportdatei behält.
 
 #### Schrittweise filtern
 
@@ -127,7 +128,7 @@ Eine Suche lässt sich in Stufen eingrenzen, auch über mehrere Sitzungen hinweg
 2. Die Filter ändern, **Nur die Seeds der Ergebnistabelle durchsuchen** anhaken und **Start** drücken. Es werden nur diese Seeds untersucht, und die Tabelle wird durch die ersetzt, die auch die neuen Filter erfüllen.
 3. Beliebig oft mit anderen Filtern wiederholen, zum Beispiel zuerst alle Seeds mit den meisten bebaubaren Kacheln, davon dann die mit den meisten Goldplätzen.
 
-Besteht kein Seed die neuen Filter, zeigt die Tabelle wieder die vorherige Liste und die Ausgabedatei bleibt unverändert; du kannst also die Filter ändern und es erneut versuchen, ohne etwas neu zu laden. Erster und letzter Seed sind bei eingeschalteter Option gesperrt. Die Treffer werden wie gewohnt in die Ausgabedatei geschrieben; ist das genau die Datei, die du geladen hast, fragt die App einmal nach, bevor sie ersetzt wird. Wähle eine andere Ausgabedatei, wenn du die größere Liste behalten willst.
+Besteht kein Seed die neuen Filter, zeigt die Tabelle wieder die vorherige Liste und die Ausgabedatei bleibt unverändert; du kannst also die Filter ändern und es erneut versuchen, ohne etwas neu zu laden. Erster und letzter Seed sind bei eingeschalteter Option gesperrt. Die Treffer werden wie gewohnt in die Ausgabedatei geschrieben, unter ihrem eigenen zeitgestempelten Namen (siehe „Ausgabedatei" oben); das rührt also nie die geladene Datei an, auch wenn das Ausgabefeld noch ihren Namen trägt.
 
 ### 6. Voreinstellungen
 

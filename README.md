@@ -1,12 +1,16 @@
 # Anno 117 – Seed Finder
 
+Das deutsche Readme findet ihr [hier](README_de.md)
+
+---
+
 Find the map you want **before** you start a game.
 
 When you begin a new game in Anno 117: Pax Romana you type in a seed number, pick a map shape, a size and a few more options - and the game builds a world from that. What you get is based on the so called "World Generator", which is driven by a few guidlines exposed to the player like map templats, but also RNG: which islands appear in their designated slots, how they are rotated, which fertilities spawn on them, how many mountain and river slots they have.
 
 This tool rebuilds that "World Generator" **without starting the game**. It can run through millions of seeds in a few minutes and tell you which ones give you the map you are looking for - "a starting island with grapes and a gold river slot", "as much buildable tiles as possible", "at least a hundred mountain slots in Albion", and so on.
 
-It is a reverse engineered from real savegames and from the game's own data files, and it is checked against 90 savegames that cover every combination of settings. In those maps it reproduces **every island, every position, every rotation, every fertility, every building slot and every decorative island exactly** - 11,844 individual checks without a single mismatch.
+It is reverse engineered from real savegames and from the game's own data files, and it is checked against 90 savegames that cover every combination of settings. In those maps it reproduces **every island, every position, every rotation, every fertility, every building slot and every decorative island exactly** - 11,844 individual checks without a single mismatch.
 
 ---
 
@@ -105,7 +109,7 @@ Use the "add" buttons to create a condition row, then pick the fertility distrib
 | **First / last seed** | The range to scan. The buttons next to the fields jump to the smallest and largest seed the game accepts. |
 | **Threads** | How many processor cores to use. More is faster; leave the machine one core if you want to keep working. |
 | **Maximum hits** | Stop after this many matching seeds. `0` means "find them all". |
-| **Output file** | Where the matching seeds are written. |
+| **Output file** | Where the matching seeds are written. The moment the search starts is stamped into the actual file name (`treffer.txt` becomes `treffer_2026-09-23_15-04-05-123.txt`), so leaving this box unchanged between two searches never overwrites the previous run's results. |
 | **Search only the seeds in the results table** | Runs the search over the seeds that are currently in the table instead of over the range (see "Filtering step by step" below). Only available while the table has seeds. |
 
 Press **Start** to run and **Cancel** to stop early. Results appear in the table as they are found.
@@ -121,7 +125,8 @@ the corresponding filter.
 - **Preview** – type a seed and press Preview to see both regions drawn as a map: every island exactly where the game puts it and turned the way the game turns it, with its top-down image, plus the decoration islands and the third-party islands (traders and the raider). Hover an island for its fertilities and slot counts; the outline colour on hover shows its role. The border of the regular map and of the Prophecies of Ash area are drawn as the real rectangles. This works for any seed, whether it came from a search or not. **Random** puts a random valid seed into the box.
 - **Add seed** – put a single specific seed into the table without searching.
 - **Load seed list** – read a list of seeds from a file and evaluate them all in the results table. A plain text file with one seed per line (like the output file, `treffer.txt`) and a CSV exported by the app both work; other columns are ignored. The seeds carry no map profile: set the profile they were found with before you load them.
-- **Export CSV** – write the results table to a spreadsheet file.
+- **Export CSV** – write the results table to a spreadsheet file. The suggested file name is stamped with the current
+  moment the same way, so clicking Save without renaming still keeps every export.
 
 #### Filtering step by step
 
@@ -131,7 +136,7 @@ A search can be narrowed down in stages, also across sessions:
 2. Change the filters, tick **Search only the seeds in the results table** and press **Start**. Only those seeds are examined, and the table is replaced by those that also pass the new filters.
 3. Repeat with other filters as often as you like, for example first all seeds with the most buildable tiles, then of those the ones with the most gold slots.
 
-If no seed passes the new filters, the table goes back to the list it had before and the output file is left as it was, so you can change the filters and try again without loading anything. The first and last seed fields are switched off while the option is on. The hits are written to the output file as usual; if that is the very file you loaded, the app asks once before replacing it, so choose another output file if you want to keep the wider list.
+If no seed passes the new filters, the table goes back to the list it had before and the output file is left as it was, so you can change the filters and try again without loading anything. The first and last seed fields are switched off while the option is on. The hits are written to the output file as usual, under its own time-stamped name (see "Output file" above), so this never touches the file you loaded, even if the output box still names it.
 
 ### 6. Presets
 
