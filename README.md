@@ -1,94 +1,307 @@
-# Anno 117 – Offline Seed Finder
+# Anno 117 – Seed Finder
 
-Das Werkzeug berechnet Karten und Fruchtbarkeiten selbstständig. Es liest keine Savegames und startet oder steuert Anno 117 nicht.
+Find the map you want **before** you start a game.
 
-Unterstützte Rahmenbedingungen:
+When you begin a new game in Anno 117: Pax Romana you type in a seed number, pick a map shape, a size and a few more options - and the game builds a world from that. What you get is based on the so called "World Generator", which is driven by a few guidlines exposed to the player like map templats, but also RNG: which islands appear in their designated slots, how they are rotated, which fertilities spawn on them, how many mountain and river slots they have.
 
-- alle drei Vorkommen: Im Überfluss / Regulär / Karg
-- Start mit Flaggschiff oder Startinsel
-- Prophecies of Ash (DLC01/PoA) aktiv oder deaktiviert
-- Generatorstand: Anno 117 v2.0 / Save-Dateiversion 70
+This tool rebuilds that "World Generator" **without starting the game**. It can run through millions of seeds in a few minutes and tell you which ones give you the map you are looking for - "a starting island with grapes and a gold river slot", "as much buildable tiles as possible", "at least a hundred mountain slots in Albion", and so on.
 
-Wählbare Kartenprofile:
+It is a reverse engineered from real savegames and from the game's own data files, and it is checked against 90 savegames that cover every combination of settings. In those maps it reproduces **every island, every position, every rotation, every fertility, every building slot and every decorative island exactly** - 11,844 individual checks without a single mismatch.
 
-- Kartenskript: Archipelago, Atoll, Rift, Corners oder Island Chains
-- Kartengröße: Small, Medium oder Large
+---
 
-Wählbare Fertility-Einstellung: Abundant, Regular oder Sparse. Die FertilitySet-Definitionen für Regular und Sparse stammen direkt aus den Spieldaten (`assets.xml`, extrahiert via RDAExplorer/FileDBReader) und sind für Latium und Albion gegen alle 45 (Kartenskript × Größe × Einstellung)-Kombinationen eines echten, modfreien v2.0-Spielstands (Seed 2) vollständig validiert - 45/45 exakt auf beiden Seiten.
+## Contents
 
-## Start
+- [What a seed is](#what-a-seed-is)
+- [Installing and starting](#installing-and-starting)
+- [Using the app](#using-the-app)
+- [How Anno 117 builds a map](#how-anno-117-builds-a-map)
+- [How exact is this?](#how-exact-is-this)
+- [Known limits](#known-limits)
+- [Building it yourself](#building-it-yourself)
+- [Credits](#credits)
 
-`dist/Anno117SeedFinder/Anno117SeedFinder.exe` doppelklicken. Das Werkzeug ist eine native WPF-Anwendung und öffnet kein Konsolenfenster.
+---
 
-In der Oberfläche können eingestellt werden:
+## What a seed is
 
-- erster und letzter zu prüfender Seed im vom Spiel unterstützten Bereich 1–999.999.999; `min` und `max` setzen die jeweilige Grenze direkt
-- Startmodus Flaggschiff oder Startinsel
-- DLC01 – PoA ein- oder ausschalten; ohne PoA wird der nicht verwendete Cinis-Bereich ausgeblendet
-- DLC03 – DotD ist bereits sichtbar, bleibt bis zu belastbaren Forschungsdaten aber gesperrt
-- Kartenskript und Kartengröße
-- verwendete Threads
-- maximale Trefferzahl (`0` bedeutet alle)
-- Ausgabedatei
-- Cinis Slot 1: `*` (egal, Standard), Mackerel oder Lavender
-- vier unterschiedliche Fruchtbarkeiten für Cinis Slots 4–7
-- optional ausschließlich Cinis mit 19 Berg- und 23 Flussbauplätzen
-- Mindestzahlen für nutzbare Gold- und Stör-Flussbauplätze in Latium sowie für alle Berg- und Flussbauplätze in Latium und alle Bergbauplätze in Albion
-- Mindestflächen für Latium, Albion insgesamt und den entwässerbaren Albion-Sumpfanteil
-- beliebig viele Latium- und Albion-Regeln für Starter-, Secondary- und Tertiary-Inseln
-- profilabhängige Positionsvorgaben und eine Vorschau für frei eingegebene oder gefundene Seeds
+A seed is just a number. The game uses it to start a long chain of "random" numbers. The chain is not really random: the same seed always produces exactly the same chain, and therefore exactly the same map. That is what makes a seed finder possible at all - if you know the rules, you can compute the map from the number without playing.
 
-Jeder dieser fünf Platzsummenfilter besitzt eine eigene Aktivierungs-Checkbox. Nur angehakte Werte werden bei der Suche berücksichtigt; die Dropdowns enthalten ausschließlich Zahlen und reichen jeweils vom kleinsten bis zum größten Wert der profilabhängigen 100k-Auswertung. Daneben stehen Bereich, Durchschnitt und Median; ein eigener `Median`-Button übernimmt den Median direkt in das jeweilige Dropdown. Beim Wechsel des Kartenprofils werden Auswahl und Statistik passend aktualisiert. Alte Presets, in denen `*` den Filter deaktiviert hat, bleiben kompatibel.
+Change anything else - the map shape, the size, the DLC, the two map options - and the same seed gives a completely different world, because the rules consume the number chain differently. That's why this tool is very critical when it comes to game updates. Especially fertility distribution is very sensitive to minor changes somewhere in the chain.
 
-Die drei Flächenfilter verwenden profilabhängige Slider in Schritten von 1.000 Kacheln, dargestellt als `k`. Minimum, Maximum, Durchschnitt und Median sind jeweils auf volle Tausender abgerundete Werte der 100k-Auswertung. Der Button `Median` setzt den zugehörigen Slider direkt auf diesen Wert. Nach dem Anklicken lässt sich ein Slider mit Pfeil links/rechts sowie Plus/Minus um jeweils 1k verändern. Auch diese Filter wirken nur mit gesetzter Checkbox.
+---
 
-Die Ergebnistabelle zeigt Goldminen, Gold-Flussbauplätze und Sturgeon-Flussbauplätze in getrennten Spalten. Ressourcen und Bauplatzarten werden in diesen Spaltenköpfen durch kombinierte Symbole dargestellt; die Bauplatzsymbole erhalten für guten Kontrast eine dunkelgraue Darstellung. Außerdem werden die Gesamtzahlen der Latium-Berg- und Flussbauplätze sowie der Albion-Bergbauplätze angezeigt. Die Tabelle zeigt zusätzlich die Gesamtfläche für Latium und Albion. Bei Albion zählen entwässerbare Sumpfkacheln zur Gesamtfläche; ihr Anteil steht in Klammern. Die Flächen sind mit `≈` gekennzeichnet: Die Werte der Grundinseln basieren auf im 90°-Raster vermessenen bebaubaren Kacheln ohne Berg- und Flussslots. Cinis und die fünf DLC-Inseln werden aus ihren Build-Area-Masken größenklassenspezifisch angenähert. Aktive Slots reduzieren die tatsächlich nutzbare Fläche eines konkreten Seeds geringfügig. Cinis-Fruchtbarkeiten stehen als Symbolreihe dauerhaft ganz rechts. In der Vorschau stehen die Bauplatzzahlen je Insel im Tooltip.
+## Installing and starting
 
-Referenz für Messmethode und Grundinselwerte: [Anno Companion – Island Atlas](https://anno-companion.com/117/tools/island-atlas/).
+**What you need**
 
-`Suche starten` führt die Berechnung aus. Treffer werden in der Tabelle angezeigt und zugleich als reine Seednummern zeilenweise in der gewählten TXT-Datei gespeichert. Eine laufende Suche kann abgebrochen werden.
+- Windows
+- [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) (the "Desktop" variant, not just the
+  console one)
 
-## Presets speichern und laden
+**Starting**
 
-Über `Preset speichern …` im Kartenprofil-Bereich lässt sich der vollständige aktuelle Suchstand als `*.anno117settings.json` sichern. Gespeichert werden Kartenskript, Größe, Seedbereich, Threads, Trefferlimit, Ausgabedatei, sämtliche Platzsummenfilter samt Aktivierungsstatus, Cinis-Einstellungen, Vorschau-Seed sowie sämtliche Latium- und Albion-Bedingungen einschließlich gewählter Positionen. `Preset laden …` stellt diesen Stand wieder her. Die Preset-Datei kann beliebig abgelegt, kopiert und mit anderen Rechnern geteilt werden.
+Run `Anno117SeedFinder.exe`. There is no installer and nothing is written outside the folder you put it in. The app does not need the game, the game files or an internet connection.
 
-Bei der Einstellung „Vorkommen im Überfluss“ besitzt Cinis 17–19 Bergbauplätze und 21–23 Flussbauplätze.
+The interface is available in **English and German**; switch it with the language box at the top right. Your choice is remembered in your presets.
 
-Bei Cinis können höchstens vier der sechs möglichen Fertilities gleichzeitig gewählt werden. Eine fünfte Auswahl wird von der UI zurückgenommen und mit einer roten Meldung erklärt.
+---
 
-Unter „Weitere Inselbedingungen“ lassen sich beliebig viele Zeilen ergänzen. Jede Zeile definiert das Fertility Set, eine Mindestanzahl passender Inseln und optional gewünschte Fertilities. `*` ist der Joker und bedeutet „egal“. Gemeinsame Poolgruppen sind ausdrücklich als „Reihenfolge egal“ beschriftet; beispielsweise findet eine Tertiary-Regel mit Oysters und Sturgeon beide internen Reihenfolgen in Slots 3–4. Unmögliche Doppelauswahlen innerhalb einer solchen Gruppe werden verhindert.
+## Using the app
 
-Die vollständigen Abundant-Pools für Latium und Albion sind in der Oberfläche hinterlegt und werden vom Offline-Generator berechnet. Inselanzahl, mögliche Positionen sowie die Grenzen für Plus-Buttons und kumulierte Mindestanzahlen werden aus dem gewählten Profil abgeleitet. Beim Wechsel von Kartenskript oder Größe werden ausschließlich die davon abhängigen Inselbedingungen und alten Ergebniszeilen zurückgesetzt; Suchbereich und Cinis bleiben erhalten.
+The window is split into three parts: the **map profile** at the top, the **search conditions** in the middle, and the **results** at the bottom.
 
-## Validierung
+### 1. The map profile - describe the game you are going to start
 
-Seed 2827 wird vollständig und exakt rekonstruiert:
+These settings must match what you will later choose in the game's "New Game" screen. If they do not match, the seeds you find will produce a different map.
 
-```text
-Mackerel | Marble | Iron | Gold | Sturgeon | Oysters | Grapes
+| Setting | What it means |
+|---|---|
+| **Map template** | The shape of the world: Archipelago, Atoll, Corners, Island Chains or Rift. Each one places the islands in a completely different and distinct pattern. |
+| **Map size** | Small, Medium or Large. Larger maps have more islands and more space between them. |
+| **DLC01 – PoA** | Whether *Prophecies of Ash* DLC is active. With it, Latium is expanded by the continental island Cinis, and gains several extra islands in the Northern corner of the map. |
+| **activated later (experimental)** | For maps that were **created without** the DLC01 and had it switched on afterwards. See [Switching the DLC on later](#switching-the-dlc-on-later). |
+| **DLC03 – DotD** | Greyed out. Reserved for the future DLC03 *Dawn of Delta* expansion; it does nothing today. |
+| **Start mode** | Flagship or starting island. This is the game's choice of how you arrive in the map; it does **not** change the generated map. Tested with the starting-island option switched on, with the continental island forced as the start, and with DLC01 on and off (Archipelago and Corners, Large): all six savegames are identical to the plain ones. |
+
+### 2. Additional map options
+
+The game offers you a few extra choices when you create a map. Two of them change what this tool computes:
+
+| Option | Effect |
+|---|---|
+| **Resource slots** (Abundant / Regular / Sparse) | How many mountain and river slots the islands get. |
+| **Fertility** (Abundant / Regular / Sparse) | How many fertilities are generated on each island. |
+
+A third option, **forest size** (how large the forest patches are on an island), was measured and has **no effect at all** on islands, positions, fertility or slots - so it is deliberately not offered here.
+
+### 3. What to search for - the conditions
+
+Everything in the middle of the window is optional. Leave it all empty and every seed matches.
+
+**Island conditions.** For each region (Latium and Albion) you can demand specific characteristics on specific kinds of island:
+
+- **Starting island** – the island you actually begin on
+- **Secondary** and **Tertiary** – the two groups the remaining islands are split into (explained
+  [further down](#step-8-which-goods-grow-where))
+- **Any combination** – the fertility simply has to exist somewhere in that region
+
+Use the "add" buttons to create a condition row, then pick the fertility distribution for the island. You can add as many rows as you like; a seed has to satisfy all of them. The position picker next to a row lets you demand the island on a **particular island slot** of the map, if you care where it is.
+
+**Cinis (with DLC01 only).** The volcanic island has its own set: you can require particular fertilities there, demand a specific one in its first slot, or require the maximum number of building slots on the island.
+
+**Minimum sizes.** Three sliders demand a minimum amount of usable tiles: buildable area in Latium, in Albion, and marsh area in Albion. The "median" button next to each one fills in the typical value for the current map profile, so you can quickly ask for "better than average" (derived of 100k seeds).
+
+**Minimum building slots.** A row of boxes lets you demand a minimum number of mountain slots, river slots, gold river slots, sturgeon river slots, gold mines, raw marble mines and mineral mines in Latium, silver, tin and copper mines in Albion. Again each has a "median" button.
+
+**Advanced fertility filters.** The check box **Show advanced fertility filters** above the results table reveals six more sliders and adds their columns to the table. Each one adds up the harbour or swamp tiles of all islands in the region that carry a given fertility: harbour tiles of the Murex islands and of the Oyster islands in Latium; harbour tiles of the Saltwort islands and of the Sea Shell islands in Albion; swamp tiles of the Small Birds islands and of the Beaver islands in Albion. The sliders move in steps of 500 tiles and have a "median" button like the others. Filters are only applied while the check box is on; the box is saved with the presets.
+
+**Seed scoring.** A hard filter is all-or-nothing; scoring lets you rank the seeds that pass by how well they match what you actually care about, instead of throwing away a seed that is 2,000 tiles short of a cutoff but excellent everywhere else. Tick **Enable seed scoring** (next to "Search only the seeds in the results table") to reveal a weight slider (0-10) next to every area, site, mine and advanced-fertility filter, next to the six Cinis pool fertilities, next to the Cinis slot 1 choice, and next to "only maximum building slots" - independently of whether that same thing is also a hard filter. Every seed then gets a score out of 10, shown in its own column (sortable, and part of multi-sort); a dash means no weight is set. Weights are normalized against the same 100k-seed statistics as the filters, so a weight of 10 on "mostly full range" and a weight of 10 on "narrow range" count the same. **Extend the scoring range for outliers** (next to "Show advanced fertility filters") stretches a metric's range to fit an unusually extreme hit from *this* search instead of just capping it at 1.0 - useful for metrics with a narrow 100k-seed spread, like tin mines. Hover a score to see the breakdown per metric. Weights and both switches are saved with presets and exported in the CSV.
+
+### 4. Running a search
+
+| Field | Meaning |
+|---|---|
+| **First / last seed** | The range to scan. The buttons next to the fields jump to the smallest and largest seed the game accepts. |
+| **Threads** | How many processor cores to use. More is faster; leave the machine one core if you want to keep working. |
+| **Maximum hits** | Stop after this many matching seeds. `0` means "find them all". |
+| **Output file** | Where the matching seeds are written. |
+| **Search only the seeds in the results table** | Runs the search over the seeds that are currently in the table instead of over the range (see "Filtering step by step" below). Only available while the table has seeds. |
+
+Press **Start** to run and **Cancel** to stop early. Results appear in the table as they are found.
+
+### 5. Results
+
+The table lists every matching seed with its key numbers: buildable tiles per region, marsh area, slot counts
+and the fertility distribution on Cinis. The check boxes above the table switch individual columns on and off, so you can keep it
+readable. Hover any of these numbers for a small gauge: where this seed's value falls between the 100k-seed
+population's minimum and maximum, with the median marked, so a bare number like "145" gets context without opening
+the corresponding filter.
+
+- **Preview** – type a seed and press Preview to see both regions drawn as a map: every island exactly where the game puts it and turned the way the game turns it, with its top-down image, plus the decoration islands and the third-party islands (traders and the raider). Hover an island for its fertilities and slot counts; the outline colour on hover shows its role. The border of the regular map and of the Prophecies of Ash area are drawn as the real rectangles. This works for any seed, whether it came from a search or not. **Random** puts a random valid seed into the box.
+- **Add seed** – put a single specific seed into the table without searching.
+- **Load seed list** – read a list of seeds from a file and evaluate them all in the results table. A plain text file with one seed per line (like the output file, `treffer.txt`) and a CSV exported by the app both work; other columns are ignored. The seeds carry no map profile: set the profile they were found with before you load them.
+- **Export CSV** – write the results table to a spreadsheet file.
+
+#### Filtering step by step
+
+A search can be narrowed down in stages, also across sessions:
+
+1. Run a search (or load an earlier `treffer.txt` / CSV with **Load seed list**). The table now holds a set of seeds.
+2. Change the filters, tick **Search only the seeds in the results table** and press **Start**. Only those seeds are examined, and the table is replaced by those that also pass the new filters.
+3. Repeat with other filters as often as you like, for example first all seeds with the most buildable tiles, then of those the ones with the most gold slots.
+
+If no seed passes the new filters, the table goes back to the list it had before and the output file is left as it was, so you can change the filters and try again without loading anything. The first and last seed fields are switched off while the option is on. The hits are written to the output file as usual; if that is the very file you loaded, the app asks once before replacing it, so choose another output file if you want to keep the wider list.
+
+### 6. Presets
+
+**Save preset** and **Load preset** store everything - profile, options, all conditions, the search range and the
+language - in a small file, so you can come back to a search later or share it with someone.
+
+---
+
+## How Anno 117 builds a map
+
+This is the part the tool had to reproduce. It is described here in plain language; you do not need any of it to use
+the app, but it explains what the settings really do.
+
+### The dice
+
+Everything starts with the seed. The game turns it into a set of **17 numbers**: it takes the seed and repeatedly
+multiplies and adds a fixed amount, filling the 17 places one after another.
+
+From then on, every "roll of the dice" works the same way: the game takes two of those 17 numbers, rotates their bits
+(nine steps for one, thirteen for the other), adds them together, and writes the result back over one of the two.
+A pointer moves on, and the next roll uses the next pair. So the 17 numbers keep stirring each other, and out comes a
+stream of numbers that looks random but is completely determined by the seed.
+
+Two things matter for understanding the rest:
+
+1. **The order is everything.** Each step of map generation takes a certain number of rolls from this stream. If one step takes one roll too many or too few, everything after it shifts and the map changes completely. This is why a single misplaced decorative island can ruin the fertility of an entire map.
+2. **The first nine rolls are skipped.** The game uses them elsewhere before map generation starts.
+
+### Step 1: the template
+
+Each map shape and size is a file in the game that lists **slots** - fixed spots where an island may go, each with a size (small, medium, large, extra large) and a marker saying whether it is a *starting* slot. The template also holds the spots for the three neutral parties and the player start points.
+
+With *Prophecies of Ash* active, Latium uses a larger template with extra slots and the fixed spot for Cinis.
+
+### Step 2: which island goes where
+
+The game shuffles the list of slots (starting slots are treated separately and handled last) and then walks through it. For each slot it picks an island from the pool of that size and removes it, so the same island does not appear twice - until the pool runs out, at which point it is refilled and an island can appear a second time.
+
+### Step 3: turning the islands
+
+Every island gets a quarter turn: 0, 90, 180 or 270 degrees.
+
+- Ordinary islands are turned at random.
+- **Starting islands are turned so that their starting bay faces the middle of the map.** That is not random at all; the game measures the direction from the island's bay to the map centre and picks the quarter turn that fits best.
+
+### Step 4: the neutral parties
+
+Three islands belong to nobody: the pirate and two traders. They have their own fixed spots in the template, and the game rolls five numbers to decide their rotations and which trader goes where.
+
+### Step 5: nudging the islands
+
+On Archipelago, Atoll and Rift the game then **nudges the islands closer together** (wiggle). It goes through all movable islands twice. For each one it shuffles a list of candidate offsets and tries them in turn, accepting the first that moves the island closer to a starting island without bumping into anything.
+
+Island Chains has its own, single movement pass. Corners does not move its islands at all.
+
+### Step 6: cutting the map to size
+
+- **With DLC01** the Latium map always has the same fixed size.
+- **Without DLC01** the map is shrink-wrapped: the game measures how much space the islands actually occupy, rounds that up, and centres the whole arrangement inside the result. This is why maps without the DLC differ slightly in size from seed to seed.
+
+The playable area - the part you can sail in - is then the occupied area with an equal border on each side.
+
+### Step 7: the decorative islands
+
+Finally the game scatters small uninhabitable islands around: **14 with the DLC, 10 without**.
+
+It lays a grid of 16-unit cells over the map, shuffles the cells into a random order, and for each decoration walks through that order until it finds a cell where the island fits: far enough from other islands, inside the playable area, and not too close to a player start point. Then one more roll decides which of the two matching quarter turns it gets.
+
+These islands have no fertilities and no slots. They matter here only because **finding a cell consumes a roll of the dice**, so getting them wrong would shift everything that follows.
+
+### Step 8: mountain and river slots
+
+Every island file lists two kinds of slot: **fixed** ones that are always there, and **random** ones that may or may not be used. The game's data tables say how many slots an island of a given size should have, with three rows - sparse, regular and abundant - matching the map option you chose.
+
+The rule is: take the number the table asks for (plus a small random variation), but never fewer than the fixed slots and never more than the island physically offers. That is why some islands do not change at all when you lower the setting - they were already at their limit.
+
+Marsh slots in Albion are always fixed and are not affected by the option.
+
+### Step 9: which goods grow where
+
+This is the part most searches care about.
+
+First the game assigns each island a **role**:
+
+- **Starter** – the starting islands
+- **Secondary** and **Tertiary** – the ordinary islands, alternating between the two (but do not need to be equally distributed necessarily)
+- **Continental** – only Cinis
+
+It does this by shuffling a short list of the roles and then walking through the islands: a starting island takes the starter role, any other island takes whichever of the two ordinary roles comes first in the list, and that role is moved to the back - which is what makes them alternate. Because the list was shuffled first, which of the two comes first depends on the seed.
+
+Each role then has a **fertility set**: a list of fertility groups, for example "one of the two grain types, one of the two ore types, then four from the large pool". For every entry the game draws a fertility from that group, without repeating one already on the island.
+
+The **fertility option** changes the fertility sets, not the roles: on the lower settings each role gets a shorter list, so the islands carry fewer fertilites. Which island is a starter, secondary or tertiary stays exactly the same.
+
+### Switching the DLC on later
+
+The game lets you enable *Prophecies of Ash* on a map that was created without it. It does not rebuild the world.
+Instead:
+
+- the existing map stays exactly as it was, including its odd shrink-wrapped size;
+- the map is extended on two sides in the north to make room;
+- a **fresh run of the dice from the same seed** places only the new islands - the DLC islands plus Cinis - into the slots that only the DLC template has, choosing from the islands not already used;
+- those new islands then get their slots and fertilities as usual.
+
+The app supports this with the **"activated later (experimental)"** box. It is marked experimental for a reason: see the limits below.
+
+---
+
+## How exact is this?
+
+Every rule was derived from real savegames and from the game's own island and template files, then checked against a validation set of **90 savegames** covering all five templates, all three sizes, both DLC states and all three fertility settings.
+
+| What was compared | Latium | Albion |
+|---|---|---|
+| Island type, position and rotation | 1818 / 1818 | 1440 / 1440 |
+| Fertility | 1863 / 1863 | 1440 / 1440 |
+| Building slot counts | 1863 / 1863 | 1440 / 1440 |
+| Decorative islands | 1080 / 1080 | 900 / 900 |
+
+**11,844 checks, no mismatches.** On top of that, a larger archive of several hundred older savegames is used as a
+regression test after every change, and the three slot settings and the retroactive DLC were each verified against
+their own savegames.
+
+---
+
+## Known limits
+
+- **"DLC activated later" is experimental.** The extra dice rolls the game makes before placing the new islands are
+  known only for the map sizes that appear in the savegames we have. For an untested size the app falls back to a
+  formula that is right for most values but wrong for some, and then the **fertilities on the newly added islands** can be
+  wrong. The old part of the map is always correct. It has also not been tested with the regular and sparse fertility
+  settings.
+- **DLC03** is not implemented; the box is inactive.
+
+---
+
+## Building it yourself
+
+The app is a single C# project. With the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) installed:
+
+```
+dotnet build src/Anno117SeedFinder/Anno117SeedFinder.csproj -c Debug
 ```
 
-Der erweiterte Test reproduziert alle 20 unabhängigen Latium-v2.0-Referenzkarten exakt, einschließlich Cinis-Berg- und Flussbauplatzzahlen. Zusätzlich stimmen für diese Referenzen sämtliche Dekorationsinseln in Auswahl, Position und Rotation. Seed 2841 ist vollständig ausgeschlossen, weil er mit einer älteren Generator-/Save-Version erstellt wurde.
+The executable lands in `src/Anno117SeedFinder/bin/Debug/net10.0-windows/`. For a package you can hand to someone else:
 
-Albion ist separat gegen fünf frisch erstellte v2.0-Saves (2827, 2831, 2835, 2848 und 2855) validiert. Für alle 80 Inselrecords stimmen Inselauswahl, Starter/Secondary/Tertiary-Zuordnung und sämtliche 480 Fertility-Slots exakt. Der Test deckt außerdem die Albion-Sumpf-Zulässigkeit sowie eine UI-nahe Tertiary-Bedingung ab. Der integrierte Selbsttest umfasst damit 25/25 Referenzfälle.
+```
+dotnet publish src/Anno117SeedFinder/Anno117SeedFinder.csproj -c Release --self-contained false -o publish
+```
 
-Die Profilerweiterung ist gegen 15 Latium-Referenzkarten geprüft: Archipelago Large mit 2.500, 5.000, 6.153, 9.999, 999.999, 3.886.198 und 99.999.999; Atoll, Rift und Island Chains jeweils mit 2.500 und 5.000; außerdem Corners Medium/Small mit 2.500. Alle Inselrecords und Fertilities stimmen exakt. Für Seed 6.153 sind zusätzlich alle 23 Latium- und 16 Albion-Inselassets ihren korrekten Kartenslots zugeordnet, sämtliche Albion-Fertilities bestätigt und die Cinis-Bauplätze mit 19 Berg und 23 Fluss geprüft. Die seedabhängigen ein bis zwei Attraktionsschritte von Archipelago sind dabei ebenso nachgebildet wie die größere Albion-Mindestbreite dieses Profils.
+The result needs the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) (x64) on the machine that
+runs it.
 
-Albion Archipelago Large stimmt für 9.999, 999.999 und 99.999.999 vollständig; frühere Referenzen für Archipelago Large und Corners Medium/Small mit Seed 2.500 bleiben ebenfalls exakt. Corners Large 1.531.943 ist zusätzlich vollständig gegen getrennte Latium- und Albion-Spielstände validiert. In Latium stimmen 23/23 Inselrecords und Bauplatzdatensätze, 22/22 Inselmodelle, Rotationen und Slotzuordnungen sowie sämtliche Fruchtbarkeiten; die Karte besitzt insgesamt 144 Berg- und 154 Flussbauplätze. In Albion stimmen 16/16 Inselrecords, Bauplatzdatensätze, Modelle, Rotationen, Slotzuordnungen und sämtliche Fruchtbarkeiten; dort sind es 112 Berg- und 65 Sumpfbauplätze. Der integrierte Selbsttest umfasst einschließlich dieser gemeinsamen Regression weiterhin 28/28 Referenzfälle. Ein separater Gesamttest erzeugt Latium und Albion für alle 15 Kombinationen aus Kartenskript und Größe. Neue Referenz-Saves werden in `.research/validation_saves/<Patch-Build>/...` nach Spielversion abgelegt; die zugehörigen kompakten Prüfdaten stehen unter `data/regression/<Patch-Build>/`. Nicht-Corners-Profile sind damit deutlich breiter gegen reale Saves geprüft, aber naturgemäß nicht für jeden der möglichen Seeds formal bewiesen.
+Five self-checks are built in and are the quickest way to see that a build is sound. Each returns exit code 0 when it
+passes:
 
-Der Referenztest prüft zusätzlich die Anzahl der Tertiary-Inseln mit der reihenfolgeunabhängigen Kombination Oysters + Sturgeon in Slots 3–4. Ein Such-Smoke-Test mit mindestens zwei solchen Inseln liefert unter Seeds 1–1.000 exakt Seed 290.
+```
+Anno117SeedFinder.exe --self-test                # generator against stored reference results
+Anno117SeedFinder.exe --smoke-test               # search, filters and result table
+Anno117SeedFinder.exe --all-profile-smoke-test   # every map profile generates without error
+Anno117SeedFinder.exe --preview-smoke-test       # the seed preview window builds and its tooltips open
+Anno117SeedFinder.exe --settings-smoke-test      # presets load and save through the window
+```
 
-Das Savepaket vom 12.09.2026 ergänzt 86 gültige Referenz-Saves für alle fünf Kartentemplates und alle drei Größen. Sämtliche Saves wurden als Dateiversion 70, PoA aktiv und Flaggschiff-Start verifiziert und nach ihren internen Settings einsortiert; acht zustandsabhängig fehlerhafte Hot-Reload-Saves wurden vollständig ausgeschlossen. Von den 86 Saves sind 49 Abundant-Saves direkt berechenbar und stimmen für Latium **49/49** sowie Albion **49/49** exakt.
+The `tools` folder holds the scripts that compare the generator with your own savegames (`tools/README.md`); they are not
+needed to use or build the app, and no savegames or game files are included. `CAVEATS.md` describes the traps encountered
+while working all this out, and `OPEN-PROBLEMS.md` lists what is still unfinished.
 
-Ein Testlauf über Seeds 1–10.000 benötigt auf dem Entwicklungssystem mit 8 Threads etwa 0,9 Sekunden und liefert für die obige Cinis-Bedingung 443 Treffer; Seed 2827 ist enthalten.
+## Credits
 
-## Zusammenführung mit der parallel entwickelten Fruchtbarkeits-Erweiterung (12.09.2026)
+This app started as **Drullo321**'s project. He reverse engineered how Anno 117's World Generator actually works - the RNG chain behind island slots, rotations, fertilities and building slots described throughout this document and built the first working version of it: the initial UI, and the first generator covering the Corners map and, building on that, the initial Archipelago and Island Chain seeds. That reverse engineering is the foundation everything else here stands on.
 
-Eine parallel an dieser Codebasis entwickelte Erweiterung hatte unabhängig Regular/Sparse-Unterstützung sowie eine tiefgehende Untersuchung der Island-Chains- und Rift/Small-Generierung erarbeitet, bevor diese Version verfügbar war. Direkter Abgleich beider Stände gegen einen gemeinsamen Satz modfreier Referenz-Spielstände (45 Latium- und 45 Albion-Kombinationen bei Seed 2, sowie mehrere Multi-Seed-Sätze für Island Chains, Rift/Small und Corners/Small) ergab:
-
-- **Diese Version war bei Island Chains und Rift/Small bereits weiter**, auf beiden Regionen: Island Chains erreicht 23 von 24 realen Mehrfach-Seed-Referenzen exakt (Latium *und* Albion), die einzige Abweichung ist ein einzelner Spielstand mit nachweislich abweichender Rolle-Zuordnung - Signatur des Community Bug Fix Mods, kein Generatorfehler. Rift/Small - zuvor über viele Iterationen ungelöst - erreicht 8 von 8 exakt.
-- **Corners/Small bleibt in beiden Ständen ungelöst** und schlägt bei exakt denselben Seeds fehl (2/10 der zusätzlich bereitgestellten Referenzen) - kein Rückschritt, aber auch keine neue Erkenntnis auf dieser Seite.
-- Die Regular/Sparse-Fruchtbarkeitsstufen (`ResolveSet`/`SetVariants`/`SwapProfiles`-Mechanik samt der zugehörigen FertilitySet-Pooldaten aus `assets.xml`) existierten nur im älteren Stand und wurden hier nachgezogen - validiert gegen alle 45 (Kartenskript × Größe × Einstellung)-Kombinationen für Latium und Albion, 45/45 exakt auf beiden Seiten.
-- Ein bekannter, aber in keinem der bisher geprüften Fälle wirksam gewordener Mangel bleibt offen: `MapProfileData.g.cs` enthält für Atoll/Small, Island Chains/Large und alle drei Rift-Größen Latium-Slotkoordinaten aus einer älteren, unkorrigierten `.a7tinfo`-Extraktion (Abweichungen um Vielfache von 8 Einheiten). Das hat in keinem der oben genannten Tests zu einem falschen Ergebnis geführt, ist aber nicht behoben.
-
-Praktisch bedeutet das: Dieser Stand basiert jetzt auf der weiterentwickelten Island-Chains-/Rift-Generatorlogik dieser Version, ergänzt um die Regular/Sparse-Unterstützung der älteren Codebasis.
+Due to time and motivational constrains after game update 2.1 he then handed the project over for me to finish it. Since then it has been extended to validate against every map template, every size and every game setting, not only the shapes above;updated for the 2.1 map templates; extended to cover DLC01 correctly both when it is off from the start and when it is switched on retroactively mid-game; and given the features added after that point - namely the advanced fertility filters, the seed scoring feature, and the UI work around them.

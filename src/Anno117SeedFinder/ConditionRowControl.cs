@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -43,7 +43,7 @@ internal sealed class ConditionRowControl:Border
   var fields=new WrapPanel{Margin=new Thickness(0,5,0,0)};body.Children.Add(fields);
   foreach(var group in definition.Groups)
   {
-   var groupLabel=new TextBlock{Text=group.Label,Foreground=new SolidColorBrush(Color.FromRgb(102,112,133)),FontSize=11,Margin=new Thickness(0,0,0,1)};
+   var groupLabel=new TextBlock{Text=GroupLabel(group),Foreground=new SolidColorBrush(Color.FromRgb(102,112,133)),FontSize=11,Margin=new Thickness(0,0,0,1)};
    var panel=new StackPanel{Margin=new Thickness(0,0,18,2)};panel.Children.Add(groupLabel);
    var boxesPanel=new StackPanel{Orientation=Orientation.Horizontal};var boxes=new ComboBox[definition.IsAnyCombination?2:group.SlotIndices.Length];
    for(var i=0;i<boxes.Length;i++)
@@ -59,6 +59,10 @@ internal sealed class ConditionRowControl:Border
   RemoveRequested+=(_,_)=>Localization.Instance.PropertyChanged-=OnLanguageChanged;
  }
 
+ // Any Combination accepts one or two fertilities: a slot left on * is ignored rather than
+ // rejected, so the header says so instead of the search silently matching everything.
+ string GroupLabel(SlotGroupDefinition group)=>definition.IsAnyCombination?group.Label+Localization.Instance["WildcardIgnoredSuffix"]:group.Label;
+
  void OnLanguageChanged(object? sender,System.ComponentModel.PropertyChangedEventArgs e)
  {
   removeButton.Content=Localization.Instance["Remove"];atLeastLabel.Text=Localization.Instance["AtLeast"];islandsLabel.Text=Localization.Instance["IslandsWord"];
@@ -68,7 +72,7 @@ internal sealed class ConditionRowControl:Border
   // at construction time; re-fetch it fresh (same Groups order, now in the new language)
   // and copy each label across.
   var freshGroups=FertilityDefinitions.Get(definition.Region,definition.Set).Groups;
-  for(var i=0;i<groups.Count&&i<freshGroups.Length;i++)groups[i].Label.Text=freshGroups[i].Label;
+  for(var i=0;i<groups.Count&&i<freshGroups.Length;i++)groups[i].Label.Text=GroupLabel(freshGroups[i]);
  }
 
  void SelectionChanged(object sender,SelectionChangedEventArgs e)
@@ -112,7 +116,6 @@ internal sealed class ConditionRowControl:Border
  public IslandCondition BuildCondition()
  {
   var configured=groups.Select(x=>new SlotGroupCondition(x.Definition.SlotIndices,x.Boxes.Select(b=>b.SelectedItem).OfType<FertilityChoice>().Where(choice=>!choice.IsWildcard).Select(c=>c.Guid).ToArray())).ToArray();
-  if(definition.IsAnyCombination&&(configured.Length!=1||configured[0].Required.Length!=2))throw new ArgumentException(Localization.Instance["AnyCombinationTwoRequired"]);
   return new(definition.Region,definition.Set,(int)minimum.SelectedItem,configured,selectedPositions);
  }
 

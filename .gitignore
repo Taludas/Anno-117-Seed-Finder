@@ -17,3 +17,11 @@ treffer.txt
 *.suo
 Thumbs.db
 Desktop.ini
+
+# Release packages
+dist/
+
+# Tools: extracted savegames, downloaded helper programs, Python caches
+tools/dumps/
+tools/bin/
+__pycache__/

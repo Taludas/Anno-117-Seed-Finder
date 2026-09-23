@@ -19,6 +19,11 @@ internal sealed class CompiledSearchPlan
  readonly int minLatiumMineralMines;
  readonly int minAlbionCopperMines;
  readonly int minAlbionSilverMines;
+ readonly int minAlbionTinMines;
+ readonly int[] advancedLatium;
+ readonly int[] advancedAlbion;
+ readonly AdvancedFilter[] advancedLatiumFilters;
+ readonly AdvancedFilter[] advancedAlbionFilters;
  readonly CompiledIslandCondition[] latium;
  readonly CompiledIslandCondition[] albion;
 
@@ -28,12 +33,14 @@ internal sealed class CompiledSearchPlan
   minGoldSites=request.MinLatiumGoldSites;minSturgeonSites=request.MinLatiumSturgeonSites;
   minLatiumMountainSites=request.MinLatiumMountainSites;minLatiumRiverSites=request.MinLatiumRiverSites;minAlbionMountainSites=request.MinAlbionMountainSites;
   minLatiumBuildableTiles=request.MinLatiumBuildableTiles;minAlbionBuildableTiles=request.MinAlbionBuildableTiles;minAlbionSwampTiles=request.MinAlbionSwampTiles;
-  minLatiumGoldMines=request.MinLatiumGoldMines;minLatiumMarbleSites=request.MinLatiumMarbleSites;minLatiumMineralMines=request.MinLatiumMineralMines;minAlbionCopperMines=request.MinAlbionCopperMines;minAlbionSilverMines=request.MinAlbionSilverMines;
+  minLatiumGoldMines=request.MinLatiumGoldMines;minLatiumMarbleSites=request.MinLatiumMarbleSites;minLatiumMineralMines=request.MinLatiumMineralMines;minAlbionCopperMines=request.MinAlbionCopperMines;minAlbionSilverMines=request.MinAlbionSilverMines;minAlbionTinMines=request.MinAlbionTinMines;
+  advancedLatiumFilters=[..AdvancedFilters.All.Where(x=>x.Region==RegionKind.Latium&&request.AdvancedMinimum(x.Filter)>0).Select(x=>x.Filter)];advancedAlbionFilters=[..AdvancedFilters.All.Where(x=>x.Region==RegionKind.Albion&&request.AdvancedMinimum(x.Filter)>0).Select(x=>x.Filter)];
+  advancedLatium=[..advancedLatiumFilters.Select(request.AdvancedMinimum)];advancedAlbion=[..advancedAlbionFilters.Select(request.AdvancedMinimum)];
   latium=(request.Conditions??[]).Where(x=>x.Region==RegionKind.Latium).Select(x=>new CompiledIslandCondition(x)).ToArray();
   albion=(request.Conditions??[]).Where(x=>x.Region==RegionKind.Albion).Select(x=>new CompiledIslandCondition(x)).ToArray();
  }
 
- public bool NeedsAlbion=>albion.Length!=0||minAlbionMountainSites>0||minAlbionBuildableTiles>0||minAlbionSwampTiles>0||minAlbionCopperMines>0||minAlbionSilverMines>0;
+ public bool NeedsAlbion=>albion.Length!=0||minAlbionMountainSites>0||minAlbionBuildableTiles>0||minAlbionSwampTiles>0||minAlbionCopperMines>0||minAlbionSilverMines>0||minAlbionTinMines>0||advancedAlbionFilters.Length!=0;
  public static CompiledSearchPlan Create(SearchRequest request)=>new(request);
 
  public bool MatchesLatium(LatiumGeneration region)
@@ -50,6 +57,7 @@ internal sealed class CompiledSearchPlan
    if(requireMaxSites&&region.CinisSites is not {Mountain:19,River:23})return false;
   }
   if(region.Metrics.GoldSites<minGoldSites||region.Metrics.SturgeonSites<minSturgeonSites||region.Metrics.Sites.Mountain<minLatiumMountainSites||region.Metrics.Sites.River<minLatiumRiverSites||region.Metrics.BuildableTiles<minLatiumBuildableTiles||region.Metrics.MineralMineSites<minLatiumMineralMines||region.Metrics.MarbleSites<minLatiumMarbleSites||region.Metrics.GoldMineSites<minLatiumGoldMines)return false;
+  for(var index=0;index<advancedLatiumFilters.Length;index++)if(region.Metrics.Tiles(advancedLatiumFilters[index])<advancedLatium[index])return false;
   foreach(var condition in latium)if(!condition.Matches(region.Islands))return false;
   return true;
  }
@@ -58,7 +66,8 @@ internal sealed class CompiledSearchPlan
  public bool MatchesAlbion(IReadOnlyList<GeneratedIsland> region,out RegionMetrics metrics)
  {
   metrics=RegionMetrics.Calculate(region);
-  if(metrics.Sites.Mountain<minAlbionMountainSites||metrics.BuildableTiles<minAlbionBuildableTiles||metrics.SwampTiles<minAlbionSwampTiles||metrics.CopperMineSites<minAlbionCopperMines||metrics.SilverMineSites<minAlbionSilverMines)return false;
+  if(metrics.Sites.Mountain<minAlbionMountainSites||metrics.BuildableTiles<minAlbionBuildableTiles||metrics.SwampTiles<minAlbionSwampTiles||metrics.CopperMineSites<minAlbionCopperMines||metrics.SilverMineSites<minAlbionSilverMines||metrics.TinMineSites<minAlbionTinMines)return false;
+  for(var index=0;index<advancedAlbionFilters.Length;index++)if(metrics.Tiles(advancedAlbionFilters[index])<advancedAlbion[index])return false;
   foreach(var condition in albion)if(!condition.Matches(region))return false;
   return true;
  }

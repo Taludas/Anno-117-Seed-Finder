@@ -8,10 +8,12 @@
     <AssemblyName>Anno117SeedFinder</AssemblyName>
     <RootNamespace>Anno117SeedFinder</RootNamespace>
     <DebugType>embedded</DebugType>
+    <ApplicationIcon>..\..\app_icon.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <EmbeddedResource Include="island-masks.txt" />
-    <Resource Include="layouts\*.jpg" />
     <Resource Include="icons\*.png" />
+    <Resource Include="island_images\**\*.png" />
+    <Resource Include="..\..\app_icon.ico" Link="app_icon.ico" />
   </ItemGroup>
 </Project>

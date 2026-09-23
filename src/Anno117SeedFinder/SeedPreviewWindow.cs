@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media.Effects;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -15,25 +16,25 @@ internal sealed class SeedPreviewWindow:Window
  readonly List<(FrameworkElement Target,ToolTip ToolTip)> tooltipTargets=[];
  readonly MapProfile profile;
 
- public SeedPreviewWindow(uint seed,MapProfile? profile=null,FertilitySetting fertilitySetting=FertilitySetting.Abundant)
+ public SeedPreviewWindow(uint seed,MapProfile? profile=null,FertilitySetting fertilitySetting=FertilitySetting.Abundant,SlotSetting slotSetting=SlotSetting.Abundant)
  {
   this.profile=profile??MapProfiles.Default;
   Title=Localization.Instance.Format("PreviewTitleFormat",seed);Width=DesiredWidth;Height=DesiredHeight;MinWidth=1120;MinHeight=700;WindowStartupLocation=WindowStartupLocation.CenterOwner;Background=new SolidColorBrush(Color.FromRgb(243,245,248));
   SourceInitialized+=(_,_)=>FitToMonitor();
-  var latium=Generator.GenerateLatium(seed,new GeneratorScratch(),this.profile,fertilitySetting:fertilitySetting);
-  var albion=AlbionGenerator.Generate(seed,this.profile,fertilitySetting:fertilitySetting);
+  // The layouts are the real placement of the map (island positions, rotations, decorations and third-party islands).
+  var latiumLayout=new MapLayout();var albionLayout=new MapLayout();
+  var latium=Generator.GenerateLatium(seed,new GeneratorScratch(),this.profile,fertilitySetting:fertilitySetting,slotSetting:slotSetting,layout:latiumLayout);
+  var albion=AlbionGenerator.Generate(seed,this.profile,fertilitySetting:fertilitySetting,slotSetting:slotSetting,layout:albionLayout);
 
   var root=new DockPanel{Margin=new Thickness(22)};Content=root;
   var header=new StackPanel{Margin=new Thickness(4,0,4,14)};DockPanel.SetDock(header,Dock.Top);root.Children.Add(header);
   header.Children.Add(new TextBlock{Text=$"Seed {seed:N0}",FontSize=24,FontWeight=FontWeights.SemiBold,Foreground=Ink});
   header.Children.Add(new TextBlock{Text=this.profile.Dlc01?Localization.Instance.Format("PreviewSubtitleDlcFormat",this.profile.Template,this.profile.Size):Localization.Instance.Format("PreviewSubtitleNoDlcFormat",this.profile.Template,this.profile.Size),Foreground=Muted,Margin=new Thickness(0,4,0,0)});
-  if(Generator.HasUnverifiedArchipelagoMediumRisk(this.profile,latium.Islands))
-   header.Children.Add(new Border{Background=new SolidColorBrush(Color.FromRgb(255,244,214)),BorderBrush=new SolidColorBrush(Color.FromRgb(214,164,53)),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(6),Padding=new Thickness(10,6,10,6),Margin=new Thickness(0,10,0,0),Child=new TextBlock{Text=Localization.Instance["ArchipelagoMediumWarning"],TextWrapping=TextWrapping.Wrap,Foreground=new SolidColorBrush(Color.FromRgb(133,100,17)),FontSize=13}});
 
   var scroll=new ScrollViewer{HorizontalScrollBarVisibility=ScrollBarVisibility.Auto,VerticalScrollBarVisibility=ScrollBarVisibility.Auto};root.Children.Add(scroll);
   var maps=new Grid{MinWidth=1300};maps.ColumnDefinitions.Add(new ColumnDefinition());maps.ColumnDefinitions.Add(new ColumnDefinition());scroll.Content=maps;
-  maps.Children.Add(BuildMap(this.profile.Dlc01?"Latium + Prophecies of Ash":"Latium",RegionKind.Latium,latium.Islands,island=>island.Sites));
-  var albionMap=BuildMap("Albion",RegionKind.Albion,albion,island=>island.Sites);Grid.SetColumn(albionMap,1);maps.Children.Add(albionMap);
+  maps.Children.Add(BuildMap(this.profile.Dlc01?"Latium + Prophecies of Ash":"Latium",RegionKind.Latium,latium.Islands,latiumLayout));
+  var albionMap=BuildMap("Albion",RegionKind.Albion,albion,albionLayout);Grid.SetColumn(albionMap,1);maps.Children.Add(albionMap);
  }
 
  void FitToMonitor()
@@ -44,40 +45,61 @@ internal sealed class SeedPreviewWindow:Window
   MinWidth=Math.Min(MinWidth,availableWidth);MinHeight=Math.Min(MinHeight,availableHeight);MaxWidth=availableWidth;MaxHeight=availableHeight;Width=Math.Min(DesiredWidth,availableWidth);Height=Math.Min(DesiredHeight,availableHeight);
  }
 
- Border BuildMap(string title,RegionKind region,IReadOnlyList<GeneratedIsland> islands,Func<GeneratedIsland,SiteCounts?> sites)
+ Border BuildMap(string title,RegionKind region,IReadOnlyList<GeneratedIsland> islands,MapLayout layout)
  {
   var card=new Border{Background=Brushes.White,CornerRadius=new CornerRadius(10),Margin=new Thickness(5),Padding=new Thickness(12),BorderBrush=new SolidColorBrush(Color.FromRgb(228,231,236)),BorderThickness=new Thickness(1)};
   var body=new StackPanel();card.Child=body;
   body.Children.Add(new TextBlock{Text=title,FontSize=17,FontWeight=FontWeights.SemiBold,Foreground=Ink,Margin=new Thickness(3,0,0,8)});
-   var canvas=MapSchematic.CreateCanvas(region,profile);body.Children.Add(canvas);
+  var canvas=MapSchematic.CreateCanvas(region,profile,layout);body.Children.Add(canvas);
   var bySlot=islands.ToDictionary(island=>island.SlotIndex);
-  var positions=MapLayoutPositions.ForPreview(profile,region);
-  foreach(var position in positions)
+  // Decorations and third-party islands first (underneath), then the islands with their tooltips.
+  foreach(var item in layout.Items.Where(x=>x.Kind!=MapLayout.Island))AddBackdropTile(canvas,item);
+  foreach(var item in layout.Items.Where(x=>x.Kind==MapLayout.Island))
   {
-   if(!bySlot.TryGetValue(position.SlotIndex,out var island))continue;
-   var marker=Marker(position,island,region,sites(island));
-    MapSchematic.AddTile(canvas,position,marker);
+   if(!bySlot.TryGetValue(item.Slot,out var island))continue;
+   AddIslandTile(canvas,item,island,region);
   }
   return card;
  }
 
- FrameworkElement Marker(MapPositionDefinition position,GeneratedIsland island,RegionKind region,SiteCounts? sites)
+ static void AddBackdropTile(Canvas canvas,LayoutItem item)
  {
-  var size=MapSchematic.MarkerSize(position.Size);
-  var side=MapSchematic.TileSize(position.Size);
+  var special=item.Kind==MapLayout.Special;var raider=item.Name.Contains("pirate");
+  var stroke=special?new SolidColorBrush(raider?Color.FromRgb(166,33,54):Color.FromRgb(192,112,180)):new SolidColorBrush(Color.FromRgb(95,149,160));
+  // Third-party islands get a plum plate (trader) or a dark red one (raider) to match their outline; decorations a dark, translucent one.
+  Brush fill=special?new SolidColorBrush(raider?Color.FromRgb(86,24,36):Color.FromRgb(74,40,72)):new SolidColorBrush(Color.FromRgb(20,50,62)){Opacity=.55};
+  var(diamond,centre)=MapSchematic.AddPlacedTile(canvas,item,fill,stroke,special?1.6:1);
+  diamond.IsHitTestVisible=false;
+  if(special)AddLabel(canvas,centre,raider?"RAIDER":"3RD",10);
+ }
+
+ // A tag centred on a tile: white Georgia bold with a dark halo, so it reads on the plate and on any terrain.
+ static void AddLabel(Canvas canvas,Point centre,string text,double fontSize)
+ {
+  var label=new TextBlock{Text=text,TextAlignment=TextAlignment.Center,Foreground=Brushes.White,FontFamily=new FontFamily("Georgia"),FontSize=fontSize,FontWeight=FontWeights.Bold,IsHitTestVisible=false,Effect=new DropShadowEffect{Color=Colors.Black,BlurRadius=4,ShadowDepth=0,Opacity=1}};
+  label.Measure(new Size(double.PositiveInfinity,double.PositiveInfinity));
+  Canvas.SetLeft(label,centre.X-label.DesiredSize.Width/2);Canvas.SetTop(label,centre.Y-label.DesiredSize.Height/2);canvas.Children.Add(label);
+ }
+
+ void AddIslandTile(Canvas canvas,LayoutItem item,GeneratedIsland island,RegionKind region)
+ {
+  var sizeClass=MapSchematic.SizeClass(item.Name);
+  // Opaque plate under the island image: the schematic's burgundy (XL, Cinis) and near-black (large), and darks from the app's own
+  // palette for the light size classes, slate blue (medium) and a lighter shade of it (small), so the greens and rocks of the images stand out.
+  var(schematicFill,stroke,_)=MapSchematic.TileColors(sizeClass);
+  Brush fill=sizeClass switch{"M"=>new SolidColorBrush(Color.FromRgb(40,62,92)),"S"=>new SolidColorBrush(Color.FromRgb(74,104,145)),_=>schematicFill};
   var roleColor=RoleColor(island.FertilitySet);
-  var tooltip=IslandTooltip(position,island,region,sites);
-  var hitArea=new Grid{Width=size,Height=size,Background=Brushes.Transparent,Cursor=System.Windows.Input.Cursors.Hand,ToolTip=tooltip};
-  ToolTipService.SetInitialShowDelay(hitArea,0);ToolTipService.SetBetweenShowDelay(hitArea,0);ToolTipService.SetShowDuration(hitArea,30000);
-  tooltipTargets.Add((hitArea,tooltip));
-  var (fill,stroke,text)=MapSchematic.TileColors(position.Size);
-  var rectangle=new Border{Width=side,Height=side,Background=fill,BorderBrush=stroke,BorderThickness=new Thickness(2),RenderTransform=new RotateTransform(45),RenderTransformOrigin=new Point(.5,.5),HorizontalAlignment=HorizontalAlignment.Center,VerticalAlignment=VerticalAlignment.Center};
-  var tileText=position.SlotIndex<0?"CINIS":$"{position.Size}\n#{position.SlotIndex}";
-  var label=new TextBlock{Text=tileText,TextAlignment=TextAlignment.Center,Foreground=text,FontFamily=new FontFamily("Georgia"),FontSize=position.Size is "XL" or "C"?25:position.Size=="L"?21:18,FontWeight=FontWeights.SemiBold,HorizontalAlignment=HorizontalAlignment.Center,VerticalAlignment=VerticalAlignment.Center,RenderTransform=new RotateTransform(-45),RenderTransformOrigin=new Point(.5,.5)};
-  rectangle.Child=label;hitArea.Children.Add(rectangle);
-  hitArea.MouseEnter+=(_,_)=>{rectangle.BorderBrush=roleColor;rectangle.BorderThickness=new Thickness(4);};
-  hitArea.MouseLeave+=(_,_)=>{rectangle.BorderBrush=stroke;rectangle.BorderThickness=new Thickness(2);};
-  return hitArea;
+  var(diamond,centre)=MapSchematic.AddPlacedTile(canvas,item,fill,stroke,2);
+  var position=new MapPositionDefinition(item.Slot,item.Slot<0?"Cinis":$"#{item.Slot} · {sizeClass}",sizeClass,centre.X,centre.Y,0,0);
+  var tooltip=IslandTooltip(position,island,region,island.Sites);
+  diamond.ToolTip=tooltip;ToolTipService.SetInitialShowDelay(diamond,0);ToolTipService.SetBetweenShowDelay(diamond,0);ToolTipService.SetShowDuration(diamond,30000);
+  tooltipTargets.Add((diamond,tooltip));
+  diamond.MouseEnter+=(_,_)=>{diamond.Stroke=roleColor;diamond.StrokeThickness=4;};
+  diamond.MouseLeave+=(_,_)=>{diamond.Stroke=stroke;diamond.StrokeThickness=2;};
+  // Over an image the label is small and one line; on a plain plate (no image) it is the large two-line label.
+  var hasImage=IslandImages.Get(item.Name) is not null;
+  var caption=item.Slot<0?"CINIS":hasImage?$"{sizeClass} #{item.Slot}":$"{sizeClass}\n#{item.Slot}";
+  AddLabel(canvas,centre,caption,hasImage?(sizeClass=="C"?20:sizeClass is "XL" or "L"?13:11):(sizeClass is "XL" or "C"?20:17));
  }
 
  static ToolTip IslandTooltip(MapPositionDefinition position,GeneratedIsland island,RegionKind region,SiteCounts? sites)

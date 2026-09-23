@@ -2,11 +2,6 @@ internal sealed record MapPositionDefinition(int SlotIndex,string Label,string S
 
 internal static class MapLayoutPositions
 {
- const double Width=700;
- const double Height=920;
- const double MarginX=58;
- const double MarginY=58;
-
  public static IReadOnlyList<MapPositionDefinition> For(MapProfile profile,RegionKind region,FertilitySetKind set)
  {
   var positions=ForPreview(profile,region).Where(position=>position.SlotIndex>=0);
@@ -42,23 +37,16 @@ internal static class MapLayoutPositions
   }).ToArray();
  }
 
- static Func<int,int,(double X,double Y)> CreateProjection(MapProfile profile,RegionKind region)
- {
-  // Das bereits gegen das Spiel abgeglichene Corners/Large-Schema bleibt
-  // pixelstabil. Die übrigen Profile verwenden dieselbe isometrische
-  // Projektion, automatisch auf ihre jeweiligen technischen Slots skaliert.
-  if(profile.Template==MapTemplateKind.Corners&&profile.Size==MapSizeKind.Large)
-   return (x,y)=>(350d+(x-y)*.17d,870d-(x+y)*.172d);
-  var centers=profile.Slots(region).Select(slot=>(X:slot.X+Half(slot.Size),Y:slot.Y+Half(slot.Size))).ToList();
-  centers.AddRange(profile.Specials(region).Select(special=>(special.X+(special.Kind=="Raider"?160:128),special.Y+(special.Kind=="Raider"?160:128))));
-  if(region==RegionKind.Latium&&profile.Dlc01)centers.Add((2304,2304));
-  var u=centers.Select(point=>(double)point.X-point.Y).ToArray();
-  var v=centers.Select(point=>(double)point.X+point.Y).ToArray();
-  var minU=u.Min();var maxU=u.Max();var minV=v.Min();var maxV=v.Max();
-  var spanU=Math.Max(1,maxU-minU);var spanV=Math.Max(1,maxV-minV);
-  var availableX=Width-2*MarginX;var availableY=Height-2*MarginY;
-  return (x,y)=>(MarginX+((x-y)-minU)/spanU*availableX,MarginY+(maxV-(x+y))/spanV*availableY);
- }
+ // One fixed isometric projection for every template, size and region: all maps share the same world size (2048 units, 2688 with
+ // DLC01), so a world rectangle always lands on the same canvas rectangle and the map borders can be drawn exactly.
+// Map corner (0,0) is the bottom vertex; x grows towards the right vertex, y towards the left vertex.
+ internal const double WorldOriginX=350;
+ internal const double WorldOriginY=880;
+ internal const double ScaleX=.17;
+ internal const double ScaleY=.172;
+ internal static (double X,double Y) Project(double x,double y)=>(WorldOriginX+(x-y)*ScaleX,WorldOriginY-(x+y)*ScaleY);
+
+ static Func<int,int,(double X,double Y)> CreateProjection(MapProfile profile,RegionKind region)=>(x,y)=>Project(x,y);
 
  static int Half(string size)=>size switch{"Small"=>128,"Medium"=>160,"Large" or "XL"=>216,_=>128};
  static string ShortSize(string size)=>size switch{"Small"=>"S","Medium"=>"M","Large"=>"L",_=>size};

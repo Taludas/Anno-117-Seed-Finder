@@ -36,8 +36,8 @@ internal sealed class PositionPickerWindow:Window
   foreach(var position in MapLayoutPositions.ForPreview(profile,region))
   {
    var tile=MapSchematic.CreateLayoutTile(position);
-   // Die Rollenzuordnung soll schon vor dem ersten Klick ablesbar sein: nicht
-   // verfügbare Inseln treten zurück, auswählbare behalten ihre volle Helligkeit.
+   // The role assignment should be readable before the first click: unavailable islands step back, selectable ones keep full
+   // brightness.
    if(!selectableSlots.Contains(position.SlotIndex))tile.Opacity=.26;
    MapSchematic.AddTile(canvas,position,tile);
   }
@@ -54,10 +54,9 @@ internal sealed class PositionPickerWindow:Window
 
  static ControlTemplate CreatePositionButtonTemplate()
  {
-  // Kein Standard-Button-Template: dessen Hover-Zustand würde ein ungedrehtes
-  // Rechteck über die Insel zeichnen. Der Content ist ausschließlich die Raute.
-  // Der transparente Border ist trotzdem nötig, damit die gesamte Markerfläche
-  // zuverlässig am Hit-Test teilnimmt und die Klicks beim ToggleButton ankommen.
+  // No standard button template: its hover state would draw an unrotated rectangle over the island. The content is only the
+  // diamond. The transparent border is still needed so the whole marker area takes part in hit testing and clicks reach the
+  // ToggleButton.
   var root=new FrameworkElementFactory(typeof(Border));
   root.SetValue(Border.BackgroundProperty,Brushes.Transparent);
   var presenter=new FrameworkElementFactory(typeof(ContentPresenter));
@@ -81,8 +80,7 @@ internal sealed class PositionPickerWindow:Window
   {
    if(pair.Key.Tag is not Border outline)continue;
    var selected=pair.Key.IsChecked==true;
-   // Hell-türkise Außenlinie = diese Insel ist für die aktive Rolle zulässig.
-   // Gold plus Fläche = tatsächlich als Bedingung gewählt.
+   // Light turquoise outline = the island is allowed for the active role. Gold plus fill = actually chosen as a condition.
    outline.BorderBrush=selected?new SolidColorBrush(Color.FromRgb(236,192,94)):new SolidColorBrush(Color.FromRgb(126,238,221));
    outline.Background=selected?new SolidColorBrush(Color.FromArgb(70,138,91,36)):Brushes.Transparent;
   }

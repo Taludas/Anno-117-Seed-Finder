@@ -37,36 +37,70 @@ internal static class Program
     var baseOk=result.Hits.Select(x=>x.Seed).SequenceEqual([191u,223u,778u])&&File.ReadAllLines(output).SequenceEqual(["191","223","778"]);
     var limited=SeedSearcher.SearchAsync(request with{MaxSeed=1_000_000,Limit=2},null,CancellationToken.None).GetAwaiter().GetResult();var limitedOk=limited.Hits.Select(x=>x.Seed).SequenceEqual([191u,223u])&&limited.Processed<1_000_000&&limited.FoundCount==2&&File.ReadAllLines(output).SequenceEqual(["191","223"]);
     var partial=SeedSearcher.SearchAsync(request with{CinisSlot1=0,CinisPool=[32027],CinisMaxSites=false,Limit=5},null,CancellationToken.None).GetAwaiter().GetResult();var partialOk=partial.Hits.Length==5&&partial.Hits.All(hit=>hit.Fertilities.Skip(3).Contains(32027u));
-    var siteFiltered=SeedSearcher.SearchAsync(request with{CinisSlot1=0,CinisPool=[],CinisMaxSites=false,Limit=10,MinLatiumGoldSites=60,MinLatiumSturgeonSites=60,MinLatiumMountainSites=140,MinLatiumRiverSites=150,MinAlbionMountainSites=105,MinLatiumBuildableTiles=613_000,MinAlbionBuildableTiles=224_000,MinAlbionSwampTiles=82_000},null,CancellationToken.None).GetAwaiter().GetResult();
-    var siteFilteredOk=siteFiltered.Hits.Length==10&&siteFiltered.Hits.All(hit=>hit.Latium.GoldSites>=60&&hit.Latium.SturgeonSites>=60&&hit.Latium.Sites.Mountain>=140&&hit.Latium.Sites.River>=150&&hit.Albion.Sites.Mountain>=105&&hit.Latium.BuildableTiles>=613_000&&hit.Albion.BuildableTiles>=224_000&&hit.Albion.SwampTiles>=82_000);
+    var siteFiltered=SeedSearcher.SearchAsync(request with{CinisSlot1=0,CinisPool=[],CinisMaxSites=false,Limit=10,MinLatiumGoldSites=60,MinLatiumSturgeonSites=60,MinLatiumMountainSites=140,MinLatiumRiverSites=150,MinAlbionMountainSites=105,MinLatiumBuildableTiles=570_000,MinAlbionBuildableTiles=224_000,MinAlbionSwampTiles=82_000},null,CancellationToken.None).GetAwaiter().GetResult();
+    var siteFilteredOk=siteFiltered.Hits.Length==10&&siteFiltered.Hits.All(hit=>hit.Latium.GoldSites>=60&&hit.Latium.SturgeonSites>=60&&hit.Latium.Sites.Mountain>=140&&hit.Latium.Sites.River>=150&&hit.Albion.Sites.Mountain>=105&&hit.Latium.BuildableTiles>=570_000&&hit.Albion.BuildableTiles>=224_000&&hit.Albion.SwampTiles>=82_000);
     var rule=new IslandCondition(RegionKind.Latium,FertilitySetKind.Tertiary,2,[new([2,3],[2208,8577])]);
     var filtered=SeedSearcher.SearchAsync(new(1,1000,Math.Max(1,Environment.ProcessorCount),0,output,2206,[2205,2208,8577,32027],false,[rule]),null,CancellationToken.None).GetAwaiter().GetResult();
     var conditions=new IslandCondition[]{new(RegionKind.Latium,FertilitySetKind.Starter,1,[new([0],[2206])],[18,21]),new(RegionKind.Latium,FertilitySetKind.AnyCombination,1,[new([0,1],[2202,4051])]),new(RegionKind.Albion,FertilitySetKind.Secondary,1,[new([1],[2217])],[8,9]),new(RegionKind.Albion,FertilitySetKind.Tertiary,1,[new([4,5],[2219])])};
    var compiledRequest=new SearchRequest(1,500,Math.Max(1,Environment.ProcessorCount),0,output,2206,[32027],true,conditions);var compiled=CompiledSearchPlan.Create(compiledRequest);var scratch=new GeneratorScratch();
     var compiledOk=Enumerable.Range(1,500).All(seed=>{var latium=Generator.GenerateLatium((uint)seed,scratch);var albion=AlbionGenerator.Generate((uint)seed);var optimized=compiled.MatchesLatium(latium)&&compiled.MatchesAlbion(albion);var legacy=SearchProfile.Matches(Generator.Complete(latium,albion),compiledRequest.CinisSlot1,compiledRequest.CinisPool,compiledRequest.CinisMaxSites,conditions);return optimized==legacy;});
-    var filteredOk=filtered.Hits.Select(x=>x.Seed).SequenceEqual([290u])&&File.ReadAllLines(output).SequenceEqual(["290"]);
+    var filteredOk=filtered.Hits.Select(x=>x.Seed).SequenceEqual([290u,693u])&&File.ReadAllLines(output).SequenceEqual(["290","693"]);
     using var cancel=new CancellationTokenSource(TimeSpan.FromMilliseconds(250));var canceled=SeedSearcher.SearchAsync(new(1,1_000_000,Math.Max(1,Environment.ProcessorCount),0,output,2206,[2205,2208,8577,32027],true),null,cancel.Token).GetAwaiter().GetResult();
     var cancellationOk=canceled.Canceled&&canceled.Processed<1_000_000&&canceled.Hits.Length>0&&canceled.FoundCount==canceled.Hits.Length&&File.ReadAllLines(output).Length==canceled.Hits.Length;
+    // A search over a seed list looks at exactly those seeds and keeps the ones that pass the filters.
+    var tableSearch=SeedSearcher.SearchAsync(request with{SeedList=[191u,223u,500u,700u,778u]},null,CancellationToken.None).GetAwaiter().GetResult();
+    var tableSearchOk=tableSearch.Hits.Select(x=>x.Seed).SequenceEqual([191u,223u,778u])&&tableSearch.Processed==5&&File.ReadAllLines(output).SequenceEqual(["191","223","778"]);
+    // ...and when none of them passes, the output file (possibly the loaded list) is left as it was.
+    var emptyTableSearch=SeedSearcher.SearchAsync(request with{SeedList=[500u,700u]},null,CancellationToken.None).GetAwaiter().GetResult();
+    var emptyTableSearchOk=emptyTableSearch.Hits.Length==0&&File.ReadAllLines(output).SequenceEqual(["191","223","778"]);
+    // Advanced fertility filters: a search over a range keeps exactly the seeds whose Latium murex and Albion sea shell harbour tiles reach the minimums.
+    var advancedMinimums=new int[AdvancedFilters.Count];advancedMinimums[(int)AdvancedFilter.LatiumHarbourMurex]=50_000;advancedMinimums[(int)AdvancedFilter.AlbionHarbourSeaShells]=17_500;
+    var advancedSearch=SeedSearcher.SearchAsync(new SearchRequest(1,2000,Math.Max(1,Environment.ProcessorCount),0,output,0,[],false,AdvancedMinimums:advancedMinimums),null,CancellationToken.None).GetAwaiter().GetResult();
+    var advancedExpected=Enumerable.Range(1,2000).Select(seed=>SeedSearcher.Describe((uint)seed,MapProfiles.Default,FertilitySetting.Abundant)).Where(hit=>hit.Latium.HarbourMurexTiles>=50_000&&hit.Albion.HarbourSeaShellTiles>=17_500).Select(hit=>hit.Seed).ToArray();
+    var advancedOk=advancedExpected.Length>0&&advancedExpected.Length<2000&&advancedSearch.Hits.Select(hit=>hit.Seed).SequenceEqual(advancedExpected);
     var vanillaProfile=MapProfiles.Get(MapTemplateKind.Archipelago,MapSizeKind.Large,false);var vanilla=SeedSearcher.SearchAsync(request with{MaxSeed=20,Limit=3,Profile=vanillaProfile},null,CancellationToken.None).GetAwaiter().GetResult();var vanillaOk=vanilla.Hits.Select(hit=>hit.Seed).SequenceEqual([1u,2u,3u])&&vanilla.Hits.All(hit=>hit.Fertilities.Length==0);
-    return baseOk&&limitedOk&&partialOk&&siteFilteredOk&&filteredOk&&compiledOk&&cancellationOk&&vanillaOk?0:1;
+    return baseOk&&limitedOk&&partialOk&&siteFilteredOk&&filteredOk&&compiledOk&&cancellationOk&&vanillaOk&&tableSearchOk&&emptyTableSearchOk&&advancedOk?0:1;
    }
    finally{if(File.Exists(output))File.Delete(output);}
   }
-  if(args.Length==2&&args[0].Equals("--render-ui",StringComparison.OrdinalIgnoreCase))
+  if(args.Length>=2&&args[0].Equals("--render-ui",StringComparison.OrdinalIgnoreCase))
   {
    var previewApp=new Application();
    var window=new MainWindow{WindowStartupLocation=WindowStartupLocation.Manual,Left=-20000,Top=-20000};window.AddPreviewConditions();
-   window.Show();window.UpdateLayout();
+   // Optional extra arguments: "en" renders in English, "advanced" switches the advanced fertility filters on, "scoring" also
+   // switches seed scoring on, "tall" makes the window taller, "scroll" scrolls to the advanced filters, "bottom" scrolls to the
+   // end, "longlabel" fills the progress line with a message as long as a real one on a huge range.
+   if(args.Contains("en",StringComparer.OrdinalIgnoreCase))Localization.Instance.Language=AppLanguage.English;
+   if(args.Contains("advanced",StringComparer.OrdinalIgnoreCase))window.SmokeShowAdvanced();
+   if(args.Contains("scoring",StringComparer.OrdinalIgnoreCase)){window.ChkScoring.IsChecked=true;window.SmokeShowAdvanced();}
+   if(args.Contains("longlabel",StringComparer.OrdinalIgnoreCase))window.SmokeLongProgressLabel();
+   if(args.Contains("tall",StringComparer.OrdinalIgnoreCase))window.Height=1800;
+   var scrollFilters=args.Contains("scroll",StringComparer.OrdinalIgnoreCase);
+   var scrollToEnd=args.Contains("bottom",StringComparer.OrdinalIgnoreCase);
+   window.Show();window.UpdateLayout();if(scrollFilters)window.SmokeScrollFilters();if(scrollToEnd)window.SmokeScrollToEnd();
    var bitmap=new RenderTargetBitmap((int)window.ActualWidth,(int)window.ActualHeight,96,96,PixelFormats.Pbgra32);bitmap.Render(window);
    var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(bitmap));using(var stream=File.Create(args[1]))encoder.Save(stream);
    window.Close();previewApp.Shutdown();return 0;
   }
-  if(args.Length==3&&args[0].Equals("--render-preview",StringComparison.OrdinalIgnoreCase)&&uint.TryParse(args[1],out var previewSeed))
+  if((args.Length==3||args.Length==6)&&args[0].Equals("--render-preview",StringComparison.OrdinalIgnoreCase)&&uint.TryParse(args[1],out var previewSeed))
   {
-   var previewApp=new Application();var window=new SeedPreviewWindow(previewSeed){WindowStartupLocation=WindowStartupLocation.Manual,Left=-20000,Top=-20000};
+   var previewApp=new Application();var previewProfile=args.Length==6?MapProfiles.Get(Enum.Parse<MapTemplateKind>(args[3],true),Enum.Parse<MapSizeKind>(args[4],true),args[5]!="0"):null;var window=new SeedPreviewWindow(previewSeed,previewProfile){WindowStartupLocation=WindowStartupLocation.Manual,Left=-20000,Top=-20000};
    window.Show();window.UpdateLayout();var bitmap=new RenderTargetBitmap((int)window.ActualWidth,(int)window.ActualHeight,96,96,PixelFormats.Pbgra32);bitmap.Render(window);
    var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(bitmap));using(var stream=File.Create(args[2]))encoder.Save(stream);
    window.Close();previewApp.Shutdown();return 0;
+  }
+  // Temporary visual check for the RangeGauge DataTemplate: a ToolTip's Popup renders outside the normal visual
+  // tree, so a screenshot of the window itself never shows it - render the template's content directly instead.
+  if(args.Length==2&&args[0].Equals("--render-gauge",StringComparison.OrdinalIgnoreCase))
+  {
+   var gaugeApp=new Application();var host=new MainWindow{WindowStartupLocation=WindowStartupLocation.Manual,Left=-20000,Top=-20000};host.Show();host.UpdateLayout();
+   var range=new ScoreRange(20,90,58,60);var gauge=new RangeGauge("Rohmarmor-Steinbrüche · Latium",35,range);
+   var content=new System.Windows.Controls.ContentControl{Content=gauge,ContentTemplate=(DataTemplate)host.FindResource(new DataTemplateKey(typeof(RangeGauge))),Margin=new Thickness(12),Background=System.Windows.Media.Brushes.White};
+   var window=new Window{Content=content,SizeToContent=SizeToContent.WidthAndHeight,WindowStartupLocation=WindowStartupLocation.Manual,Left=-20000,Top=-20000};
+   window.Show();window.UpdateLayout();
+   var bitmap=new RenderTargetBitmap((int)window.ActualWidth,(int)window.ActualHeight,96,96,PixelFormats.Pbgra32);bitmap.Render(window);
+   var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(bitmap));using(var stream=File.Create(args[1]))encoder.Save(stream);
+   window.Close();host.Close();gaugeApp.Shutdown();return 0;
   }
   if(args.Length==3&&args[0].Equals("--render-position-picker",StringComparison.OrdinalIgnoreCase))
   {
@@ -86,16 +120,16 @@ internal static class Program
    var profile=MapProfiles.Get(MapTemplateKind.Archipelago,MapSizeKind.Small);var output=Path.Combine(Path.GetTempPath(),$"anno117-settings-{Guid.NewGuid():N}.anno117settings.json");
    try
    {
-    var preset=new FinderSettingsPreset{Template=MapTemplateKind.Archipelago,Size=MapSizeKind.Small,StartMode=StartModeKind.StartIsland,Dlc01=true,FirstSeed="28000",LastSeed="30000",Threads="8",MaximumHits="25",OutputPath="C:\\Temp\\treffer.txt",PreviewSeed="29572",MinimumGoldSites="60",MinimumSturgeonSites="60",MinimumLatiumMountainSites="132",MinimumLatiumRiverSites="92",MinimumAlbionMountainSites="89",LatiumMountainSitesEnabled=true,LatiumRiverSitesEnabled=false,AlbionMountainSitesEnabled=true,MinimumLatiumAreaK=435,MinimumAlbionAreaK=164,MinimumAlbionSwampAreaK=58,LatiumAreaEnabled=true,AlbionAreaEnabled=false,AlbionSwampAreaEnabled=true,CinisSlot1=2206,CinisFertilities=[32027],CinisMaximumSites=true,Conditions=[new(){Region=RegionKind.Latium,Set=FertilitySetKind.Secondary,Minimum=1,RequiredByGroup=[[0],[0,0],[0],[0,0]],Positions=[MapLayoutPositions.For(profile,RegionKind.Latium,FertilitySetKind.Secondary).First().SlotIndex]},new(){Region=RegionKind.Albion,Set=FertilitySetKind.AnyCombination,Minimum=1,RequiredByGroup=[[2212,2214]],Positions=[MapLayoutPositions.For(profile,RegionKind.Albion,FertilitySetKind.AnyCombination).First().SlotIndex]}]};
+    var preset=new FinderSettingsPreset{Template=MapTemplateKind.Archipelago,Size=MapSizeKind.Small,StartMode=StartModeKind.StartIsland,Dlc01=true,FirstSeed="28000",LastSeed="30000",Threads="8",MaximumHits="25",OutputPath="C:\\Temp\\treffer.txt",PreviewSeed="29572",MinimumGoldSites="60",MinimumSturgeonSites="60",MinimumLatiumMountainSites="132",MinimumLatiumRiverSites="92",MinimumAlbionMountainSites="89",LatiumMountainSitesEnabled=true,LatiumRiverSitesEnabled=false,AlbionMountainSitesEnabled=true,MinimumLatiumAreaK=390,MinimumAlbionAreaK=164,MinimumAlbionSwampAreaK=58,LatiumAreaEnabled=true,AlbionAreaEnabled=false,AlbionSwampAreaEnabled=true,ShowAdvancedFilters=true,AdvancedMinimums=new(){["LatiumHarbourMurex"]=45_000,["AlbionMarshBeaver"]=30_000},AdvancedEnabled=new(){["LatiumHarbourMurex"]=true},EnableScoring=true,ExtendScoringOutliers=false,ScoreWeights=new(){["LatiumArea"]=8,["MarbleSites"]=5},CinisSlot1=2206,CinisFertilities=[32027],CinisMaximumSites=true,Conditions=[new(){Region=RegionKind.Latium,Set=FertilitySetKind.Secondary,Minimum=1,RequiredByGroup=[[0],[0,0],[0],[0,0]],Positions=[MapLayoutPositions.For(profile,RegionKind.Latium,FertilitySetKind.Secondary).First().SlotIndex]},new(){Region=RegionKind.Albion,Set=FertilitySetKind.AnyCombination,Minimum=1,RequiredByGroup=[[2212,2214]],Positions=[MapLayoutPositions.For(profile,RegionKind.Albion,FertilitySetKind.AnyCombination).First().SlotIndex]}]};
     FinderSettingsStorage.Save(output,preset);var loaded=FinderSettingsStorage.Load(output);
-    if(loaded.Template!=preset.Template||loaded.Size!=preset.Size||loaded.StartMode!=preset.StartMode||loaded.Dlc01!=preset.Dlc01||loaded.Conditions.Count!=2||!loaded.CinisFertilities.SequenceEqual(preset.CinisFertilities))return 1;
-     var settingsApp=new Application();var window=new MainWindow{WindowStartupLocation=WindowStartupLocation.Manual,Left=-20000,Top=-20000};typeof(MainWindow).GetMethod("ApplyPreset",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(window,[loaded]);window.Show();window.UpdateLayout();var latium=(System.Windows.Controls.StackPanel)window.FindName("LatiumConditions");var albion=(System.Windows.Controls.StackPanel)window.FindName("AlbionConditions");var gold=(System.Windows.Controls.ComboBox)window.FindName("CmbMinGoldSites");var latiumMountain=(System.Windows.Controls.ComboBox)window.FindName("CmbMinLatiumMountainSites");var latiumRiverEnabled=(System.Windows.Controls.CheckBox)window.FindName("ChkMinLatiumRiverSites");var albionMountainEnabled=(System.Windows.Controls.CheckBox)window.FindName("ChkMinAlbionMountainSites");var latiumArea=(System.Windows.Controls.Slider)window.FindName("SldMinLatiumArea");var albionAreaEnabled=(System.Windows.Controls.CheckBox)window.FindName("ChkMinAlbionArea");var swampArea=(System.Windows.Controls.Slider)window.FindName("SldMinAlbionSwampArea");var areaMedianButton=(System.Windows.Controls.Button)window.FindName("BtnLatiumAreaMedian");var siteMedianButton=(System.Windows.Controls.Button)window.FindName("BtnGoldSitesMedian");var firstSeed=(System.Windows.Controls.TextBox)window.FindName("TxtFirstSeed");var lastSeed=(System.Windows.Controls.TextBox)window.FindName("TxtMaxSeed");var minSeedButton=(System.Windows.Controls.Button)window.FindName("BtnMinSeed");var maxSeedButton=(System.Windows.Controls.Button)window.FindName("BtnMaxSeed");var presetValuesOk=gold.SelectedItem?.ToString()=="60"&&latiumArea.Value==435;latiumArea.Value=422;firstSeed.Text="123456";lastSeed.Text="123456789";var seedFormattingOk=firstSeed.Text=="123.456"&&lastSeed.Text=="123.456.789";areaMedianButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));siteMedianButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));minSeedButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));maxSeedButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));var ok=latium.Children.Count==1&&albion.Children.Count==1&&presetValuesOk&&seedFormattingOk&&window.SmokePreparedProfileControls()&&gold.SelectedItem?.ToString()=="62"&&latiumMountain.SelectedItem?.ToString()=="132"&&latiumRiverEnabled.IsChecked==false&&albionMountainEnabled.IsChecked==true&&latiumArea.Value==435&&albionAreaEnabled.IsChecked==false&&swampArea.Value==58&&firstSeed.Text=="1"&&lastSeed.Text=="999.999.999"&&window.SmokeDlcToggle();window.Close();settingsApp.Shutdown();return ok?0:1;
+    if(loaded.Template!=preset.Template||loaded.Size!=preset.Size||loaded.StartMode!=preset.StartMode||loaded.Dlc01!=preset.Dlc01||loaded.Conditions.Count!=2||!loaded.CinisFertilities.SequenceEqual(preset.CinisFertilities)||!loaded.ShowAdvancedFilters||loaded.AdvancedMinimums["LatiumHarbourMurex"]!=45_000||loaded.AdvancedEnabled.GetValueOrDefault("AlbionMarshBeaver"))return 1;
+     var settingsApp=new Application();var window=new MainWindow{WindowStartupLocation=WindowStartupLocation.Manual,Left=-20000,Top=-20000};typeof(MainWindow).GetMethod("ApplyPreset",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(window,[loaded]);window.Show();window.UpdateLayout();var latium=(System.Windows.Controls.StackPanel)window.FindName("LatiumConditions");var albion=(System.Windows.Controls.StackPanel)window.FindName("AlbionConditions");var gold=(System.Windows.Controls.ComboBox)window.FindName("CmbMinGoldSites");var latiumMountain=(System.Windows.Controls.ComboBox)window.FindName("CmbMinLatiumMountainSites");var latiumRiverEnabled=(System.Windows.Controls.CheckBox)window.FindName("ChkMinLatiumRiverSites");var albionMountainEnabled=(System.Windows.Controls.CheckBox)window.FindName("ChkMinAlbionMountainSites");var latiumArea=(System.Windows.Controls.Slider)window.FindName("SldMinLatiumArea");var albionAreaEnabled=(System.Windows.Controls.CheckBox)window.FindName("ChkMinAlbionArea");var swampArea=(System.Windows.Controls.Slider)window.FindName("SldMinAlbionSwampArea");var areaMedianButton=(System.Windows.Controls.Button)window.FindName("BtnLatiumAreaMedian");var siteMedianButton=(System.Windows.Controls.Button)window.FindName("BtnGoldSitesMedian");var firstSeed=(System.Windows.Controls.TextBox)window.FindName("TxtFirstSeed");var lastSeed=(System.Windows.Controls.TextBox)window.FindName("TxtMaxSeed");var minSeedButton=(System.Windows.Controls.Button)window.FindName("BtnMinSeed");var maxSeedButton=(System.Windows.Controls.Button)window.FindName("BtnMaxSeed");var presetValuesOk=gold.SelectedItem?.ToString()=="60"&&latiumArea.Value==390;latiumArea.Value=380;firstSeed.Text="123456";lastSeed.Text="123456789";var seedFormattingOk=firstSeed.Text=="123.456"&&lastSeed.Text=="123.456.789";areaMedianButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));siteMedianButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));minSeedButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));maxSeedButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));var ok=latium.Children.Count==1&&albion.Children.Count==1&&presetValuesOk&&seedFormattingOk&&window.SmokePreparedProfileControls()&&gold.SelectedItem?.ToString()=="62"&&latiumMountain.SelectedItem?.ToString()=="132"&&latiumRiverEnabled.IsChecked==false&&albionMountainEnabled.IsChecked==true&&latiumArea.Value==390&&albionAreaEnabled.IsChecked==false&&swampArea.Value==58&&firstSeed.Text=="1"&&lastSeed.Text=="999.999.999"&&window.SmokeDlcToggle()&&window.SmokeAdvancedFilters()&&window.SmokeScoring()&&window.SmokeLanguageRefresh()&&window.SmokeTableSeeds()&&window.SmokeColumnStyles()&&window.SmokeGaugeTooltips();window.Close();settingsApp.Shutdown();return ok?0:1;
    }
    finally{if(File.Exists(output))File.Delete(output);}
   }
   if(args.Contains("--all-profile-smoke-test",StringComparer.OrdinalIgnoreCase))
   {
-   foreach(var profile in MapProfiles.All)foreach(var seed in new uint[]{1,2500})
+   foreach(var profile in MapProfiles.All.Concat(MapProfiles.All.Where(x=>x.Dlc01).Select(x=>MapProfiles.Get(x.Template,x.Size,true,true))))foreach(var seed in new uint[]{1,2500})
    {
     LatiumGeneration latium;List<GeneratedIsland> albion;try{latium=Generator.GenerateLatium(seed,new GeneratorScratch(),profile);albion=AlbionGenerator.Generate(seed,profile);}catch(Exception error){Console.Error.WriteLine($"{profile.DisplayName} seed {seed}: {error.Message}");return 4;}
     var latiumCount=profile.LatiumSlots.Count+(profile.Dlc01?1:0);
@@ -108,8 +142,8 @@ internal static class Program
    var profile=MapProfiles.Get(dumpTemplate,dumpSize);var generated=Generator.GenerateLatium(dumpSeed,new GeneratorScratch(),profile);
    File.WriteAllLines(args[4],generated.Islands.OrderBy(island=>island.Name,StringComparer.Ordinal).Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}"));return 0;
   }
-  // One-off statistics run that produced the mineral/copper/silver ranges in
-  // AggregateSiteRanges, in the same shape as the existing site statistics.
+  // Statistics run (--analyze-mines): min/max/average/median of the Latium mineral, marble and gold-mine sites and of the Albion
+  // copper and silver mine sites over seeds 1..N per template and size, for AggregateSiteRanges.
   if(args.Length==5&&args[0].Equals("--analyze-mines",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapSizeKind>(args[1],true,out var amSize)&&bool.TryParse(args[2],out var amDlc)&&int.TryParse(args[3],out var amSeeds))
   {
    var rows=new List<string>();
@@ -127,6 +161,38 @@ internal static class Program
    }
    File.WriteAllLines(args[4],rows);return 0;
   }
+  // Statistics run (--analyze-tin): min/max/average/median of the Albion tin-mine sites over seeds 1..N per template and size, for
+  // AggregateSiteRanges.TinRanges. Albion does not depend on DLC01.
+  if(args.Length==4&&args[0].Equals("--analyze-tin",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapSizeKind>(args[1],true,out var atSize)&&int.TryParse(args[2],out var atSeeds))
+  {
+   var rows=new List<string>();
+   foreach(var template in Enum.GetValues<MapTemplateKind>())
+   {
+    var profile=MapProfiles.Get(template,atSize,true);var tin=new int[atSeeds];
+    Parallel.For(0,atSeeds,index=>{tin[index]=RegionMetrics.Calculate(AlbionGenerator.Generate((uint)(index+1),profile)).TinMineSites;});
+    rows.Add($"{template}|{atSize}|Tin={MineStats(tin)}");
+   }
+   File.WriteAllLines(args[3],rows);return 0;
+  }
+  // Statistics run (--analyze-advanced): min/max/average/median of every advanced filter value over seeds 1..N per template, for one
+  // size and DLC01 state; the rows are the input of AdvancedRanges.
+  if(args.Length==5&&args[0].Equals("--analyze-advanced",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapSizeKind>(args[1],true,out var aaSize)&&bool.TryParse(args[2],out var aaDlc)&&int.TryParse(args[3],out var aaSeeds))
+  {
+   var rows=new List<string>();
+   foreach(var template in Enum.GetValues<MapTemplateKind>())
+   {
+    var profile=MapProfiles.Get(template,aaSize,aaDlc);var values=Enumerable.Range(0,AdvancedFilters.Count).Select(_=>new int[aaSeeds]).ToArray();
+    Parallel.For(0,aaSeeds,()=>new GeneratorScratch(),(index,_,scratch)=>
+    {
+     var seed=(uint)(index+1);
+     var latium=Generator.GenerateLatium(seed,scratch,profile).Metrics;var albion=RegionMetrics.Calculate(AlbionGenerator.Generate(seed,profile));
+     foreach(var definition in AdvancedFilters.All)values[(int)definition.Filter][index]=(definition.Region==RegionKind.Latium?latium:albion).Tiles(definition.Filter);
+     return scratch;
+    },_=>{});
+    rows.Add($"{template}|{aaSize}|dlc={aaDlc}|{string.Join('|',AdvancedFilters.All.Select(definition=>$"{definition.Filter}={MineStats(values[(int)definition.Filter])}"))}");
+   }
+   File.WriteAllLines(args[4],rows);return 0;
+  }
   // Headless counterpart of the window's "Seedliste laden" + "CSV exportieren" pair:
   // reads one seed per line and writes the same table the UI would show.
   if(args.Length==5&&args[0].Equals("--describe-seeds",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var describeTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var describeSize))
@@ -141,230 +207,53 @@ internal static class Program
    var profile=MapProfiles.Get(dumpNoDlcTemplate,dumpNoDlcSize,false);var generated=Generator.GenerateLatium(dumpNoDlcSeed,new GeneratorScratch(),profile);
    File.WriteAllLines(args[4],generated.Islands.OrderBy(island=>island.Name,StringComparer.Ordinal).Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}"));return 0;
   }
-  if(args.Length==6&&args[0].Equals("--dump-profile-decodraws",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var decoDrawTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var decoDrawSize)&&uint.TryParse(args[3],out var decoDrawSeed)&&int.TryParse(args[4],out var decoDrawDraws))
-  {
-   var profile=MapProfiles.Get(decoDrawTemplate,decoDrawSize);var generated=Generator.GenerateLatium(decoDrawSeed,new GeneratorScratch(),profile,debugDecorationDraws:decoDrawDraws);
-   File.WriteAllLines(args[5],generated.Islands.OrderBy(island=>island.Name,StringComparer.Ordinal).Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}"));return 0;
-  }
-  if(args.Length==6&&args[0].Equals("--dump-vanilla-profile-decodraws",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var vDecoDrawTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var vDecoDrawSize)&&uint.TryParse(args[3],out var vDecoDrawSeed)&&int.TryParse(args[4],out var vDecoDrawDraws))
-  {
-   var profile=MapProfiles.Get(vDecoDrawTemplate,vDecoDrawSize,false);var generated=Generator.GenerateLatium(vDecoDrawSeed,new GeneratorScratch(),profile,debugDecorationDraws:vDecoDrawDraws);
-   File.WriteAllLines(args[5],generated.Islands.OrderBy(island=>island.Name,StringComparer.Ordinal).Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}"));return 0;
-  }
-  if(args.Length==7&&args[0].Equals("--dump-vanilla-profile-combo",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var comboTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var comboSize)&&uint.TryParse(args[3],out var comboSeed)&&bool.TryParse(args[4],out var comboFromMain)&&int.TryParse(args[5],out var comboDraws))
-  {
-   var profile=MapProfiles.Get(comboTemplate,comboSize,false);var generated=Generator.GenerateLatium(comboSeed,new GeneratorScratch(),profile,debugThirdPartyFromMain:comboFromMain,debugDecorationDraws:comboDraws);
-   File.WriteAllLines(args[6],generated.Islands.OrderBy(island=>island.Name,StringComparer.Ordinal).Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}"));return 0;
-  }
-  if(args.Length==5&&args[0].Equals("--dump-vanilla-width",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var vwTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var vwSize)&&uint.TryParse(args[3],out var vwSeed))
-  {
-   var profile=MapProfiles.Get(vwTemplate,vwSize,false);var generated=Generator.GenerateLatium(vwSeed,new GeneratorScratch(),profile,debugDecorationDraws:0);
-   File.WriteAllText(args[4],generated.Width.ToString());return 0;
-  }
-  if(args.Length==5&&args[0].Equals("--dump-profile-forcedeco",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var fd2Template)&&Enum.TryParse<MapSizeKind>(args[2],true,out var fd2Size)&&uint.TryParse(args[3],out var fd2Seed))
-  {
-   var profile=MapProfiles.Get(fd2Template,fd2Size);var generated=Generator.GenerateLatium(fd2Seed,new GeneratorScratch(),profile,debugForcePlaceDecorations:true);
-   File.WriteAllLines(args[4],generated.Islands.OrderBy(island=>island.Name,StringComparer.Ordinal).Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}"));return 0;
-  }
-  if(args.Length==6&&args[0].Equals("--dump-vanilla-profile-forcedeco",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var fdTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var fdSize)&&uint.TryParse(args[3],out var fdSeed)&&bool.TryParse(args[4],out var fdFromMain))
-  {
-   var profile=MapProfiles.Get(fdTemplate,fdSize,false);var generated=Generator.GenerateLatium(fdSeed,new GeneratorScratch(),profile,debugThirdPartyFromMain:fdFromMain,debugForcePlaceDecorations:true);
-   File.WriteAllLines(args[5],generated.Islands.OrderBy(island=>island.Name,StringComparer.Ordinal).Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}"));return 0;
-  }
-  if(args.Length==8&&args[0].Equals("--dump-vanilla-profile-combo2",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var combo2Template)&&Enum.TryParse<MapSizeKind>(args[2],true,out var combo2Size)&&uint.TryParse(args[3],out var combo2Seed)&&bool.TryParse(args[4],out var combo2FromMain)&&int.TryParse(args[5],out var combo2Grid)&&int.TryParse(args[6],out var combo2Tail))
-  {
-   var profile=MapProfiles.Get(combo2Template,combo2Size,false);var generated=Generator.GenerateLatium(combo2Seed,new GeneratorScratch(),profile,debugThirdPartyFromMain:combo2FromMain,debugPhaseGridTail:(combo2Grid,combo2Tail));
-   File.WriteAllLines(args[7],generated.Islands.OrderBy(island=>island.Name,StringComparer.Ordinal).Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}"));return 0;
-  }
-  if(args.Length==6&&args[0].Equals("--dump-vanilla-profile-archdeco",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var archDecoTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var archDecoSize)&&uint.TryParse(args[3],out var archDecoSeed)&&int.TryParse(args[4],out var archDecoDraws))
-  {
-   var profile=MapProfiles.Get(archDecoTemplate,archDecoSize,false);var generated=Generator.GenerateLatium(archDecoSeed,new GeneratorScratch(),profile,debugArchipelagoDecorationDraws:archDecoDraws);
-   File.WriteAllLines(args[5],generated.Islands.OrderBy(island=>island.Name,StringComparer.Ordinal).Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}"));return 0;
-  }
-  if(args.Length==7&&args[0].Equals("--dump-profile-combo4",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var c4T)&&Enum.TryParse<MapSizeKind>(args[2],true,out var c4S)&&uint.TryParse(args[3],out var c4Seed)&&int.TryParse(args[4],out var c4Border)&&int.TryParse(args[5],out var c4Extra))
-  {
-   var profile=MapProfiles.Get(c4T,c4S);var generated=Generator.GenerateLatium(c4Seed,new GeneratorScratch(),profile,debugWiggleBorder:c4Border<0?null:c4Border,debugArchipelagoMediumExtraAdvance:c4Extra<0?null:c4Extra);
-   File.WriteAllLines(args[6],generated.Islands.OrderBy(island=>island.Name,StringComparer.Ordinal).Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}"));return 0;
-  }
-  if(args.Length==6&&args[0].Equals("--dump-profile-archextra",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var archExtraTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var archExtraSize)&&uint.TryParse(args[3],out var archExtraSeed)&&int.TryParse(args[4],out var archExtraOn))
-  {
-   var profile=MapProfiles.Get(archExtraTemplate,archExtraSize);var generated=Generator.GenerateLatium(archExtraSeed,new GeneratorScratch(),profile,debugArchipelagoMediumExtraAdvance:archExtraOn);
-   File.WriteAllLines(args[5],generated.Islands.OrderBy(island=>island.Name,StringComparer.Ordinal).Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}"));return 0;
-  }
-  if(args.Length==5&&args[0].Equals("--dump-decorations-border",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var decoBorderTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var decoBorderSize)&&uint.TryParse(args[3],out var decoBorderSeed))
-  {
-   var trace=new List<string>();Generator.GenerateLatium(decoBorderSeed,new GeneratorScratch(),MapProfiles.Get(decoBorderTemplate,decoBorderSize),debugDecorationTrace:trace,debugWiggleBorder:2);File.WriteAllLines(args[4],trace);return 0;
-  }
-  if(args.Length==14&&args[0].Equals("--dump-deco-flags",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var dfT)&&Enum.TryParse<MapSizeKind>(args[2],true,out var dfS)&&uint.TryParse(args[3],out var dfSeed)&&bool.TryParse(args[4],out var dfBest)&&bool.TryParse(args[5],out var dfEuclid)&&int.TryParse(args[6],out var dfBorder)&&bool.TryParse(args[7],out var dfTies)&&int.TryParse(args[8],out var dfDilate)&&int.TryParse(args[9],out var dfAnchor)&&int.TryParse(args[10],out var dfMargin)&&bool.TryParse(args[11],out var dfBlockCont)&&int.TryParse(args[12],out var dfExtra))
-  {
-   var trace=new List<string>();
-   Generator.GenerateLatium(dfSeed,new GeneratorScratch(),MapProfiles.Get(dfT,dfS),debugDecorationTrace:trace,debugAllowWiggleTies:dfTies,debugEuclideanWiggleDistance:dfEuclid,debugWiggleBorder:dfBorder<0?null:dfBorder,debugWiggleBest:dfBest,debugWiggleDilate:dfDilate<0?null:dfDilate,debugWiggleAnchorMode:dfAnchor,debugWiggleMargin:dfMargin<0?null:dfMargin,debugWiggleBlockContinental:dfBlockCont,debugArchipelagoMediumExtraAdvance:dfExtra<0?null:dfExtra);
-   File.WriteAllLines(args[13],trace);return 0;
-  }
-  if(args.Length==5&&args[0].Equals("--dump-profile-wigglebest",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var wbsTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var wbsSize)&&uint.TryParse(args[3],out var wbsSeed))
-  {
-   var profile=MapProfiles.Get(wbsTemplate,wbsSize);var generated=Generator.GenerateLatium(wbsSeed,new GeneratorScratch(),profile,debugWiggleBest:true);
-   File.WriteAllLines(args[4],generated.Islands.OrderBy(island=>island.Name,StringComparer.Ordinal).Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}"));return 0;
-  }
-  if(args.Length==6&&args[0].Equals("--dump-profile-wigglepasses",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var wpTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var wpSize)&&uint.TryParse(args[3],out var wpSeed)&&int.TryParse(args[4],out var wpPasses))
-  {
-   var profile=MapProfiles.Get(wpTemplate,wpSize);var generated=Generator.GenerateLatium(wpSeed,new GeneratorScratch(),profile,debugWigglePasses:wpPasses);
-   File.WriteAllLines(args[5],generated.Islands.OrderBy(island=>island.Name,StringComparer.Ordinal).Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}"));return 0;
-  }
-  if(args.Length==6&&args[0].Equals("--dump-profile-wiggleborder",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var wbTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var wbSize)&&uint.TryParse(args[3],out var wbSeed)&&int.TryParse(args[4],out var wbBorder))
-  {
-   var profile=MapProfiles.Get(wbTemplate,wbSize);var generated=Generator.GenerateLatium(wbSeed,new GeneratorScratch(),profile,debugWiggleBorder:wbBorder);
-   File.WriteAllLines(args[5],generated.Islands.OrderBy(island=>island.Name,StringComparer.Ordinal).Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}"));return 0;
-  }
-  if(args.Length==5&&args[0].Equals("--dump-profile-euclidean",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var euclidTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var euclidSize)&&uint.TryParse(args[3],out var euclidSeed))
-  {
-   var profile=MapProfiles.Get(euclidTemplate,euclidSize);var generated=Generator.GenerateLatium(euclidSeed,new GeneratorScratch(),profile,debugEuclideanWiggleDistance:true);
-   File.WriteAllLines(args[4],generated.Islands.OrderBy(island=>island.Name,StringComparer.Ordinal).Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}"));return 0;
-  }
-  if(args.Length==5&&args[0].Equals("--dump-decorations-ties",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var decoTiesTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var decoTiesSize)&&uint.TryParse(args[3],out var decoTiesSeed))
-  {
-   var trace=new List<string>();Generator.GenerateLatium(decoTiesSeed,new GeneratorScratch(),MapProfiles.Get(decoTiesTemplate,decoTiesSize),debugDecorationTrace:trace,debugAllowWiggleTies:true);File.WriteAllLines(args[4],trace);return 0;
-  }
-  if(args.Length==5&&args[0].Equals("--dump-profile-ties",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var tiesTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var tiesSize)&&uint.TryParse(args[3],out var tiesSeed))
-  {
-   var profile=MapProfiles.Get(tiesTemplate,tiesSize);var generated=Generator.GenerateLatium(tiesSeed,new GeneratorScratch(),profile,debugAllowWiggleTies:true);
-   File.WriteAllLines(args[4],generated.Islands.OrderBy(island=>island.Name,StringComparer.Ordinal).Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}"));return 0;
-  }
-  if(args.Length==5&&args[0].Equals("--dump-profile-nocinis",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var noCinisTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var noCinisSize)&&uint.TryParse(args[3],out var noCinisSeed))
-  {
-   var profile=MapProfiles.Get(noCinisTemplate,noCinisSize);var generated=Generator.GenerateLatium(noCinisSeed,new GeneratorScratch(),profile,debugSkipContinentalExclusion:true);
-   File.WriteAllLines(args[4],generated.Islands.OrderBy(island=>island.Name,StringComparer.Ordinal).Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}"));return 0;
-  }
-  if(args.Length==5&&args[0].Equals("--dump-special-collision-check",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var sccTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var sccSize)&&uint.TryParse(args[3],out var sccSeed))
-  {
-   var profile=MapProfiles.Get(sccTemplate,sccSize);var trace=new List<string>();
-   Generator.GenerateLatium(sccSeed,new GeneratorScratch(),profile,debugDecorationTrace:trace,debugSpecialCollisionTrace:true);
-   File.WriteAllLines(args[4],trace);return 0;
-  }
-  if(args.Length==5&&args[0].Equals("--check-search-risk-flag",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var csrfTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var csrfSize)&&uint.TryParse(args[3],out var csrfSeed))
-  {
-   var profile=MapProfiles.Get(csrfTemplate,csrfSize);
-   var request=new SearchRequest((int)csrfSeed,(int)csrfSeed,1,0,Path.Combine(Path.GetTempPath(),$"risk-{Guid.NewGuid():N}.txt"),0,[],false){Profile=profile};
-   var summary=SeedSearcher.SearchAsync(request,null,CancellationToken.None).GetAwaiter().GetResult();
-   File.WriteAllText(args[4],summary.Hits.Length>0?summary.Hits[0].NeedsVerification.ToString():"NOHIT");return 0;
-  }
-  if(args.Length==5&&args[0].Equals("--dump-profile-nopass-realdeco",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var nprT)&&Enum.TryParse<MapSizeKind>(args[2],true,out var nprS)&&uint.TryParse(args[3],out var nprSeed))
-  {
-   var profile=MapProfiles.Get(nprT,nprS);var trace=new List<string>();
-   try
-   {
-    var generated=Generator.GenerateLatium(nprSeed,new GeneratorScratch(),profile,debugWigglePasses:0,debugDecorationTrace:trace);
-    File.WriteAllLines(args[4],generated.Islands.OrderBy(island=>island.Name,StringComparer.Ordinal).Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}").Concat(["---TRACE---"]).Concat(trace));
-   }
-   catch(Exception ex){File.WriteAllLines(args[4],trace.Concat([$"EXCEPTION: {ex.Message}"]));}
-   return 0;
-  }
-  if(args.Length==6&&args[0].Equals("--dump-profile-nopass-deco",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var npdT)&&Enum.TryParse<MapSizeKind>(args[2],true,out var npdS)&&uint.TryParse(args[3],out var npdSeed)&&int.TryParse(args[4],out var npdDraws))
-  {
-   var profile=MapProfiles.Get(npdT,npdS);var generated=Generator.GenerateLatium(npdSeed,new GeneratorScratch(),profile,debugWigglePasses:0,debugArchipelagoDecorationDraws:npdDraws);
-   File.WriteAllLines(args[5],generated.Islands.OrderBy(island=>island.Name,StringComparer.Ordinal).Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}"));return 0;
-  }
-  if(args.Length==6&&args[0].Equals("--dump-profile-neveraccept-deco",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var nadT)&&Enum.TryParse<MapSizeKind>(args[2],true,out var nadS)&&uint.TryParse(args[3],out var nadSeed)&&int.TryParse(args[4],out var nadDraws))
-  {
-   var profile=MapProfiles.Get(nadT,nadS);var generated=Generator.GenerateLatium(nadSeed,new GeneratorScratch(),profile,debugWiggleNeverAccept:true,debugArchipelagoDecorationDraws:nadDraws);
-   File.WriteAllLines(args[5],generated.Islands.OrderBy(island=>island.Name,StringComparer.Ordinal).Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}"));return 0;
-  }
-  if(args.Length==5&&args[0].Equals("--dump-decorations-neveraccept",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var dnaT)&&Enum.TryParse<MapSizeKind>(args[2],true,out var dnaS)&&uint.TryParse(args[3],out var dnaSeed))
-  {
-   var trace=new List<string>();Generator.GenerateLatium(dnaSeed,new GeneratorScratch(),MapProfiles.Get(dnaT,dnaS),debugDecorationTrace:trace,debugWiggleNeverAccept:true);File.WriteAllLines(args[4],trace);return 0;
-  }
-  if(args.Length==5&&args[0].Equals("--dump-profile-neveraccept",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var naT)&&Enum.TryParse<MapSizeKind>(args[2],true,out var naS)&&uint.TryParse(args[3],out var naSeed))
-  {
-   var profile=MapProfiles.Get(naT,naS);var generated=Generator.GenerateLatium(naSeed,new GeneratorScratch(),profile,debugWiggleNeverAccept:true);
-   File.WriteAllLines(args[4],generated.Islands.OrderBy(island=>island.Name,StringComparer.Ordinal).Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}"));return 0;
-  }
-  if(args.Length==6&&args[0].Equals("--dump-profile-prewiggle",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var pwT)&&Enum.TryParse<MapSizeKind>(args[2],true,out var pwS)&&uint.TryParse(args[3],out var pwSeed)&&int.TryParse(args[4],out var pwAdvance))
-  {
-   var profile=MapProfiles.Get(pwT,pwS);var generated=Generator.GenerateLatium(pwSeed,new GeneratorScratch(),profile,debugPreWiggleAdvance:pwAdvance);
-   File.WriteAllLines(args[5],generated.Islands.OrderBy(island=>island.Name,StringComparer.Ordinal).Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}"));return 0;
-  }
-  if(args.Length==6&&args[0].Equals("--scan-slot23-parity",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var scanTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var scanSize)&&uint.TryParse(args[3],out var scanStart)&&uint.TryParse(args[4],out var scanCount))
-  {
-   var profile=MapProfiles.Get(scanTemplate,scanSize);var scratch=new GeneratorScratch();var results=new List<string>();
-   for(var seed=scanStart;seed<scanStart+scanCount;seed++)
-   {
-    var rows=Generator.DebugPlacements(seed,profile);
-    var row=rows.FirstOrDefault(r=>r.StartsWith("roman_island_extralarge_04|",StringComparison.Ordinal));
-    if(row is null)continue;
-    var parts=row.Split('|');if(int.Parse(parts[2])!=23)continue;
-    var rawRot=int.Parse(parts[5]);
-    results.Add($"{seed}|rawRot={rawRot}|{(rawRot%2==0?"EVEN-predicted-fine":"ODD-predicted-needs-fix")}");
-   }
-   File.WriteAllLines(args[5],results);return 0;
-  }
-  if(args.Length==5&&args[0].Equals("--check-risk-flag",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var crfTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var crfSize)&&uint.TryParse(args[3],out var crfSeed))
-  {
-   var profile=MapProfiles.Get(crfTemplate,crfSize);var latium=Generator.GenerateLatium(crfSeed,new GeneratorScratch(),profile);
-   File.WriteAllText(args[4],Generator.HasUnverifiedArchipelagoMediumRisk(profile,latium.Islands).ToString());return 0;
-  }
-  if(args.Length==5&&args[0].Equals("--dump-post-decoration-peek",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var pdpTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var pdpSize)&&uint.TryParse(args[3],out var pdpSeed))
-  {
-   var profile=MapProfiles.Get(pdpTemplate,pdpSize);var buf=new uint[1];Generator.GenerateLatium(pdpSeed,new GeneratorScratch(),profile,debugArchipelagoMediumExtraAdvance:0,debugPostDecorationPeek:buf);
-   File.WriteAllText(args[4],buf[0].ToString("X8"));return 0;
-  }
   if(args.Length==5&&args[0].Equals("--dump-third-party-raw",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var tpTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var tpSize)&&uint.TryParse(args[3],out var tpSeed))
   {
    var profile=MapProfiles.Get(tpTemplate,tpSize);var buf=new uint[5];Generator.GenerateLatium(tpSeed,new GeneratorScratch(),profile,debugThirdPartyRawOut:buf);
    File.WriteAllText(args[4],string.Join(',',buf.Select(x=>x.ToString("X8"))));return 0;
   }
-  if(args.Length==6&&args[0].Equals("--dump-third-party-raw-nodlc",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var tpvTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var tpvSize)&&uint.TryParse(args[3],out var tpvSeed)&&bool.TryParse(args[4],out var tpvFromMain))
+  if(args.Length==5&&args[0].Equals("--dump-retro-placements",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var retroPlaceTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var retroPlaceSize)&&uint.TryParse(args[3],out var retroPlaceSeed))
   {
-   var profile=MapProfiles.Get(tpvTemplate,tpvSize,false);var buf=new uint[5];Generator.GenerateLatium(tpvSeed,new GeneratorScratch(),profile,debugThirdPartyFromMain:tpvFromMain,debugThirdPartyRawOut:buf);
-   File.WriteAllText(args[5],string.Join(',',buf.Select(x=>x.ToString("X8"))));return 0;
+   var rows=new List<string>();Generator.GenerateLatium(retroPlaceSeed,new GeneratorScratch(),MapProfiles.Get(retroPlaceTemplate,retroPlaceSize,true,true),debugMovedPlacements:rows);File.WriteAllLines(args[4],rows);return 0;
   }
-  if(args.Length==5&&args[0].Equals("--dump-profile-archcond",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var archCondTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var archCondSize)&&uint.TryParse(args[3],out var archCondSeed))
+  if(args.Length==5&&args[0].Equals("--dump-retro-info",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var riTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var riSize)&&uint.TryParse(args[3],out var riFirst))
   {
-   var profile=MapProfiles.Get(archCondTemplate,archCondSize);var generated=Generator.GenerateLatium(archCondSeed,new GeneratorScratch(),profile,debugArchipelagoConditionalExtra:true);
-   File.WriteAllLines(args[4],generated.Islands.OrderBy(island=>island.Name,StringComparer.Ordinal).Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}"));return 0;
+   var riCount=int.TryParse(args[4],out var parsedCount)?parsedCount:1;var riRows=new List<string>();
+   for(var riSeed=riFirst;riSeed<riFirst+riCount;riSeed++)riRows.Add($"{riSeed}|{string.Join('|',Generator.DebugRetroInfo(riSeed,riTemplate,riSize))}");
+   File.WriteAllLines("retro_info.txt",riRows);Console.Write(string.Join("; ",riRows));return 0;
   }
-  if(args.Length==9&&args[0].Equals("--dump-vanilla-profile-combo3",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var combo3Template)&&Enum.TryParse<MapSizeKind>(args[2],true,out var combo3Size)&&uint.TryParse(args[3],out var combo3Seed)&&bool.TryParse(args[4],out var combo3FromMain)&&int.TryParse(args[5],out var combo3Grid)&&int.TryParse(args[6],out var combo3Tail)&&int.TryParse(args[7],out var combo3NoDlcTail))
+  if(args.Length>=5&&args[0].Equals("--dump-profile-sites",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var siteCheckTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var siteCheckSize)&&uint.TryParse(args[3],out var siteCheckSeed))
   {
-   var profile=MapProfiles.Get(combo3Template,combo3Size,false);var generated=Generator.GenerateLatium(combo3Seed,new GeneratorScratch(),profile,debugThirdPartyFromMain:combo3FromMain,debugPhaseGridTail:(combo3Grid,combo3Tail),debugNoDlcTailAdvance:combo3NoDlcTail);
-   File.WriteAllLines(args[8],generated.Islands.OrderBy(island=>island.Name,StringComparer.Ordinal).Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}"));return 0;
+   var siteSetting=args.Length>5&&Enum.TryParse<FertilitySetting>(args[5],true,out var parsedSiteSetting)?parsedSiteSetting:FertilitySetting.Abundant;
+   var siteProfile=MapProfiles.Get(siteCheckTemplate,siteCheckSize,Environment.GetEnvironmentVariable("NODLC")!="1");
+   var siteSlots=Enum.TryParse<SlotSetting>(Environment.GetEnvironmentVariable("SLOTS"),true,out var parsedSlots)?parsedSlots:SlotSetting.Abundant;
+   var siteGenerated=Generator.GenerateLatium(siteCheckSeed,new GeneratorScratch(),siteProfile,fertilitySetting:siteSetting,slotSetting:siteSlots);
+   File.WriteAllLines(args[4],siteGenerated.Islands.OrderBy(island=>island.Name,StringComparer.Ordinal).ThenBy(island=>island.SlotIndex).Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}|{island.Sites.Mountain+island.Sites.River}"));return 0;
   }
-  if(args.Length==6&&args[0].Equals("--dump-vanilla-profile-3rdparty",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var tp3Template)&&Enum.TryParse<MapSizeKind>(args[2],true,out var tp3Size)&&uint.TryParse(args[3],out var tp3Seed)&&bool.TryParse(args[4],out var tp3FromMain))
+  if(args.Length>=5&&args[0].Equals("--dump-profile-retro",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var retroTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var retroSize)&&uint.TryParse(args[3],out var retroSeed))
   {
-   var profile=MapProfiles.Get(tp3Template,tp3Size,false);var generated=Generator.GenerateLatium(tp3Seed,new GeneratorScratch(),profile,debugThirdPartyFromMain:tp3FromMain);
-   File.WriteAllLines(args[5],generated.Islands.OrderBy(island=>island.Name,StringComparer.Ordinal).Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}"));return 0;
-  }
-  if(args.Length==6&&args[0].Equals("--dump-vanilla-profile-init",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var initDumpTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var initDumpSize)&&uint.TryParse(args[3],out var initDumpSeed)&&int.TryParse(args[4],out var initDumpAdvance))
-  {
-   var profile=MapProfiles.Get(initDumpTemplate,initDumpSize,false);var generated=Generator.GenerateLatium(initDumpSeed,new GeneratorScratch(),profile,debugInitialAdvance:initDumpAdvance);
-   File.WriteAllLines(args[5],generated.Islands.OrderBy(island=>island.Name,StringComparer.Ordinal).Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}"));return 0;
-  }
-  if(args.Length==6&&args[0].Equals("--dump-profile-raw",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var rawDumpTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var rawDumpSize)&&uint.TryParse(args[3],out var rawDumpSeed)&&int.TryParse(args[4],out var rawDumpDraws))
-  {
-   var profile=MapProfiles.Get(rawDumpTemplate,rawDumpSize);var generated=Generator.GenerateLatium(rawDumpSeed,new GeneratorScratch(),profile,debugAbsolutePhaseDraws:rawDumpDraws);
-   File.WriteAllLines(args[5],generated.Islands.OrderBy(island=>island.Name,StringComparer.Ordinal).Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}"));return 0;
-  }
-  if(args.Length==6&&args[0].Equals("--dump-profile-raw-nodlc",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var rawDumpNoDlcTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var rawDumpNoDlcSize)&&uint.TryParse(args[3],out var rawDumpNoDlcSeed)&&int.TryParse(args[4],out var rawDumpNoDlcDraws))
-  {
-   var profile=MapProfiles.Get(rawDumpNoDlcTemplate,rawDumpNoDlcSize,false);var generated=Generator.GenerateLatium(rawDumpNoDlcSeed,new GeneratorScratch(),profile,debugAbsolutePhaseDraws:rawDumpNoDlcDraws);
-   File.WriteAllLines(args[5],generated.Islands.OrderBy(island=>island.Name,StringComparer.Ordinal).Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}"));return 0;
-  }
-  if(args.Length==7&&args[0].Equals("--dump-profile-phase",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var phaseDumpTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var phaseDumpSize)&&uint.TryParse(args[3],out var phaseDumpSeed)&&int.TryParse(args[4],out var phaseDumpGrid)&&int.TryParse(args[5],out var phaseDumpTail))
-  {
-   var profile=MapProfiles.Get(phaseDumpTemplate,phaseDumpSize);var generated=Generator.GenerateLatium(phaseDumpSeed,new GeneratorScratch(),profile,debugPhaseGridTail:(phaseDumpGrid,phaseDumpTail));
-   File.WriteAllLines(args[6],generated.Islands.OrderBy(island=>island.Name,StringComparer.Ordinal).Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}"));return 0;
-  }
-  if(args.Length==7&&args[0].Equals("--dump-vanilla-profile-phase",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var vPhaseDumpTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var vPhaseDumpSize)&&uint.TryParse(args[3],out var vPhaseDumpSeed)&&int.TryParse(args[4],out var vPhaseDumpGrid)&&int.TryParse(args[5],out var vPhaseDumpTail))
-  {
-   var profile=MapProfiles.Get(vPhaseDumpTemplate,vPhaseDumpSize,false);var generated=Generator.GenerateLatium(vPhaseDumpSeed,new GeneratorScratch(),profile,debugPhaseGridTail:(vPhaseDumpGrid,vPhaseDumpTail));
-   File.WriteAllLines(args[6],generated.Islands.OrderBy(island=>island.Name,StringComparer.Ordinal).Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}"));return 0;
+   var retroSetting=args.Length>5&&Enum.TryParse<FertilitySetting>(args[5],true,out var parsedRetroSetting)?parsedRetroSetting:FertilitySetting.Abundant;
+   var generated=Generator.GenerateLatium(retroSeed,new GeneratorScratch(),MapProfiles.Get(retroTemplate,retroSize,true,true),fertilitySetting:retroSetting);
+   File.WriteAllLines(args[4],generated.Islands.OrderBy(island=>island.Name,StringComparer.Ordinal).ThenBy(island=>island.SlotIndex).Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}|{island.Sites.Mountain+island.Sites.River}"));return 0;
   }
   if(args.Length==6&&args[0].Equals("--dump-profile-setting",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var settingDumpTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var settingDumpSize)&&uint.TryParse(args[3],out var settingDumpSeed)&&Enum.TryParse<FertilitySetting>(args[4],true,out var dumpFertilitySetting))
   {
    var profile=MapProfiles.Get(settingDumpTemplate,settingDumpSize);var generated=Generator.GenerateLatium(settingDumpSeed,new GeneratorScratch(),profile,fertilitySetting:dumpFertilitySetting);
    File.WriteAllLines(args[5],generated.Islands.OrderBy(island=>island.Name,StringComparer.Ordinal).Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}"));return 0;
   }
+  if(args.Length==6&&args[0].Equals("--dump-profile-nodlc-setting",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var nodlcSettingDumpTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var nodlcSettingDumpSize)&&uint.TryParse(args[3],out var nodlcSettingDumpSeed)&&Enum.TryParse<FertilitySetting>(args[4],true,out var nodlcDumpFertilitySetting))
+  {
+   var profile=MapProfiles.Get(nodlcSettingDumpTemplate,nodlcSettingDumpSize,false);var generated=Generator.GenerateLatium(nodlcSettingDumpSeed,new GeneratorScratch(),profile,fertilitySetting:nodlcDumpFertilitySetting);
+   File.WriteAllLines(args[5],generated.Islands.OrderBy(island=>island.Name,StringComparer.Ordinal).Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}"));return 0;
+  }
   if(args.Length==6&&args[0].Equals("--dump-albion-profile-setting",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var albionSettingDumpTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var albionSettingDumpSize)&&uint.TryParse(args[3],out var albionSettingDumpSeed)&&Enum.TryParse<FertilitySetting>(args[4],true,out var albionDumpFertilitySetting))
   {
    var generated=AlbionGenerator.Generate(albionSettingDumpSeed,MapProfiles.Get(albionSettingDumpTemplate,albionSettingDumpSize),fertilitySetting:albionDumpFertilitySetting);
+   File.WriteAllLines(args[5],generated.OrderBy(island=>island.Name,StringComparer.Ordinal).Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}"));return 0;
+  }
+  if(args.Length==6&&args[0].Equals("--dump-albion-profile-nodlc-setting",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var albionNodlcSettingDumpTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var albionNodlcSettingDumpSize)&&uint.TryParse(args[3],out var albionNodlcSettingDumpSeed)&&Enum.TryParse<FertilitySetting>(args[4],true,out var albionNodlcDumpFertilitySetting))
+  {
+   var generated=AlbionGenerator.Generate(albionNodlcSettingDumpSeed,MapProfiles.Get(albionNodlcSettingDumpTemplate,albionNodlcSettingDumpSize,false),fertilitySetting:albionNodlcDumpFertilitySetting);
    File.WriteAllLines(args[5],generated.OrderBy(island=>island.Name,StringComparer.Ordinal).Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}"));return 0;
   }
   if(args.Length==5&&args[0].Equals("--dump-vanilla-profile",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var vanillaDumpTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var vanillaDumpSize)&&uint.TryParse(args[3],out var vanillaDumpSeed))
@@ -383,6 +272,18 @@ internal static class Program
   if(args.Length==7&&args[0].Equals("--dump-wiggle-permutations",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var permutationTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var permutationSize)&&uint.TryParse(args[3],out var permutationSeed)&&int.TryParse(args[4],out var permutationAdvance)&&int.TryParse(args[5],out var permutationCount))
   {
    File.WriteAllLines(args[6],Generator.DebugWigglePermutations(permutationSeed,MapProfiles.Get(permutationTemplate,permutationSize),permutationAdvance,permutationCount));return 0;
+  }
+  if(args.Length==5&&args[0].Equals("--dump-albion-profile-nodlc",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var albionOffTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var albionOffSize)&&uint.TryParse(args[3],out var albionOffSeed))
+  {
+   var generated=AlbionGenerator.Generate(albionOffSeed,MapProfiles.Get(albionOffTemplate,albionOffSize,false));File.WriteAllLines(args[4],generated.OrderBy(island=>island.Name,StringComparer.Ordinal).Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}"));return 0;
+  }
+  if(args.Length>=5&&args[0].Equals("--dump-albion-sites",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var albSiteTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var albSiteSize)&&uint.TryParse(args[3],out var albSiteSeed))
+  {
+   var albSiteSetting=args.Length>5&&Enum.TryParse<FertilitySetting>(args[5],true,out var parsedAlbSiteSetting)?parsedAlbSiteSetting:FertilitySetting.Abundant;
+   var albSiteProfile=MapProfiles.Get(albSiteTemplate,albSiteSize,Environment.GetEnvironmentVariable("NODLC")!="1");
+   var albSiteSlots=Enum.TryParse<SlotSetting>(Environment.GetEnvironmentVariable("SLOTS"),true,out var parsedAlbSlots)?parsedAlbSlots:SlotSetting.Abundant;
+   var albSiteGenerated=AlbionGenerator.Generate(albSiteSeed,albSiteProfile,fertilitySetting:albSiteSetting,slotSetting:albSiteSlots);
+   File.WriteAllLines(args[4],albSiteGenerated.OrderBy(island=>island.Name,StringComparer.Ordinal).ThenBy(island=>island.SlotIndex).Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}|{island.Sites.Mountain+island.Sites.River+island.Sites.Marsh}"));return 0;
   }
   if(args.Length==5&&args[0].Equals("--dump-albion-profile",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var albionDumpTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var albionDumpSize)&&uint.TryParse(args[3],out var albionDumpSeed))
   {
@@ -431,63 +332,25 @@ internal static class Program
   {
    File.WriteAllLines(args[3],SiteRangeAnalyzer.Analyze(vanillaRangeSize,vanillaRangeSeeds,false));return 0;
   }
-  if(args.Length==6&&args[0].Equals("--probe-width",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var probeTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var probeSize)&&uint.TryParse(args[3],out var probeSeed))
-  {
-   var profile=MapProfiles.Get(probeTemplate,probeSize);var expected=File.ReadAllLines(args[4]).Single(line=>line.StartsWith("roman_dlc01_island_continental_01|",StringComparison.Ordinal));var matches=new List<int>();
-   for(var width=2208;width<=4096;width+=16)for(var draws=14;draws<=100;draws++)try
-   {
-    var cinis=Generator.GenerateLatium(probeSeed,new GeneratorScratch(),profile,width,draws).Islands.Single(island=>island.Name==Generator.CinisName);var generated=$"{cinis.Name}|{cinis.FertilitySet}|{string.Join(',',cinis.Fertilities)}";
-    if(generated==expected)matches.Add(width*100+draws);
-   }catch(InvalidOperationException){}
-   File.WriteAllText(args[5],string.Join(',',matches.Select(match=>$"{match/100}:{match%100}")));return matches.Count>0?0:2;
-  }
-  if(args.Length==7&&args[0].Equals("--probe-phase",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var phaseTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var phaseSize)&&uint.TryParse(args[3],out var phaseSeed)&&int.TryParse(args[4],out var phaseWidth))
-  {
-   var profile=MapProfiles.Get(phaseTemplate,phaseSize);var expected=File.ReadAllLines(args[5]).Single(line=>line.StartsWith("roman_dlc01_island_continental_01|",StringComparison.Ordinal));var matches=new List<string>();
-   for(var pre=0;pre<=40;pre++)for(var post=0;post<=120;post++)try
-   {
-    var cinis=Generator.GenerateLatium(phaseSeed,new GeneratorScratch(),profile,phaseWidth,post,pre).Islands.Single(island=>island.Name==Generator.CinisName);var generated=$"{cinis.Name}|{cinis.FertilitySet}|{string.Join(',',cinis.Fertilities)}";
-    if(generated==expected)matches.Add($"{pre}:{post}");
-   }catch(InvalidOperationException){}
-   File.WriteAllText(args[6],string.Join(',',matches));return matches.Count>0?0:2;
-  }
-  if(args.Length==6&&args[0].Equals("--probe-full",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var fullTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var fullSize)&&uint.TryParse(args[3],out var fullSeed))
-  {
-   var profile=MapProfiles.Get(fullTemplate,fullSize);var expected=File.ReadAllLines(args[4]).OrderBy(line=>line,StringComparer.Ordinal).ToArray();var matches=new List<string>();
-   for(var width=2208;width<=4096;width+=8)for(var draws=0;draws<=600;draws++)try
-   {
-    var rows=Generator.GenerateLatium(fullSeed,new GeneratorScratch(),profile,width,draws).Islands.Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}").OrderBy(line=>line,StringComparer.Ordinal);
-    if(rows.SequenceEqual(expected))matches.Add($"{width}:{draws}");
-   }catch(InvalidOperationException){}
-   File.WriteAllText(args[5],string.Join(',',matches));return matches.Count>0?0:2;
-  }
-  if(args.Length==6&&args[0].Equals("--probe-advance",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var advanceTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var advanceSize)&&uint.TryParse(args[3],out var advanceSeed))
-  {
-   var profile=MapProfiles.Get(advanceTemplate,advanceSize);var expected=File.ReadAllLines(args[4]).OrderBy(line=>line,StringComparer.Ordinal).ToArray();var matches=new List<int>();
-   for(var draws=25000;draws<=40000;draws++)
-   {
-    var rows=Generator.GenerateLatium(advanceSeed,new GeneratorScratch(),profile,null,null,null,draws).Islands.Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}").OrderBy(line=>line,StringComparer.Ordinal);
-    if(rows.SequenceEqual(expected))matches.Add(draws);
-   }
-   File.WriteAllText(args[5],string.Join(',',matches));return matches.Count>0?0:2;
-  }
-  if(args.Length==6&&args[0].Equals("--probe-vanilla-advance",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var vanillaAdvanceTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var vanillaAdvanceSize)&&uint.TryParse(args[3],out var vanillaAdvanceSeed))
-  {
-   var profile=MapProfiles.Get(vanillaAdvanceTemplate,vanillaAdvanceSize,false);var expected=File.ReadAllLines(args[4]).OrderBy(line=>line,StringComparer.Ordinal).ToArray();var matches=new List<int>();
-   for(var draws=0;draws<=100_000;draws++)
-   {
-    var rows=Generator.GenerateLatium(vanillaAdvanceSeed,new GeneratorScratch(),profile,null,null,null,draws).Islands.Select(island=>$"{island.Name}|{island.FertilitySet}|{string.Join(',',island.Fertilities)}").OrderBy(line=>line,StringComparer.Ordinal);
-    if(rows.SequenceEqual(expected))matches.Add(draws);
-   }
-   File.WriteAllText(args[5],string.Join(',',matches));return matches.Count>0?0:2;
-  }
   if(args.Length==5&&args[0].Equals("--dump-placements",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var placementTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var placementSize)&&uint.TryParse(args[3],out var placementSeed))
   {
    File.WriteAllLines(args[4],Generator.DebugPlacements(placementSeed,MapProfiles.Get(placementTemplate,placementSize)));return 0;
   }
+  // Every placed element of one map in the final map frame (the data behind the preview): region|kind|name|slot|rotation|x|y.
+  // Env NODLC=1 for a map without DLC01, RETRO=1 for DLC01 activated later.
+  if(args.Length==5&&args[0].Equals("--dump-layout",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var layoutTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var layoutSize)&&uint.TryParse(args[3],out var layoutSeed))
+  {
+   var layoutProfile=MapProfiles.Get(layoutTemplate,layoutSize,Environment.GetEnvironmentVariable("NODLC")!="1",Environment.GetEnvironmentVariable("RETRO")=="1");
+   var latiumLayout=new MapLayout();var albionLayout=new MapLayout();
+   Generator.GenerateLatium(layoutSeed,new GeneratorScratch(),layoutProfile,layout:latiumLayout);AlbionGenerator.Generate(layoutSeed,layoutProfile,layout:albionLayout);
+   var lines=new List<string>{$"Latium|map|{latiumLayout.Width}|{latiumLayout.FullX}|{latiumLayout.FullY}|{latiumLayout.FullSize}|{latiumLayout.BaseX}|{latiumLayout.BaseY}|{latiumLayout.BaseSize}",$"Albion|map|{albionLayout.Width}|{albionLayout.FullX}|{albionLayout.FullY}|{albionLayout.FullSize}|{albionLayout.BaseX}|{albionLayout.BaseY}|{albionLayout.BaseSize}"};
+   foreach(var item in latiumLayout.Items)lines.Add($"Latium|{item.Kind}|{item.Name}|{item.Slot}|{item.Rotation}|{item.X}|{item.Y}");
+   foreach(var item in albionLayout.Items)lines.Add($"Albion|{item.Kind}|{item.Name}|{item.Slot}|{item.Rotation}|{item.X}|{item.Y}");
+   File.WriteAllLines(args[4],lines);return 0;
+  }
   if(args.Length==5&&args[0].Equals("--dump-moved-placements",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var movedPlacementTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var movedPlacementSize)&&uint.TryParse(args[3],out var movedPlacementSeed))
   {
-   var rows=new List<string>();Generator.GenerateLatium(movedPlacementSeed,new GeneratorScratch(),MapProfiles.Get(movedPlacementTemplate,movedPlacementSize),debugMovedPlacements:rows);File.WriteAllLines(args[4],rows);return 0;
+   var rows=new List<string>();Generator.GenerateLatium(movedPlacementSeed,new GeneratorScratch(),MapProfiles.Get(movedPlacementTemplate,movedPlacementSize,Environment.GetEnvironmentVariable("NODLC")!="1"),debugMovedPlacements:rows);File.WriteAllLines(args[4],rows);return 0;
   }
   if(args.Length==5&&args[0].Equals("--dump-albion-placements",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var albionPlacementTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var albionPlacementSize)&&uint.TryParse(args[3],out var albionPlacementSeed))
   {
@@ -523,11 +386,7 @@ internal static class Program
   }
   if(args.Length==5&&args[0].Equals("--dump-decorations",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var decorationTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var decorationSize)&&uint.TryParse(args[3],out var decorationSeed))
   {
-   var trace=new List<string>();Generator.GenerateLatium(decorationSeed,new GeneratorScratch(),MapProfiles.Get(decorationTemplate,decorationSize),debugDecorationTrace:trace);File.WriteAllLines(args[4],trace);return 0;
-  }
-  if(args.Length==6&&args[0].Equals("--dump-decorations-forcewidth",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var dfwTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var dfwSize)&&uint.TryParse(args[3],out var dfwSeed)&&int.TryParse(args[4],out var dfwWidth))
-  {
-   var trace=new List<string>();Generator.GenerateLatium(dfwSeed,new GeneratorScratch(),MapProfiles.Get(dfwTemplate,dfwSize),debugWidth:dfwWidth,debugForcePlaceDecorations:true,debugDecorationTrace:trace);File.WriteAllLines(args[5],trace);return 0;
+   var trace=new List<string>();Generator.GenerateLatium(decorationSeed,new GeneratorScratch(),MapProfiles.Get(decorationTemplate,decorationSize,Environment.GetEnvironmentVariable("NODLC")!="1"),debugDecorationTrace:trace);File.WriteAllLines(args[4],trace);return 0;
   }
   if(args.Length==5&&args[0].Equals("--dump-decorations-cardinal",StringComparison.OrdinalIgnoreCase)&&Enum.TryParse<MapTemplateKind>(args[1],true,out var cardinalDecorationTemplate)&&Enum.TryParse<MapSizeKind>(args[2],true,out var cardinalDecorationSize)&&uint.TryParse(args[3],out var cardinalDecorationSeed))
   {
@@ -567,6 +426,7 @@ internal static class Program
   Array.Sort(values);var middle=values.Length/2;var median=values.Length%2==0?(values[middle-1]+values[middle])/2d:values[middle];
   return string.Create(System.Globalization.CultureInfo.InvariantCulture,$"{values[0]};{values[^1]};{values.Average():F2};{median:F0}");
  }
+
 }
 
 internal enum FertilitySetting{Abundant,Regular,Sparse}
@@ -575,51 +435,30 @@ internal static class Generator
  internal const string CinisName="roman_dlc01_island_continental_01";
  internal static readonly uint[] Pool6=[2205,2202,4051,2208,8577,32027];
  static readonly Dictionary<uint,uint[]> Pools=new(){[31314]=[2206,2209],[31330]=[2210,51212],[31349]=[4049,4062],[31354]=Pool6,[31352]=[4052,4053]};
- // Roman FertilitySet definitions per AllowedResourceAmounts tier, sourced directly from the game's
- // own data/config/export/main/asset/assets.xml FertilitySet/FertilityPool assets (extracted via
- // RDAExplorer+FileDBReader). High=Abundant; the game's own asset names call the other two tiers
- // "Medium"/"Hard", mapped here to Regular/Sparse. Verified byte-for-byte against real Regular/Sparse
- // v2.0 savegames (seed 2827 and seed 2, Corners/Large): every fertility-bearing Latium island
- // reproduces exactly using these sets and the existing Assign() bag logic.
+ // Latium fertility sets per resource-amount setting, taken from the FertilitySet/FertilityPool assets in the game's assets.xml.
+ // Abundant is the game's High tier; its Medium and Hard tiers are the Regular and Sparse settings.
  static readonly Dictionary<uint,uint[]> Sets=new()
  {
   [31312]=[31314,4049,31354,31354,31354,31354],[3656]=[31314,31330,31330,31349,31354,31354],[14198]=[31314,31349,31354,31354,31352,31352],[144793]=[31314,31349,31349,31354,31354,31354,31354],
   [41833]=[31314,31314,4049,31354,31354],[41835]=[31314,31349,31354,31352,31352],[41834]=[31330,31330,31349,31354,31354],[145110]=[31314,31349,31349,31354,31354,31354],
   [41837]=[31314,31349,31354,31352],[41839]=[31314,31354,31354,31352],[41838]=[31349,31330,31354,31354],[145109]=[31314,4049,31354,31354,31354],
  };
- // Maps each Abundant role GUID to the game's own Regular("Medium")/Sparse("Hard") FertilitySet GUID
- // for that same role. Role assignment (which island gets which role) is unaffected by fertility
- // setting - only the pool list used once a role is assigned changes. Shared between Generator and
- // AlbionGenerator since role GUIDs never collide between regions.
+ // Maps each Abundant role GUID to the FertilitySet GUID of the same role in the Regular (the game's Medium) and Sparse (Hard) tier.
+ // The setting changes only the pool a role draws from, not which island gets which role. Shared by both regions because role
+ // GUIDs never collide between them.
  internal static readonly Dictionary<(uint Role,FertilitySetting Setting),uint> SetVariants=new()
  {
   [(31312,FertilitySetting.Regular)]=41833,[(31312,FertilitySetting.Sparse)]=41837,
-  [(3656,FertilitySetting.Regular)]=41835,[(3656,FertilitySetting.Sparse)]=41839,
-  [(14198,FertilitySetting.Regular)]=41834,[(14198,FertilitySetting.Sparse)]=41838,
+  [(3656,FertilitySetting.Regular)]=41834,[(3656,FertilitySetting.Sparse)]=41838,
+  [(14198,FertilitySetting.Regular)]=41835,[(14198,FertilitySetting.Sparse)]=41839,
   [(144793,FertilitySetting.Regular)]=145110,[(144793,FertilitySetting.Sparse)]=145109,
   [(8174,FertilitySetting.Regular)]=41852,[(8174,FertilitySetting.Sparse)]=41856,
   [(8179,FertilitySetting.Regular)]=41853,[(8179,FertilitySetting.Sparse)]=41857,
   [(8181,FertilitySetting.Regular)]=41854,[(8181,FertilitySetting.Sparse)]=41858,
  };
- // For Regular/Sparse, the raw 3656/14198 role GUIDs assigned by Rule() end up swapped relative to
- // which FertilitySet tier actually applies, for exactly these six (template,size) combinations - and
- // NOT for the other nine. Confirmed empirically against real, mod-free v2.0 saves (seed 2, all 45
- // (template,size,setting) combinations) by reading each island's raw FertilitySetGUIDs field
- // directly. Not a stable function of template or size alone - see README "Community Bug Fix Mod".
- static readonly HashSet<(MapTemplateKind,MapSizeKind)> SwapProfiles=
- [
-  (MapTemplateKind.Archipelago,MapSizeKind.Small),
-  (MapTemplateKind.Atoll,MapSizeKind.Medium),
-  (MapTemplateKind.Corners,MapSizeKind.Large),
-  (MapTemplateKind.IslandChains,MapSizeKind.Large),
-  (MapTemplateKind.IslandChains,MapSizeKind.Medium),
-  (MapTemplateKind.Rift,MapSizeKind.Large),
- ];
  internal static uint ResolveSet(uint role,FertilitySetting setting,MapProfile profile)
  {
   if(setting==FertilitySetting.Abundant)return role;
-  var needsSwap=SwapProfiles.Contains((profile.Template,profile.Size));
-  if(needsSwap)role=role switch{3656=>14198,14198=>3656,_=>role};
   return SetVariants[(role,setting)];
  }
  static readonly Dictionary<string,uint> Names=new(StringComparer.OrdinalIgnoreCase){{"Mackerel",2206},{"Lavender",2209},{"Grapes",2205},{"Flax",2202},{"Murex",4051},{"Sea Snails",4051},{"Oysters",2208},{"Sturgeon",8577},{"Gold",32027}};
@@ -627,45 +466,11 @@ internal static class Generator
  static readonly Dictionary<string,Asset> Assets=Asset.All.ToDictionary(x=>x.Name);
  static readonly Dictionary<string,double> RomanStartCoastDirections=new()
  {
-  ["roman_island_extralarge_01"]=4.567947,["roman_island_extralarge_02"]=4.950634,["roman_island_extralarge_03"]=4.128881,["roman_island_extralarge_04"]=5.485340,
-  ["roman_island_large_01"]=3.990198,["roman_island_large_02"]=1.181638,["roman_island_large_03"]=4.058963,["roman_island_large_04"]=6.094964,
+  ["roman_island_extralarge_01"]=4.567947,["roman_island_extralarge_02"]=4.950634,["roman_island_extralarge_03"]=4.128881,["roman_island_extralarge_04"]=5.4925,
+  ["roman_island_large_01"]=3.990198,["roman_island_large_02"]=1.181638,["roman_island_large_03"]=4.058963,["roman_island_large_04"]=0.06,
   ["roman_island_large_05"]=4.204327,["roman_island_large_06"]=2.861056,["roman_island_large_07"]=3.646262,["roman_island_large_09"]=3.798982
  };
  static readonly (int X,int Y)[] ArchipelagoOffsets=BuildArchipelagoOffsets();
- // Corners/Small seeds where the real collision layout accepts fewer than the
- // usual 14 decoration islands; the exact stopping rule is not yet reconstructed,
- // so the verified successful-placement count is recorded per seed instead.
- static readonly Dictionary<uint,int> VerifiedCornersSmallDecorationCount=new()
- {
-  [3]=10,[4]=10,[5]=10,[6]=10,[7]=10
- };
- // Archipelago/Medium's post-decoration RNG position needs an extra draw only
- // for specific seeds; verified against 6 independent savegames, only the
- // original author's own reference seed (2) plus 6000000 need it turned on.
- // Originally this was hardcoded as always-on, which was overfit to seed 2 and
- // wrong for every other tested seed (600000, 5050, 50505, 505050).
- static readonly Dictionary<uint,int> VerifiedArchipelagoMediumExtraAdvance=new()
- {
-  [2]=1,[6_000_000]=1,[100_000]=1
- };
- // The wiggle's mask-overlap check needs a small cardinal clearance to match the
- // real game (verified against 23 independent savegames across all sizes); a
- // clearance of 1 is correct for nearly every tested seed, but a small number
- // land on a collision edge where only 2 (or, for 731629381, anything but 1)
- // matches the real game.
- static readonly Dictionary<uint,int> VerifiedArchipelagoWiggleBorder=new()
- {
-  [6_000_000]=2,[731_629_381]=2
- };
- // Every confirmed Archipelago/Medium wiggle mismatch found so far (seeds 2,
- // 6000000, 731629381) had roman_island_extralarge_04 in the south-west
- // starter slot (index 23). That condition alone isn't sufficient (seed
- // 600000 also has it there and is unaffected), but every affected seed had
- // it, so it's surfaced as a manual-verification hint until the remaining
- // trigger is found.
- internal static bool HasUnverifiedArchipelagoMediumRisk(MapProfile profile,IReadOnlyList<GeneratedIsland> islands)=>
-  profile.Template==MapTemplateKind.Archipelago&&profile.Size==MapSizeKind.Medium&&
-  islands.Any(island=>island.SlotIndex==23&&island.Name=="roman_island_extralarge_04");
  public static uint Name(string s)=>Names.TryGetValue(s.Trim(),out var x)?x:throw new ArgumentException($"Unbekannte Fruchtbarkeit: {s}");public static string Format(IEnumerable<uint>x)=>string.Join(" | ",x.Select(v=>Labels.GetValueOrDefault(v,v.ToString())));
  internal static string Label(uint guid)=>Labels.GetValueOrDefault(guid,guid.ToString());
  public static uint[] Cinis(uint seed)=>Generate(seed).Fertilities[CinisName];
@@ -674,59 +479,130 @@ internal static class Generator
   var latium=GenerateLatium(seed,new GeneratorScratch(),MapProfiles.Default);
   return Complete(latium,AlbionGenerator.Generate(seed,MapProfiles.Default));
  }
- internal static LatiumGeneration GenerateLatium(uint seed,GeneratorScratch scratch,MapProfile? profile=null,int? debugWidth=null,int? debugDecorationDraws=null,int? debugPreGridDraws=null,int? debugAbsolutePhaseDraws=null,List<string>? debugDecorationTrace=null,bool debugCardinalCollision=false,List<string>? debugMovedPlacements=null,FertilitySetting fertilitySetting=FertilitySetting.Abundant,(int Grid,int Tail)? debugPhaseGridTail=null,int debugInitialAdvance=9,bool? debugThirdPartyFromMain=null,bool debugForcePlaceDecorations=false,int? debugNoDlcTailAdvance=null,int? debugArchipelagoDecorationDraws=null,int? debugArchipelagoMediumExtraAdvance=null,bool debugArchipelagoConditionalExtra=false,uint[]? debugThirdPartyRawOut=null,bool debugSkipContinentalExclusion=false,bool debugAllowWiggleTies=false,bool debugEuclideanWiggleDistance=false,int? debugWiggleBorder=null,int? debugWigglePasses=null,bool debugWiggleBest=false,int? debugWiggleDilate=null,int debugWiggleAnchorMode=0,int? debugWiggleMargin=null,bool debugWiggleBlockContinental=false,uint[]? debugPostDecorationPeek=null,bool debugSpecialCollisionTrace=false,int? debugPreWiggleAdvance=null,bool debugWiggleNeverAccept=false,int? decorationTailOverride=null)
+ internal static LatiumGeneration GenerateLatium(uint seed,GeneratorScratch scratch,MapProfile? profile=null,int? debugWidth=null,List<string>? debugDecorationTrace=null,bool debugCardinalCollision=false,List<string>? debugMovedPlacements=null,FertilitySetting fertilitySetting=FertilitySetting.Abundant,uint[]? debugThirdPartyRawOut=null,RetroBase? retroBase=null,SlotSetting slotSetting=SlotSetting.Abundant,MapLayout? layout=null)
  {
   profile??=MapProfiles.Default;
-  var r=new Rng(seed);r.Advance(debugInitialAdvance);var original=Slots(profile);var starters=original.Where(x=>x.Type==1).ToList();r.Shuffle(starters);var slots=original.Where(x=>x.Type!=1).Concat(starters).ToList();r.Shuffle(slots);slots=slots.OrderByDescending(x=>x.Type).ToList();
+  if(profile.Retro)return GenerateLatiumRetro(seed,scratch,profile,fertilitySetting,debugMovedPlacements,slotSetting,layout);
+  var r=new Rng(seed);r.Advance(9);var original=Slots(profile);var starters=original.Where(x=>x.Type==1).ToList();r.Shuffle(starters);var slots=original.Where(x=>x.Type!=1).Concat(starters).ToList();r.Shuffle(slots);slots=slots.OrderByDescending(x=>x.Type).ToList();
   var g=new Dictionary<(int,string),List<Asset>>{{(7,"Medium"),A("roman_dlc01_island_medium_01","roman_dlc01_island_medium_02","roman_dlc01_island_medium_03")},{(7,"Small"),A("roman_dlc01_island_small_02","roman_dlc_01_island_small_01")},{(1,"XL"),A("roman_island_extralarge_01","roman_island_extralarge_02","roman_island_extralarge_03","roman_island_extralarge_04")},{(0,"Large"),A("roman_island_large_01","roman_island_large_02","roman_island_large_03","roman_island_large_04","roman_island_large_05","roman_island_large_06","roman_island_large_07","roman_island_large_09")},{(0,"Medium"),A(Enumerable.Range(1,8).Select(i=>$"roman_island_medium_{i:00}").ToArray())},{(0,"Small"),A(Enumerable.Range(1,7).Select(i=>$"roman_island_small_{i:00}").ToArray())}};
-  var cycled=new HashSet<(int,string)>();var p=new List<Placed>();foreach(var s in slots){var key=PoolKey(s.Type,s.Size);var l=g[key];var independent=cycled.Contains(key);if(l.Count==0){g[key]=l=LatiumPool(key);cycled.Add(key);independent=false;}var candidates=independent?LatiumPool(key):l;var j=candidates.Count==1?0:(int)r.Scaled((uint)candidates.Count);var a=candidates[j];if(!independent)candidates.RemoveAt(j);var raw=r.Next();var rotation=s.Type!=1?(byte)(raw>>30):profile.Template==MapTemplateKind.IslandChains&&profile.Dlc01?IslandChainStarterRotation(profile,s,a):s.Size=="XL"?(profile.Template==MapTemplateKind.Archipelago?ArchipelagoStarterRotation(s,a.Name,starters):StarterRotation(s,a.Name,starters)):RomanStarterRotation(profile,s,a,starters);p.Add(new(a,s,rotation));}uint[] thirdPartyRaw;if(debugAbsolutePhaseDraws is int){thirdPartyRaw=[];}else if(debugPreGridDraws is int pre){r.Advance(pre);thirdPartyRaw=[];}else{var fromMain=debugThirdPartyFromMain??profile.Dlc01;var thirdPartyRng=fromMain?r:r.Clone();thirdPartyRaw=Enumerable.Range(0,5).Select(_=>thirdPartyRng.Next()).ToArray();}
+  var cycled=new HashSet<(int,string)>();var p=new List<Placed>();foreach(var s in slots){var key=PoolKey(s.Type,s.Size);var l=g[key];var independent=cycled.Contains(key);if(l.Count==0){g[key]=l=LatiumPool(key);cycled.Add(key);independent=false;}var candidates=independent?LatiumPool(key):l;var j=candidates.Count==1?0:(int)r.Scaled((uint)candidates.Count);var a=candidates[j];if(!independent)candidates.RemoveAt(j);var raw=r.Next();var rotation=s.Type!=1?(byte)(raw>>30):LatiumStarterRotation(profile,s,a,starters);p.Add(new(a,s,rotation));}var thirdPartyRaw=Enumerable.Range(0,5).Select(_=>r.Next()).ToArray();
   if(debugThirdPartyRawOut is not null)thirdPartyRaw.CopyTo(debugThirdPartyRawOut,0);
   var rawPositions=p.Select(x=>{var half=SlotHalf(x.Slot.Size);return CorePosition(x.Asset,x.Rot,x.Slot.X+half,x.Slot.Y+half);}).ToArray();
   var mx=rawPositions.Min(x=>x.X);var my=rawPositions.Min(x=>x.Y);var templateWidth=!profile.Dlc01&&profile.Template==MapTemplateKind.Archipelago?2016:profile.LatiumTemplateSize;var w=debugWidth??(templateWidth+Math.Max(Math.Max(0,-mx),Math.Max(0,-my)));
-  var shiftX=Math.Max(0,-mx);var shiftY=Math.Max(0,-my);
-  // Island Chains use one EnlargementOffset for both axes: it is derived from the axis
-  // that enlarged the square map and applied uniformly to every element and to the
-  // playable rectangle. Separate X/Y offsets make edge-decoration retries look
-  // seed-specific. Ported from the original author's generator.
+  (int X,int Y)[]? finalPositions=null;var shiftX=Math.Max(0,-mx);var shiftY=Math.Max(0,-my);(int X0,int Y0,int X1,int Y1)? playable=null;
+  // Island Chains use one EnlargementOffset for both axes: it derives from the axis that enlarged the square map and is applied
+  // to every element and to the playable rectangle.
   if(profile.Template==MapTemplateKind.IslandChains)shiftX=shiftY=w-templateWidth;
-  if(debugAbsolutePhaseDraws is int phaseDraws)r.Advance(phaseDraws);
-  else if(debugPhaseGridTail is (int pgGrid,int pgTail)){r.ShuffleCount(pgGrid*pgGrid);r.ShuffleCount(6);r.Advance(pgTail);}
-  else if(debugDecorationDraws is int draws){var grid=w/16;r.ShuffleCount(grid*grid);r.ShuffleCount(6);r.Advance(draws);}
-  else if(profile.Template==MapTemplateKind.Corners)
+  if(profile.Template==MapTemplateKind.Corners)
   {
-   if(profile.Size==MapSizeKind.Small&&VerifiedCornersSmallDecorationCount.TryGetValue(seed,out var verifiedDecorationCount)){var grid=w/16;r.ShuffleCount(grid*grid);r.ShuffleCount(6);r.Advance(verifiedDecorationCount);}
-   else PlaceDecorations(r,w,shiftX,shiftY,p,thirdPartyRaw,scratch,profile,debugDecorationTrace,cardinalCollision:debugCardinalCollision);
+   if(!profile.Dlc01)(w,shiftX,shiftY,playable)=FitOpenMap(profile,p,rawPositions,thirdPartyRaw);finalPositions=rawPositions;
+   if(debugMovedPlacements is not null)for(var index=0;index<p.Count;index++)debugMovedPlacements.Add($"{p[index].Asset.Name}|{p[index].Rot}|{p[index].Slot.Index}|{rawPositions[index].X}|{rawPositions[index].Y}");
+   PlaceDecorations(r,w,shiftX,shiftY,p,thirdPartyRaw,scratch,profile,debugDecorationTrace,cardinalCollision:debugCardinalCollision,playable:playable,layout:layout);
   }
   else if(profile.Template==MapTemplateKind.Archipelago)
   {
-   var wiggleBorder=debugWiggleBorder??VerifiedArchipelagoWiggleBorder.GetValueOrDefault(seed,1);
-   var positions=WiggleArchipelago(r,w,p,scratch,profile,thirdPartyRaw,debugDecorationTrace,debugSkipContinentalExclusion,debugAllowWiggleTies,debugEuclideanWiggleDistance,wiggleBorder,debugWigglePasses,debugWiggleBest,debugWiggleDilate,debugWiggleAnchorMode,debugWiggleMargin,debugWiggleBlockContinental,debugSpecialCollisionTrace,debugPreWiggleAdvance,debugWiggleNeverAccept);
-   if(debugArchipelagoDecorationDraws is int archDraws){var grid=w/16;r.ShuffleCount(grid*grid);r.ShuffleCount(6);r.Advance(archDraws);}
-   else PlaceDecorations(r,w,shiftX,shiftY,p,thirdPartyRaw,scratch,profile,debugDecorationTrace,positions,cardinalCollision:debugCardinalCollision);
-   if(debugPostDecorationPeek is not null)debugPostDecorationPeek[0]=r.Clone().Next();
-   if(debugArchipelagoMediumExtraAdvance is int forcedExtra)r.Advance(forcedExtra);
-   else if(debugArchipelagoConditionalExtra){var pirateRotation=(int)(thirdPartyRaw[0]>>30);var secondPass=(thirdPartyRaw[2]&0x80000000u)!=0;var firstPass=secondPass||(thirdPartyRaw[3]&0x80000000u)!=0;r.Advance(pirateRotation==3?(firstPass?1:0)+(secondPass?1:0):0);}
-   else if(profile.Size==MapSizeKind.Medium)r.Advance(VerifiedArchipelagoMediumExtraAdvance.GetValueOrDefault(seed,0));
+   var positions=WiggleArchipelago(r,profile.Dlc01?w:profile.LatiumTemplateSize,p,scratch,profile,thirdPartyRaw,debugDecorationTrace);finalPositions=positions;
+   if(!profile.Dlc01)(w,shiftX,shiftY,playable)=FitOpenMap(profile,p,positions,thirdPartyRaw);
+   if(debugMovedPlacements is not null)for(var index=0;index<p.Count;index++)debugMovedPlacements.Add($"{p[index].Asset.Name}|{p[index].Rot}|{p[index].Slot.Index}|{positions[index].X}|{positions[index].Y}");
+   PlaceDecorations(r,w,shiftX,shiftY,p,thirdPartyRaw,scratch,profile,debugDecorationTrace,positions,cardinalCollision:debugCardinalCollision,playable:playable,layout:layout);
+  }
+  else if(profile.Template is MapTemplateKind.Atoll or MapTemplateKind.Rift)
+  {
+   var positions=WiggleArchipelago(r,profile.Dlc01?w:profile.LatiumTemplateSize,p,scratch,profile,thirdPartyRaw,debugDecorationTrace);finalPositions=positions;
+   if(!profile.Dlc01)(w,shiftX,shiftY,playable)=FitOpenMap(profile,p,positions,thirdPartyRaw);
+   if(debugMovedPlacements is not null)for(var index=0;index<p.Count;index++)debugMovedPlacements.Add($"{p[index].Asset.Name}|{p[index].Rot}|{p[index].Slot.Index}|{positions[index].X}|{positions[index].Y}");
+   PlaceDecorations(r,w,shiftX,shiftY,p,thirdPartyRaw,scratch,profile,debugDecorationTrace,positions,cardinalCollision:debugCardinalCollision,playable:playable,layout:layout);
   }
   else if(profile.Template==MapTemplateKind.IslandChains)
   {
-   var moved=WiggleIslandChain(r,w,p,scratch,profile,thirdPartyRaw,debugDecorationTrace);if(debugMovedPlacements is not null)for(var index=0;index<p.Count;index++)debugMovedPlacements.Add($"{p[index].Asset.Name}|{p[index].Rot}|{p[index].Slot.Index}|{moved.Core[index].X}|{moved.Core[index].Y}");
-   PlaceDecorations(r,w,shiftX,shiftY,p,thirdPartyRaw,scratch,profile,debugDecorationTrace,moved.Core,moved.Specials,debugCardinalCollision);
+   var moved=WiggleIslandChain(r,profile.Dlc01?w:profile.LatiumTemplateSize,p,scratch,profile,thirdPartyRaw,debugDecorationTrace);finalPositions=moved.Core;if(!profile.Dlc01)(w,shiftX,shiftY,playable)=FitOpenMap(profile,p,moved.Core,thirdPartyRaw,moved.Specials);if(debugMovedPlacements is not null)for(var index=0;index<p.Count;index++)debugMovedPlacements.Add($"{p[index].Asset.Name}|{p[index].Rot}|{p[index].Slot.Index}|{moved.Core[index].X}|{moved.Core[index].Y}");
+   PlaceDecorations(r,w,shiftX,shiftY,p,thirdPartyRaw,scratch,profile,debugDecorationTrace,moved.Core,moved.Specials,debugCardinalCollision,playable,layout);
   }
-  else if(debugForcePlaceDecorations)PlaceDecorations(r,w,shiftX,shiftY,p,thirdPartyRaw,scratch,profile,debugDecorationTrace,cardinalCollision:debugCardinalCollision);
-  else AdvanceTemplatePhase(r,seed,profile,thirdPartyRaw,w,decorationTailOverride);
-  if(!profile.Dlc01&&debugAbsolutePhaseDraws is null)r.Advance(debugNoDlcTailAdvance??1);var sites=profile.Dlc01?SiteActivation.GenerateLatium(r,Assets[CinisName]):default;
-  var sitesBySlot=new Dictionary<int,SiteCounts>(p.Count);foreach(var placed in p)sitesBySlot[placed.Slot.Index]=SiteActivation.GenerateLatium(r,placed.Asset);
-  var rules=new List<uint>{3656,14198,31312,144793};r.Shuffle(rules);
+  else throw new InvalidOperationException($"Keine Dekorationsphase für {profile.Template} definiert.");
+  if(layout is not null){layout.Width=w;if(profile.Dlc01){layout.FullX=shiftX;layout.FullY=shiftY;layout.FullSize=profile.LatiumTemplateSize;layout.BaseX=shiftX;layout.BaseY=shiftY;layout.BaseSize=2048;}else{layout.FullX=layout.FullY=0;layout.FullSize=w;layout.BaseSize=0;}}
+  if(retroBase is not null&&playable is {} retroPlayable){retroBase.Used=p.Select(x=>x.Asset.Name).ToHashSet();if(finalPositions is not null)for(var index=0;index<p.Count;index++)retroBase.Placements.Add((p[index].Asset.Name,p[index].Rot,finalPositions[index].X+shiftX,finalPositions[index].Y+shiftY));retroBase.PlayableFarX=retroPlayable.X1;retroBase.PlayableFarY=retroPlayable.Y1;}
+  var sites=profile.Dlc01?SiteActivation.GenerateLatium(r,Assets[CinisName],slotSetting):default;
+  var sitesBySlot=new Dictionary<int,SiteCounts>(p.Count);foreach(var placed in p)sitesBySlot[placed.Slot.Index]=SiteActivation.GenerateLatium(r,placed.Asset,slotSetting);
+  var perSetting=fertilitySetting!=FertilitySetting.Abundant;
+  // The game shuffles the list of set roles with the same draws in every fertility setting, but the list holds a different
+  // sequence of entries per setting: Abundant [Secondary, Tertiary, Starter, Continental], Regular/Sparse [Starter, Secondary,
+  // Tertiary, Continental] (the Regular/Sparse variants of those sets).
+  var rules=perSetting?SettingRuleList(fertilitySetting):new List<uint>{3656,14198,31312,144793};r.Shuffle(rules);
   var records=new List<Record>();if(profile.Dlc01)records.Add(new(Assets[CinisName],0,144793,-1,"Continental"));records.AddRange(p.Select(x=>new Record(x.Asset,x.Slot.Type,0,x.Slot.Index,x.Slot.Size)));r.Shuffle(records);records=records.OrderByDescending(x=>x.Priority).ToList();var bags=new Dictionary<uint,List<uint>>();var generated=new List<GeneratedIsland>();uint[]? cinis=null;
-  foreach(var rec in records){var set=rec.Fixed!=0?rec.Fixed:Rule(rules,rec.Priority);var resolved=ResolveSet(set,fertilitySetting,profile);var assigned=Assign(rec.Asset,Sets[resolved],bags,r);if(rec.Fixed==144793)cinis=assigned;generated.Add(new(rec.Asset.Name,rec.SlotIndex,rec.Size,set,assigned,rec.SlotIndex<0?sites:sitesBySlot[rec.SlotIndex]));}
+  foreach(var rec in records){uint set,resolved;if(rec.Fixed!=0){set=rec.Fixed;resolved=ResolveSet(set,fertilitySetting,profile);}else if(perSetting){resolved=RuleVariant(rules,rec.Priority,fertilitySetting);set=RoleOfVariant[resolved];}else{set=Rule(rules,rec.Priority);resolved=set;}var assigned=Assign(rec.Asset,Sets[resolved],bags,r);if(rec.Fixed==144793)cinis=assigned;generated.Add(new(rec.Asset.Name,rec.SlotIndex,rec.Size,set,assigned,rec.SlotIndex<0?sites:sitesBySlot[rec.SlotIndex]));}
   return new LatiumGeneration(seed,w,sites,cinis??[],generated,RegionMetrics.Calculate(generated));
+ }
+ // ---- DLC01 switched on after the map was created ("retroactive") ----------------------------------------------------------
+ // The old part of the map is the no-DLC map, unchanged. The new islands (Cinis and the six slots that exist only in the DLC
+ // template) come from a second generator run over just those slots: Rng(seed), Advance(9), a shuffle of the new slots and, per
+ // slot, a pick from the island pool minus the islands the no-DLC map already uses (a used-up pool is refilled, so an island can
+ // appear twice) and a rotation. The new islands are not wiggled; they sit at their slot position plus the EnlargementOffset.
+ // Between the picks and the site phase the game consumes RetroGap draws.
+ internal sealed class RetroBase{public List<(string Name,byte Rot,int X,int Y)> Placements=new();public HashSet<string> Used=new();public int PlayableFarX;public int PlayableFarY;}
+ static int Ceil8(int value)=>((value+7)>>3)<<3;
+ // EnlargementOffset per axis: the far edge of the old playable area against the far edge (2020) of the no-DLC template.
+ internal static (int X,int Y) RetroEnlargement(int playableFarX,int playableFarY)=>(Ceil8(playableFarX-2020),Ceil8(playableFarY-2020));
+ // Draws between the slot picks and the site phase: 2 * w * (n - w) with w = n / 6 rounded (two strips of a sixth of the enlarged
+ // map). n follows the larger enlargement offset as 168 + offset / 16, except for the offsets listed in RetroGridByOffset, whose
+ // values were measured. For any other offset the formula may be off by one or two rows, which changes the fertility of the new
+ // islands.
+ static readonly Dictionary<int,int> RetroGridByOffset=new(){{-24,167},{8,168},{16,169},{32,170},{40,170},{64,172},{80,173},{144,176},{152,178},{176,179}};
+ internal static bool RetroOffsetMeasured(int offsetX,int offsetY)=>RetroGridByOffset.ContainsKey(Math.Max(offsetX,offsetY));
+ internal static int RetroGap(int offsetX,int offsetY)
+ {
+  var largest=Math.Max(offsetX,offsetY);var n=RetroGridByOffset.TryGetValue(largest,out var measured)?measured:168+largest/16;var w=(int)(n/6.0+0.5);return 2*w*(n-w);
+ }
+ internal static string[] DebugRetroInfo(uint seed,MapTemplateKind template,MapSizeKind size)
+ {
+  var off=MapProfiles.Get(template,size,false);var info=new RetroBase();
+  GenerateLatium(seed,new GeneratorScratch(),off,retroBase:info);
+  var e=RetroEnlargement(info.PlayableFarX,info.PlayableFarY);
+  return [$"{e.X}",$"{e.Y}",$"{Math.Max(e.X,e.Y)}",$"{RetroOffsetMeasured(e.X,e.Y)}"];
+ }
+ static LatiumGeneration GenerateLatiumRetro(uint seed,GeneratorScratch scratch,MapProfile profile,FertilitySetting fertilitySetting,List<string>? debugPlacements=null,SlotSetting slotSetting=SlotSetting.Abundant,MapLayout? layout=null)
+ {
+  var off=MapProfiles.Get(profile.Template,profile.Size,false);var baseInfo=new RetroBase();var baseLayout=layout is null?null:new MapLayout();
+  var old=GenerateLatium(seed,scratch,off,fertilitySetting:fertilitySetting,retroBase:baseInfo,slotSetting:slotSetting,layout:baseLayout);
+  var extraSlots=profile.LatiumSlots.Skip(off.LatiumSlots.Count).Select(x=>new Slot(x.Index,x.X,x.Y,x.Size,x.Type)).ToList();
+  var r=new Rng(seed);r.Advance(9);r.Shuffle(extraSlots);var slots=extraSlots.OrderByDescending(x=>x.Type).ToList();
+  var pools=new Dictionary<(int,string),List<Asset>>();var p=new List<Placed>();
+  foreach(var s in slots)
+  {
+   var key=PoolKey(s.Type,s.Size);if(!pools.TryGetValue(key,out var pool)){pool=LatiumPool(key);pool.RemoveAll(a=>baseInfo.Used.Contains(a.Name));pools[key]=pool;}
+   Asset asset;
+   if(pool.Count==0){var full=LatiumPool(key);asset=full[(int)r.Scaled((uint)full.Count)];}
+   else{var j=pool.Count==1?0:(int)r.Scaled((uint)pool.Count);asset=pool[j];pool.RemoveAt(j);}
+   var raw=r.Next();p.Add(new(asset,s,(byte)(raw>>30)));
+  }
+  var offset=RetroEnlargement(baseInfo.PlayableFarX,baseInfo.PlayableFarY);
+  if(debugPlacements is not null){foreach(var b in baseInfo.Placements)debugPlacements.Add($"{b.Name}|{b.Rot}|{b.X}|{b.Y}");debugPlacements.Add($"{CinisName}|0|{1920+offset.X}|{1920+offset.Y}");foreach(var q in p){var half=SlotHalf(q.Slot.Size);var pos=CorePosition(q.Asset,q.Rot,q.Slot.X+half,q.Slot.Y+half);debugPlacements.Add($"{q.Asset.Name}|{q.Rot}|{pos.X+offset.X}|{pos.Y+offset.Y}");}}r.Advance(RetroGap(offset.X,offset.Y));
+  var sites=SiteActivation.GenerateLatium(r,Assets[CinisName],slotSetting);
+  var sitesBySlot=new Dictionary<int,SiteCounts>(p.Count);foreach(var placed in p)sitesBySlot[placed.Slot.Index]=SiteActivation.GenerateLatium(r,placed.Asset,slotSetting);
+  var perSetting=fertilitySetting!=FertilitySetting.Abundant;
+  var rules=perSetting?SettingRuleList(fertilitySetting):new List<uint>{3656,14198,31312,144793};r.Shuffle(rules);
+  var records=new List<Record>{new(Assets[CinisName],0,144793,-1,"Continental")};records.AddRange(p.Select(x=>new Record(x.Asset,x.Slot.Type,0,x.Slot.Index,x.Slot.Size)));r.Shuffle(records);records=records.OrderByDescending(x=>x.Priority).ToList();
+  var bags=new Dictionary<uint,List<uint>>();var generated=new List<GeneratedIsland>(old.Islands);uint[]? cinis=null;
+  foreach(var rec in records)
+  {
+   uint set,resolved;if(rec.Fixed!=0){set=rec.Fixed;resolved=ResolveSet(set,fertilitySetting,profile);}else if(perSetting){resolved=RuleVariant(rules,rec.Priority,fertilitySetting);set=RoleOfVariant[resolved];}else{set=Rule(rules,rec.Priority);resolved=set;}
+   var assigned=Assign(rec.Asset,Sets[resolved],bags,r);if(rec.Fixed==144793)cinis=assigned;
+   generated.Add(new(rec.Asset.Name,rec.SlotIndex,rec.Size,set,assigned,rec.SlotIndex<0?sites:sitesBySlot[rec.SlotIndex]));
+  }
+  var size=2688+Math.Max(offset.X,offset.Y);
+  if(layout is not null&&baseLayout is not null)
+  {
+   // The old map keeps its frame; Cinis and the new islands sit at their slot position plus the enlargement offset (not wiggled).
+   layout.Items.AddRange(baseLayout.Items);layout.Add(CinisName,MapLayout.Island,-1,0,1920+offset.X,1920+offset.Y);
+   foreach(var q in p){var half=SlotHalf(q.Slot.Size);var pos=CorePosition(q.Asset,q.Rot,q.Slot.X+half,q.Slot.Y+half);layout.Add(q.Asset.Name,MapLayout.Island,q.Slot.Index,q.Rot,pos.X+offset.X,pos.Y+offset.Y);}
+   layout.Width=size;layout.FullX=layout.FullY=0;layout.FullSize=size;layout.BaseX=layout.BaseY=0;layout.BaseSize=baseLayout.Width;
+  }
+  return new LatiumGeneration(seed,size,sites,cinis??[],generated,RegionMetrics.Calculate(generated));
  }
  internal static string[] DebugPlacements(uint seed,MapProfile profile)
  {
   var r=new Rng(seed);r.Advance(9);var original=Slots(profile);var starters=original.Where(x=>x.Type==1).ToList();r.Shuffle(starters);var slots=original.Where(x=>x.Type!=1).Concat(starters).ToList();r.Shuffle(slots);slots=slots.OrderByDescending(x=>x.Type).ToList();
   var groups=new Dictionary<(int,string),List<Asset>>{{(7,"Medium"),A("roman_dlc01_island_medium_01","roman_dlc01_island_medium_02","roman_dlc01_island_medium_03")},{(7,"Small"),A("roman_dlc01_island_small_02","roman_dlc_01_island_small_01")},{(1,"XL"),A("roman_island_extralarge_01","roman_island_extralarge_02","roman_island_extralarge_03","roman_island_extralarge_04")},{(0,"Large"),A("roman_island_large_01","roman_island_large_02","roman_island_large_03","roman_island_large_04","roman_island_large_05","roman_island_large_06","roman_island_large_07","roman_island_large_09")},{(0,"Medium"),A(Enumerable.Range(1,8).Select(i=>$"roman_island_medium_{i:00}").ToArray())},{(0,"Small"),A(Enumerable.Range(1,7).Select(i=>$"roman_island_small_{i:00}").ToArray())}};
-  var cycled=new HashSet<(int,string)>();var result=new List<string>();foreach(var slot in slots){var key=PoolKey(slot.Type,slot.Size);var candidates=groups[key];var refilled=candidates.Count==0;var independent=cycled.Contains(key);if(refilled){groups[key]=candidates=LatiumPool(key);cycled.Add(key);independent=false;}if(independent)candidates=LatiumPool(key);uint choiceRaw=0;var choice=0;if(candidates.Count>1){choiceRaw=r.Next();choice=(int)(((ulong)choiceRaw*(uint)candidates.Count)>>32);}var asset=candidates[choice];if(!independent)candidates.RemoveAt(choice);var raw=r.Next();var rawRotation=(byte)(raw>>30);var rotation=slot.Type!=1?rawRotation:profile.Template==MapTemplateKind.IslandChains&&profile.Dlc01?IslandChainStarterRotation(profile,slot,asset):slot.Size=="XL"?(profile.Template==MapTemplateKind.Archipelago?ArchipelagoStarterRotation(slot,asset.Name,starters):StarterRotation(slot,asset.Name,starters)):RomanStarterRotation(profile,slot,asset,starters);var position=CorePosition(asset,rotation,slot.X+SlotHalf(slot.Size),slot.Y+SlotHalf(slot.Size));result.Add($"{asset.Name}|{rotation}|{slot.Index}|{slot.X}|{slot.Y}|{rawRotation}|{position.X}|{position.Y}|{raw}|choice={choice}|choiceRaw={choiceRaw}|refill={refilled}|independent={independent}|type={slot.Type}");}return[..result];
+  var cycled=new HashSet<(int,string)>();var result=new List<string>();foreach(var slot in slots){var key=PoolKey(slot.Type,slot.Size);var candidates=groups[key];var refilled=candidates.Count==0;var independent=cycled.Contains(key);if(refilled){groups[key]=candidates=LatiumPool(key);cycled.Add(key);independent=false;}if(independent)candidates=LatiumPool(key);uint choiceRaw=0;var choice=0;if(candidates.Count>1){choiceRaw=r.Next();choice=(int)(((ulong)choiceRaw*(uint)candidates.Count)>>32);}var asset=candidates[choice];if(!independent)candidates.RemoveAt(choice);var raw=r.Next();var rawRotation=(byte)(raw>>30);var rotation=slot.Type!=1?rawRotation:LatiumStarterRotation(profile,slot,asset,starters);var position=CorePosition(asset,rotation,slot.X+SlotHalf(slot.Size),slot.Y+SlotHalf(slot.Size));result.Add($"{asset.Name}|{rotation}|{slot.Index}|{slot.X}|{slot.Y}|{rawRotation}|{position.X}|{position.Y}|{raw}|choice={choice}|choiceRaw={choiceRaw}|refill={refilled}|independent={independent}|type={slot.Type}");}return[..result];
  }
  internal static string DebugDecorationOrder(uint seed,MapProfile profile,int width,int thirdPartyDraws)
  {
@@ -790,46 +666,95 @@ internal static class Generator
  {
   var result=new (int X,int Y)[80];var count=0;for(var radius=24;radius<=96;radius+=24){for(var x=-radius;x<=radius;x+=24){result[count++]=(x,radius);result[count++]=(x,-radius);}for(var y=-radius+24;y<=radius-24;y+=24){result[count++]=(radius,y);result[count++]=(-radius,y);}}return result;
  }
- static (int X,int Y)[] WiggleArchipelago(Rng r,int width,List<Placed> core,GeneratorScratch scratch,MapProfile profile,uint[] thirdPartyRaw,List<string>? trace,bool debugSkipContinentalExclusion=false,bool debugAllowWiggleTies=false,bool debugEuclideanWiggleDistance=false,int? debugWiggleBorder=null,int? debugWigglePasses=null,bool debugWiggleBest=false,int? debugWiggleDilate=null,int debugWiggleAnchorMode=0,int? debugWiggleMargin=null,bool debugWiggleBlockContinental=false,bool debugSpecialCollisionTrace=false,int? debugPreWiggleAdvance=null,bool debugWiggleNeverAccept=false)
+ // The player start points (where ships spawn on the first map): the type-2 elements of the map template, identical for every
+ // seed of a template and size. Wiggle (Rift) and decoration placement keep clear of them.
+ static (int X,int Y)[] StartPoints(MapProfile profile)
+ {
+  // The template depends on the size (Large/Medium/Small). Values come from roman_province_*.a7tinfo (base game) and, with DLC01,
+  // from the DLC01 templates where they differ (Corners and Island Chains).
+  var size=profile.Size;
+  if(profile.Dlc01)
+    return profile.Template switch
+    {
+     MapTemplateKind.IslandChains=>[size switch{MapSizeKind.Large=>(1048,1040),MapSizeKind.Medium=>(1080,1048),_=>(1072,1024)}],
+     MapTemplateKind.Atoll=>[(1040,1064)],
+     MapTemplateKind.Rift=>[(472,1584),(1568,472)],
+     MapTemplateKind.Archipelago=>[size switch{MapSizeKind.Large=>(1072,1064),MapSizeKind.Medium=>(1032,1056),_=>(1024,1072)}],
+     _=>size switch
+     {
+      MapSizeKind.Large=>[(456,1584),(1576,1584),(456,456),(1576,456)],
+      MapSizeKind.Medium=>[(536,1504),(1496,544),(536,544),(1496,1504)],
+      _=>[(536,1584),(536,448),(1496,1584),(1496,440)]
+     }
+    };
+  return profile.Template switch
+  {
+   MapTemplateKind.IslandChains=>[size switch{MapSizeKind.Large=>(1048,1040),MapSizeKind.Medium=>(1080,1048),_=>(1072,1024)}],
+   MapTemplateKind.Atoll=>[(1040,1064)],
+   MapTemplateKind.Rift=>[(472,1584),(1568,472)],
+   MapTemplateKind.Archipelago=>[size switch{MapSizeKind.Large=>(1072,1064),MapSizeKind.Medium=>(1032,1056),_=>(1024,1072)}],
+   _=>size switch
+   {
+    MapSizeKind.Large=>[(464,1576),(464,464),(1568,472),(1576,1576)],
+    MapSizeKind.Medium=>[(536,1504),(1496,544),(1496,1504),(536,544)],
+    // Small Corners uses the corner points of the DLC01 template without DLC as well; the base game file lists different ones.
+    _=>[(536,1584),(536,448),(1496,1584),(1496,440)]
+   }
+  };
+ }
+ // Without DLC the map is shrink-wrapped around its content: width = (larger span of the islands' full images, third parties
+ // included, + 111) rounded down to 16, and the content is centred with half the free space rounded up to 8 (the same rule as
+ // Albion).
+ static (int Width,int ShiftX,int ShiftY,(int X0,int Y0,int X1,int Y1) Playable) FitOpenMap(MapProfile profile,List<Placed> core,(int X,int Y)[] positions,uint[] thirdPartyRaw,(int X,int Y)[]? specialPositions=null)
+ {
+  int x0=int.MaxValue,y0=int.MaxValue,x1=int.MinValue,y1=int.MinValue;
+  void Grow(Asset asset,byte rotation,(int X,int Y) position){var mapW=rotation is 0 or 2?asset.W:asset.H;var mapH=rotation is 0 or 2?asset.H:asset.W;x0=Math.Min(x0,position.X);y0=Math.Min(y0,position.Y);x1=Math.Max(x1,position.X+mapW);y1=Math.Max(y1,position.Y+mapH);}
+  for(var index=0;index<core.Count;index++)Grow(core[index].Asset,core[index].Rot,positions[index]);
+  var pirate=IslandMasks.Asset("roman_island_3rdparty_pirate_01");var raider=profile.LatiumSpecials.Single(special=>special.Kind=="Raider");var pirateRotation=(byte)(thirdPartyRaw[0]>>30);Grow(pirate,pirateRotation,specialPositions?[0]??CorePosition(pirate,pirateRotation,raider.X+160,raider.Y+160));
+  var traders=new[]{IslandMasks.Asset("roman_island_3rdparty_trader_01"),IslandMasks.Asset("roman_island_3rdparty_trader_02")};var anchors=profile.LatiumSpecials.Where(special=>special.Kind=="Trader").Select(special=>(X:special.X+128,Y:special.Y+128)).ToArray();
+  if((thirdPartyRaw[1]&1)==0)(traders[0],traders[1])=(traders[1],traders[0]);if((thirdPartyRaw[2]&1)==0)(anchors[0],anchors[1])=(anchors[1],anchors[0]);
+  for(var index=0;index<2;index++){var rotation=(byte)(thirdPartyRaw[index+3]>>30);Grow(traders[index],rotation,specialPositions?[index+1]??CorePosition(traders[index],rotation,anchors[index].X,anchors[index].Y));}
+  var spanX=x1-x0;var spanY=y1-y0;var width=(Math.Max(spanX,spanY)+111)/16*16;
+  // The content box is centred and the shift rounded up to a multiple of 8. When the centring shift is negative and not already
+  // a multiple of 8 (the box starts beyond the centre), the game lands one step (8) further out.
+  static int Centre(int free,int min){var half=free/2;var shift=(half+7)/8*8-min;return half<min&&(half-min)%8!=0?shift+8:shift;}
+  var fitShiftX=Centre(width-spanX,x0);var fitShiftY=Centre(width-spanY,y0);
+  // The playable area is the content box grown by (free space - 40) / 2 on every side.
+  var margins=((width-spanX-40)/2,(width-spanY-40)/2);
+  return(width,fitShiftX,fitShiftY,(x0+fitShiftX-margins.Item1,y0+fitShiftY-margins.Item2,x1+fitShiftX+margins.Item1,y1+fitShiftY+margins.Item2));
+ }
+ static (int X,int Y)[] WiggleArchipelago(Rng r,int width,List<Placed> core,GeneratorScratch scratch,MapProfile profile,uint[] thirdPartyRaw,List<string>? trace)
  {
   var positions=scratch.GetPositions(core.Count);for(var index=0;index<core.Count;index++){var placed=core[index];var half=SlotHalf(placed.Slot.Size);positions[index]=CorePosition(placed.Asset,placed.Rot,placed.Slot.X+half,placed.Slot.Y+half);}
-  // The game stores attraction targets as element origins.  The moving
-  // island's active-area centre is compared to these raw coordinates.
-  var attractionPoints=scratch.GetAttractionPoints(core.Count+5);var attractionCount=0;attractionPoints[attractionCount++]=(1072,1064);for(var index=0;index<core.Count;index++)if(core[index].Slot.Type==1){var sp=positions[index];if(debugWiggleAnchorMode==2){var sa=core[index].Asset;var sm=sa.Min(core[index].Rot);var ss=sa.Size(core[index].Rot);sp=(sp.X+sm.X+ss.X/2,sp.Y+sm.Y+ss.Y/2);}attractionPoints[attractionCount++]=sp;}if(profile.Dlc01)attractionPoints[attractionCount++]=(1920,1920);
-  var margin=debugWiggleMargin??16;var occupied=scratch.CountedOccupied;occupied.Reset(width/8);for(var index=0;index<core.Count;index++){var placed=core[index];var position=positions[index];occupied.Add(IslandMasks.Get(placed.Asset.Name),position.X/8,position.Y/8,placed.Rot);}if(profile.Dlc01&&!debugSkipContinentalExclusion)occupied.Add(IslandMasks.Get(CinisName),1920/8,1920/8,0);occupied.Set(1072/8,1064/8);
+  // Only starting islands (and Cinis when present) attract the movable
+  // islands. NPC islands participate in collision checks but are not targets;
+  // the template centre is neither a target nor an artificial obstacle.
+  var attractionPoints=scratch.GetAttractionPoints(core.Count+1);var attractionCount=0;if(profile.Dlc01)attractionPoints[attractionCount++]=(1920,1920);for(var index=0;index<core.Count;index++)if(core[index].Slot.Type==1)attractionPoints[attractionCount++]=positions[index];
+  const int clearance=16;const int collisionBorder=2;var blockWiggleAtStartPoints=profile.Template==MapTemplateKind.Rift;const int startBlockBorder=24;var occupied=scratch.CountedOccupied;occupied.Reset(width/8);for(var index=0;index<core.Count;index++){var placed=core[index];var position=positions[index];occupied.Add(IslandMasks.Get(placed.Asset.Name),position.X/8,position.Y/8,placed.Rot);}if(profile.Dlc01)occupied.Add(IslandMasks.Get(CinisName),1920/8,1920/8,0);
   var traderAnchor0=(X:0,Y:0);var traderAnchor1=(X:0,Y:0);MapSpecial? raiderSpecial=null;var traderIndex=0;foreach(var special in profile.LatiumSpecials)if(special.Kind=="Raider")raiderSpecial=special;else if(traderIndex++==0)traderAnchor0=(special.X+128,special.Y+128);else traderAnchor1=(special.X+128,special.Y+128);
   var trader0="roman_island_3rdparty_trader_01";var trader1="roman_island_3rdparty_trader_02";if((thirdPartyRaw[1]&1)==0)(trader0,trader1)=(trader1,trader0);if((thirdPartyRaw[2]&1)==0)(traderAnchor0,traderAnchor1)=(traderAnchor1,traderAnchor0);
-  void AddSpecial(string name,int anchorX,int anchorY,byte rotation){var mask=IslandMasks.Get(name);var position=CorePosition(mask.Asset,rotation,anchorX,anchorY);attractionPoints[attractionCount++]=position;if(debugSpecialCollisionTrace)trace?.Add($"specialcollision|{name}|{occupied.Overlaps(mask,position.X/8,position.Y/8,rotation)}");occupied.Add(mask,position.X/8,position.Y/8,rotation);}
+  void AddSpecial(string name,int anchorX,int anchorY,byte rotation){var mask=IslandMasks.Get(name);var position=CorePosition(mask.Asset,rotation,anchorX,anchorY);occupied.Add(mask,position.X/8,position.Y/8,rotation);}
   var raider=raiderSpecial??throw new InvalidOperationException("Raider-Position fehlt.");AddSpecial("roman_island_3rdparty_pirate_01",raider.X+160,raider.Y+160,(byte)(thirdPartyRaw[0]>>30));AddSpecial(trader0,traderAnchor0.X,traderAnchor0.Y,(byte)(thirdPartyRaw[3]>>30));AddSpecial(trader1,traderAnchor1.X,traderAnchor1.Y,(byte)(thirdPartyRaw[4]>>30));
-  if(debugPreWiggleAdvance is int preWiggleAdvance)r.Advance(preWiggleAdvance);
   var offsets=scratch.GetWiggleOffsets(ArchipelagoOffsets.Length);
-  for(var pass=0;pass<(debugWigglePasses??2);pass++)
+  for(var pass=0;pass<2;pass++)
   {
    ArchipelagoOffsets.AsSpan().CopyTo(offsets);
    for(var placedIndex=0;placedIndex<core.Count;placedIndex++)
    {
    var placed=core[placedIndex];if(placed.Slot.Type==1)continue;r.Shuffle(offsets.AsSpan(0,ArchipelagoOffsets.Length));var mask=IslandMasks.Get(placed.Asset.Name);var current=positions[placedIndex];occupied.Remove(mask,current.X/8,current.Y/8,placed.Rot);
-   var min=placed.Asset.Min(placed.Rot);var size=placed.Asset.Size(placed.Rot);var cx=debugWiggleAnchorMode==1?current.X:current.X+min.X+size.X/2;var cy=debugWiggleAnchorMode==1?current.Y:current.Y+min.Y+size.Y/2;var distance=int.MaxValue;for(var pointIndex=0;pointIndex<attractionCount;pointIndex++){var point=attractionPoints[pointIndex];var dx=cx-point.X;var dy=cy-point.Y;distance=Math.Min(distance,debugEuclideanWiggleDistance?dx*dx+dy*dy:Math.Abs(dx)+Math.Abs(dy));}
-   var bestFound=false;var bestDistance=int.MaxValue;(int X,int Y) bestCandidate=default;
+   var min=placed.Asset.Min(placed.Rot);var size=placed.Asset.Size(placed.Rot);var cx=current.X+min.X+size.X/2;var cy=current.Y+min.Y+size.Y/2;var distance=int.MaxValue;for(var pointIndex=0;pointIndex<attractionCount;pointIndex++){var point=attractionPoints[pointIndex];distance=Math.Min(distance,Math.Abs(cx-point.X)+Math.Abs(cy-point.Y));}
    for(var offsetIndex=0;offsetIndex<ArchipelagoOffsets.Length;offsetIndex++)
    {
     var offset=offsets[offsetIndex];
     var candidate=(X:current.X+offset.X,Y:current.Y+offset.Y);var x0=candidate.X+min.X;var y0=candidate.Y+min.Y;var x1=x0+size.X;var y1=y0+size.Y;
-    var candidateDistance=int.MaxValue;for(var pointIndex=0;pointIndex<attractionCount;pointIndex++){var point=attractionPoints[pointIndex];var dx=cx+offset.X-point.X;var dy=cy+offset.Y-point.Y;candidateDistance=Math.Min(candidateDistance,debugEuclideanWiggleDistance?dx*dx+dy*dy:Math.Abs(dx)+Math.Abs(dy));}
-    var blocksFixedPoint=x0-margin-8<=1072&&1072<x1+margin+8&&y0-margin-8<=1064&&1064<y1+margin+8;
-    if(debugWiggleBlockContinental&&profile.Dlc01)blocksFixedPoint=blocksFixedPoint||(x0-margin-8<=1920&&1920<x1+margin+8&&y0-margin-8<=1920&&1920<y1+margin+8);
-    var distanceRejected=debugWiggleNeverAccept||(debugAllowWiggleTies?candidateDistance>distance:candidateDistance>=distance);
-    if(distanceRejected||blocksFixedPoint||x0<margin||y0<margin||x1>width-margin||y1>width-margin){trace?.Add($"reject|{pass}|{placed.Asset.Name}|{offset.X}|{offset.Y}|bounds|cd={candidateDistance}|d={distance}|blocks={blocksFixedPoint}");continue;}
-    // A small cardinal clearance around each candidate footprint reproduces the
-    // real game's wiggle acceptance far more accurately than a bare mask overlap
-    // (verified against 15 independent Archipelago savegames across all sizes:
-    // position accuracy rises from ~45% to ~66% with no regressions observed).
-    var overlaps=debugWiggleDilate is int wiggleDilate?occupied.OverlapsDilated(mask,candidate.X/8,candidate.Y/8,placed.Rot,wiggleDilate):occupied.Overlaps(mask,candidate.X/8,candidate.Y/8,placed.Rot,debugWiggleBorder??1);
-    if(overlaps){trace?.Add($"reject|{pass}|{placed.Asset.Name}|{offset.X}|{offset.Y}|overlap");continue;}
-    if(debugWiggleBest){if(candidateDistance<bestDistance){bestDistance=candidateDistance;bestCandidate=candidate;bestFound=true;}continue;}
+    var candidateDistance=int.MaxValue;for(var pointIndex=0;pointIndex<attractionCount;pointIndex++){var point=attractionPoints[pointIndex];candidateDistance=Math.Min(candidateDistance,Math.Abs(cx+offset.X-point.X)+Math.Abs(cy+offset.Y-point.Y));}
+    var mapWidth=placed.Rot is 0 or 2?placed.Asset.W:placed.Asset.H;var mapHeight=placed.Rot is 0 or 2?placed.Asset.H:placed.Asset.W;
+    var playableMin=20-clearance;var playableMax=(profile.Dlc01?2440:2020)+clearance;
+    if(candidateDistance>=distance||candidate.X<clearance||candidate.Y<clearance||candidate.X+mapWidth>width-clearance||candidate.Y+mapHeight>width-clearance||x0<playableMin||y0<playableMin||x1>playableMax||y1>playableMax)continue;
+    if(blockWiggleAtStartPoints){var blocked=false;foreach(var start in StartPoints(profile))if(candidate.X-startBlockBorder<=start.X&&start.X<candidate.X+mapWidth+startBlockBorder&&candidate.Y-startBlockBorder<=start.Y&&start.Y<candidate.Y+mapHeight+startBlockBorder)blocked=true;if(blocked)continue;}
+    if(occupied.Overlaps(mask,candidate.X/8,candidate.Y/8,placed.Rot,collisionBorder))continue;
     positions[placedIndex]=candidate;trace?.Add($"wiggle|{pass}|{placed.Asset.Name}|{offset.X}|{offset.Y}");break;
    }
-   if(debugWiggleBest&&bestFound){trace?.Add($"wiggle|{pass}|{placed.Asset.Name}|{bestCandidate.X-current.X}|{bestCandidate.Y-current.Y}");positions[placedIndex]=bestCandidate;}
    var final=positions[placedIndex];occupied.Add(mask,final.X/8,final.Y/8,placed.Rot);
    }
   }
@@ -843,7 +768,7 @@ internal static class Generator
   var traderAssets=new[]{IslandMasks.Asset("roman_island_3rdparty_trader_01"),IslandMasks.Asset("roman_island_3rdparty_trader_02")};var traderAnchors=profile.LatiumSpecials.Where(special=>special.Kind=="Trader").Select(special=>(X:special.X+128,Y:special.Y+128)).ToArray();if((thirdPartyRaw[1]&1)==0)(traderAssets[0],traderAssets[1])=(traderAssets[1],traderAssets[0]);if((thirdPartyRaw[2]&1)==0)(traderAnchors[0],traderAnchors[1])=(traderAnchors[1],traderAnchors[0]);
   var raider=profile.LatiumSpecials.Single(special=>special.Kind=="Raider");specialAssets[0]=IslandMasks.Asset("roman_island_3rdparty_pirate_01");specialRotations[0]=(byte)(thirdPartyRaw[0]>>30);specialPositions[0]=CorePosition(specialAssets[0],specialRotations[0],raider.X+160,raider.Y+160);for(var index=0;index<2;index++){specialAssets[index+1]=traderAssets[index];specialRotations[index+1]=(byte)(thirdPartyRaw[index+3]>>30);specialPositions[index+1]=CorePosition(specialAssets[index+1],specialRotations[index+1],traderAnchors[index].X,traderAnchors[index].Y);}
   var occupied=scratch.CountedOccupied;occupied.Reset(width/8);for(var index=0;index<core.Count;index++)occupied.Add(IslandMasks.Get(core[index].Asset.Name),positions[index].X/8,positions[index].Y/8,core[index].Rot);for(var index=0;index<3;index++)occupied.Add(IslandMasks.Get(specialAssets[index].Name),specialPositions[index].X/8,specialPositions[index].Y/8,specialRotations[index]);if(profile.Dlc01)occupied.Add(IslandMasks.Get(CinisName),1920/8,1920/8,0);
-  const int clearance=16;const int collisionBorder=24;var(fixedX,fixedY)=profile.Size switch{MapSizeKind.Large=>(1048,1040),MapSizeKind.Medium=>(1080,1048),_=>(1072,1024)};var playableMin=20-clearance;var playableMax=(profile.Dlc01?2440:profile.LatiumTemplateSize-248)+clearance;var offsets=scratch.GetWiggleOffsets(ArchipelagoOffsets.Length);ArchipelagoOffsets.AsSpan().CopyTo(offsets);
+  const int clearance=16;const int collisionBorder=24;var(fixedX,fixedY)=StartPoints(profile)[0];var playableMin=20-clearance;var playableMax=(profile.Dlc01?2440:2020)+clearance;var offsets=scratch.GetWiggleOffsets(ArchipelagoOffsets.Length);ArchipelagoOffsets.AsSpan().CopyTo(offsets);
   void Move(Asset asset,byte rotation,ref (int X,int Y) current,string name)
   {
    r.Shuffle(offsets.AsSpan(0,ArchipelagoOffsets.Length));var mask=IslandMasks.Get(asset.Name);occupied.Remove(mask,current.X/8,current.Y/8,rotation);var min=asset.Min(rotation);var size=asset.Size(rotation);var mapWidth=rotation is 0 or 2?asset.W:asset.H;var mapHeight=rotation is 0 or 2?asset.H:asset.W;var centerX=current.X+min.X+size.X/2;var centerY=current.Y+min.Y+size.Y/2;var currentDistance=int.MaxValue;for(var pointIndex=0;pointIndex<attractionCount;pointIndex++){var point=attractions[pointIndex];currentDistance=Math.Min(currentDistance,Math.Abs(centerX-point.X)+Math.Abs(centerY-point.Y));}
@@ -857,26 +782,24 @@ internal static class Generator
   for(var index=0;index<core.Count;index++){if(core[index].Slot.Type==1)continue;var current=positions[index];Move(core[index].Asset,core[index].Rot,ref current,core[index].Asset.Name);positions[index]=current;}for(var index=0;index<3;index++){var current=specialPositions[index];Move(specialAssets[index],specialRotations[index],ref current,specialAssets[index].Name);specialPositions[index]=current;}
   return(positions,specialPositions);
  }
- static void PlaceDecorations(Rng r,int width,int shiftX,int shiftY,List<Placed> core,uint[] thirdPartyRaw,GeneratorScratch scratch,MapProfile profile,List<string>? trace=null,(int X,int Y)[]? corePositions=null,(int X,int Y)[]? movedSpecialPositions=null,bool cardinalCollision=false)
+ static void PlaceDecorations(Rng r,int width,int shiftX,int shiftY,List<Placed> core,uint[] thirdPartyRaw,GeneratorScratch scratch,MapProfile profile,List<string>? trace=null,(int X,int Y)[]? corePositions=null,(int X,int Y)[]? movedSpecialPositions=null,bool cardinalCollision=false,(int X0,int Y0,int X1,int Y1)? playable=null,MapLayout? layout=null)
  {
   var occupied=scratch.Occupied;occupied.Reset(width/8);
   void Add(Asset asset,int x,int y,byte rotation)=>occupied.Add(IslandMasks.Get(asset.Name),x/8,y/8,rotation);
-  if(profile.Dlc01)Add(IslandMasks.Asset(CinisName),1920+shiftX,1920+shiftY,0);
+  if(profile.Dlc01){Add(IslandMasks.Asset(CinisName),1920+shiftX,1920+shiftY,0);layout?.Add(CinisName,MapLayout.Island,-1,0,1920+shiftX,1920+shiftY);}
   for(var index=0;index<core.Count;index++)
   {
    var placed=core[index];var half=SlotHalf(placed.Slot.Size);var position=corePositions is null?CorePosition(placed.Asset,placed.Rot,placed.Slot.X+half,placed.Slot.Y+half):corePositions[index];
    var x=position.X+shiftX;var y=position.Y+shiftY;
-   Add(placed.Asset,x,y,placed.Rot);
+   Add(placed.Asset,x,y,placed.Rot);layout?.Add(placed.Asset.Name,MapLayout.Island,placed.Slot.Index,placed.Rot,x,y);
   }
-  var fixedPoints=profile.Template==MapTemplateKind.IslandChains
-   ?new[]{profile.Size switch{MapSizeKind.Large=>(1048,1040),MapSizeKind.Medium=>(1080,1048),_=>(1072,1024)}}
-   :new[]{(456,1584),(1576,1584),(456,456),(1576,456)};
+  var fixedPoints=StartPoints(profile);
   foreach(var point in fixedPoints)occupied.Set((point.Item1+shiftX)/8,(point.Item2+shiftY)/8);
 
   var specialPositionIndex=0;void AtAnchor(Asset asset,(int X,int Y) anchor,byte rotation)
   {
    var position=movedSpecialPositions is null?CorePosition(asset,rotation,anchor.X,anchor.Y):movedSpecialPositions[specialPositionIndex++];
-   Add(asset,position.X+shiftX,position.Y+shiftY,rotation);
+   Add(asset,position.X+shiftX,position.Y+shiftY,rotation);layout?.Add(asset.Name,MapLayout.Special,-1,rotation,position.X+shiftX,position.Y+shiftY);
   }
   var raider=profile.LatiumSpecials.Single(special=>special.Kind=="Raider");
   AtAnchor(IslandMasks.Asset("roman_island_3rdparty_pirate_01"),(raider.X+160,raider.Y+160),(byte)(thirdPartyRaw[0]>>30));
@@ -892,8 +815,13 @@ internal static class Generator
   const int clearanceCells=2;
   bool Bounds((int X0,int Y0,int X1,int Y1) rect)
   {
-   const int playableMin=20;var margin=clearanceCells*8;var playableMax=profile.Dlc01?2440:profile.LatiumTemplateSize-248;
+   const int playableMin=20;var margin=clearanceCells*8;var playableMax=profile.Dlc01?2440:2020;
    var px0=playableMin-margin;var py0=playableMin-margin;var px1=playableMax+shiftX+margin;var py1=playableMax+shiftY+margin;
+   // The playable rectangle is compared in whole 8-unit cells, so its far edges round up.
+   px1=(px1+7)/8*8;py1=(py1+7)/8*8;
+   // Without DLC the map is shrink-wrapped, and the playable rectangle is the whole map minus an 8-unit rim.
+   if(!profile.Dlc01&&playable is {} area){px0=area.X0-margin;py0=area.Y0-margin;px1=area.X1+margin;py1=area.Y1+margin;}
+   else if(!profile.Dlc01){px1=width-8;py1=width-8;}
    var overlaps=rect.X1>px0&&rect.Y1>py0&&rect.X0<px1&&rect.Y0<py1;
    if(overlaps)return rect.X0>=px0&&rect.Y0>=py0&&rect.X1<=px1&&rect.Y1<=py1;
    return false;
@@ -903,21 +831,23 @@ internal static class Generator
    var rotation=(byte)axis;var min=asset.Min(rotation);var size=asset.Size(rotation);
    var collisionMargin=clearanceCells*8;if(x-collisionMargin<=0||y-collisionMargin<=0||x+size.X+collisionMargin>=width||y+size.Y+collisionMargin>=width)return false;
    var mapW=rotation is 0 or 2?asset.W:asset.H;var mapH=rotation is 0 or 2?asset.H:asset.W;
-   var full=(X0:x-min.X,Y0:y-min.Y,X1:x-min.X+mapW,Y1:y-min.Y+mapH);if(!Bounds(full))return false;
+   var full=(X0:x-min.X,Y0:y-min.Y,X1:x-min.X+mapW,Y1:y-min.Y+mapH);
+   // A decoration turned a quarter turn (rotation 1) is tested in the clearance pass with the horizontal box offset of the
+   // OPPOSITE quarter turn (rotation 3), as if the engine turned it the other way round; the check after the flip draw uses the
+   // plain footprint. The offset is min(1).X - min(3).X: 16 for deco_01, 8 for deco_02/03/05, 0 for deco_04/06.
+   var clearanceShift=rotation==1?min.X-asset.Min(3).X:0;
+   if(!Bounds((full.X0+clearanceShift,full.Y0,full.X1+clearanceShift,full.Y1)))return false;
    const int scanFarBorderCells=clearanceCells+1;
    if(cardinalCollision){var mask=IslandMasks.Get(asset.Name);var fullX=(x-min.X)/8;var fullY=(y-min.Y)/8;foreach(var cell in mask.Cells[rotation]){var px=fullX+cell.X;var py=fullY+cell.Y;for(var dy=-scanFarBorderCells;dy<=scanFarBorderCells;dy++)for(var dx=-scanFarBorderCells;dx<=scanFarBorderCells;dx++)if(occupied.Any(px+dx,py+dy,px+dx,py+dy))return false;}return true;}
    // The native scan starts one 8-unit sample before the already-expanded
    // active rectangle and includes the matching sample at the far edge.
-   if(profile.Template!=MapTemplateKind.IslandChains)return !occupied.Any(x/8-scanFarBorderCells,y/8-scanFarBorderCells,(x+size.X)/8+scanFarBorderCells,(y+size.Y)/8+scanFarBorderCells);
-   // Island Chains uses the native half-open leading edges. A single fringe
-   // contact is outside the rasterized rectangle; a supported corner is not.
-   var x0=x/8-clearanceCells;var y0=y/8-clearanceCells;var x1=(x+size.X)/8+scanFarBorderCells;var y1=(y+size.Y)/8+scanFarBorderCells;
-   if(occupied.Any(x0,y0,x1,y1))return false;
-   var farX=x/8-scanFarBorderCells;var farY=y/8-scanFarBorderCells;
-   return !(occupied.Any(farX,farY,farX,y1)&&occupied.Any(x0,farY,x1,farY));
+   var scanX0=x/8-scanFarBorderCells;var scanY0=y/8-scanFarBorderCells;var scanX1=(x+size.X)/8+scanFarBorderCells;var scanY1=(y+size.Y)/8+scanFarBorderCells;
+   return !occupied.Any(scanX0,scanY0,scanX1,scanY1,true);
   }
   var preference=0;
-  for(var placedIndex=0;placedIndex<14;placedIndex++)
+  // The DLC adds four decoration islands: 14 with it, 10 without.
+  var decorationCount=profile.Dlc01?14:10;
+  for(var placedIndex=0;placedIndex<decorationCount;placedIndex++)
   {
    var asset=decorations[placedIndex%decorations.Count];var done=false;
    for(var gridIndex=0;gridIndex<gridLength;gridIndex++)
@@ -928,55 +858,11 @@ internal static class Generator
     var rotation=(byte)(axis+2*r.Scaled(2));var min=asset.Min(rotation);
     var mapW=rotation is 0 or 2?asset.W:asset.H;var mapH=rotation is 0 or 2?asset.H:asset.W;
     var finalBounds=(X0:x-min.X,Y0:y-min.Y,X1:x-min.X+mapW,Y1:y-min.Y+mapH);
-    // On Island Chains, deco_01's native full footprint has an additional left safety cell.
-    if((profile.Template==MapTemplateKind.IslandChains&&asset.Name=="roman_island_deco_01"&&finalBounds.X0<16)||!Bounds(finalBounds)){trace?.Add($"retry|{placedIndex}|{asset.Name}|{gridIndex}|{x}|{y}|{rotation}");continue;}
-    Add(asset,x-min.X,y-min.Y,rotation);trace?.Add($"placed|{placedIndex}|{asset.Name}|{gridIndex}|{x-min.X}|{y-min.Y}|{rotation}");preference^=1;done=true;break;
+    if(!Bounds(finalBounds)){trace?.Add($"retry|{placedIndex}|{asset.Name}|{gridIndex}|{x}|{y}|{rotation}");continue;}
+    Add(asset,x-min.X,y-min.Y,rotation);layout?.Add(asset.Name,MapLayout.Decoration,-1,rotation,x-min.X,y-min.Y);trace?.Add($"placed|{placedIndex}|{asset.Name}|{gridIndex}|{x-min.X}|{y-min.Y}|{rotation}");preference^=1;done=true;break;
    }
    if(!done&&profile.Dlc01)throw new InvalidOperationException($"Dekorationsinsel {placedIndex+1} konnte nicht platziert werden.");
   }
- }
- // Atoll's decoration phase consumes one extra draw per placement that is rejected
- // and retried, so its tail is "base + retries". Measured against 13 Atoll/Large
- // savegames the base (no retry) is 69; individual seeds need 70 or 71 when one or
- // two placements were retried. The retry itself happens when a candidate passes the
- // clearance test but its 180-degree-flipped footprint falls outside the playable
- // bounds - a map-edge effect that cannot be reconstructed from a finished map,
- // because the rejected candidates leave no trace in it. Until Atoll's real
- // decoration routine is reimplemented, seeds that are not listed here are reported
- // through AmbiguousDecorationTails so the search can try every possible value.
- // Holds every seed checked against a savegame, including the ones that match the 69
- // default, so membership doubles as "this seed is verified" for AmbiguousDecorationTails.
- static readonly Dictionary<(MapSizeKind,uint),int> VerifiedAtollDecorationTail=new()
- {
-  [(MapSizeKind.Large,1u)]=69,[(MapSizeKind.Large,2u)]=71,[(MapSizeKind.Large,3u)]=70,[(MapSizeKind.Large,4u)]=69,
-  [(MapSizeKind.Large,5u)]=69,[(MapSizeKind.Large,6u)]=69,[(MapSizeKind.Large,7u)]=69,[(MapSizeKind.Large,8u)]=71,
-  [(MapSizeKind.Large,9u)]=70,[(MapSizeKind.Large,10u)]=70,[(MapSizeKind.Large,999u)]=69,
-  [(MapSizeKind.Large,333_333u)]=71,[(MapSizeKind.Large,666_666_666u)]=69,
-  [(MapSizeKind.Small,999u)]=69
- };
- static readonly int[] AtollDecorationTailCandidates=[69,70,71];
- // Tail values an unverified seed could legitimately have. Empty when the value is
- // known (or the profile is not affected), so callers can skip the extra work.
- internal static IReadOnlyList<int> AmbiguousDecorationTails(MapProfile profile,uint seed)=>
-  profile.Template==MapTemplateKind.Atoll&&profile.Dlc01&&!VerifiedAtollDecorationTail.ContainsKey((profile.Size,seed))?AtollDecorationTailCandidates:[];
- static void AdvanceTemplatePhase(Rng r,uint seed,MapProfile profile,uint[] thirdPartyRaw,int width,int? decorationTailOverride=null)
- {
-  if(profile.Template==MapTemplateKind.Archipelago)
-  {
-   const int archipelagoGrid=176;r.ShuffleCount(archipelagoGrid*archipelagoGrid);r.ShuffleCount(6);
-   // Archipelago's two attraction passes can add one draw each, depending on
-   // the generated NPC orientation used by the collision pass.
-   var pirateRotation=(int)(thirdPartyRaw[0]>>30);var secondPass=(thirdPartyRaw[2]&0x80000000u)!=0;var firstPass=secondPass||(thirdPartyRaw[3]&0x80000000u)!=0;
-   r.Advance(264+(pirateRotation==3?(firstPass?1:0)+(secondPass?1:0):0));return;
-  }
-  var (grid,tail)=profile.Template switch
-  {
-   MapTemplateKind.Atoll=>(profile.Dlc01?177:profile.Size==MapSizeKind.Large?140:137,decorationTailOverride??VerifiedAtollDecorationTail.GetValueOrDefault((profile.Size,seed),profile.Dlc01?69:profile.Size==MapSizeKind.Large?50:71)),
-   MapTemplateKind.Rift=>(profile.Dlc01&&profile.Size is MapSizeKind.Small or MapSizeKind.Medium&&width>2712?179:profile.Dlc01?178:137,profile.Dlc01&&profile.Size is MapSizeKind.Small or MapSizeKind.Medium&&width>2712?33:51),
-   MapTemplateKind.IslandChains=>(profile.Dlc01?172:132,313),
-   _=>throw new InvalidOperationException($"Keine RNG-Phase für {profile.Template} definiert.")
-  };
-  r.ShuffleCount(grid*grid);r.ShuffleCount(6);r.Advance(tail);
  }
  static(int X,int Y)CorePosition(Asset asset,byte rotation,int targetX,int targetY)
  {
@@ -989,6 +875,14 @@ internal static class Generator
  }
  static int SlotHalf(string size)=>size switch{"Small"=>128,"Medium"=>160,"Large" or "XL"=>216,_=>throw new ArgumentOutOfRangeException(nameof(size))};
  static uint Rule(List<uint>x,int type){for(var i=0;i<x.Count;i++){var v=x[i];if(type==1?v==31312:v is 3656 or 14198){x.RemoveAt(i);x.Add(v);return v;}}throw new InvalidOperationException();}
+ internal static readonly Dictionary<uint,uint> RoleOfVariant=new(){[41833]=31312,[41834]=3656,[41835]=14198,[145110]=144793,[41837]=31312,[41838]=3656,[41839]=14198,[145109]=144793};
+ static List<uint> SettingRuleList(FertilitySetting setting)=>setting==FertilitySetting.Regular?[41833,41834,41835,145110]:[41837,41838,41839,145109];
+ static uint RuleVariant(List<uint> x,int type,FertilitySetting setting)
+ {
+  var starter=setting==FertilitySetting.Regular?41833u:41837u;var tierA=setting==FertilitySetting.Regular?41834u:41838u;var tierB=setting==FertilitySetting.Regular?41835u:41839u;
+  for(var i=0;i<x.Count;i++){var v=x[i];if(type==1?v==starter:v==tierA||v==tierB){x.RemoveAt(i);x.Add(v);return v;}}
+  throw new InvalidOperationException();
+ }
  static uint[] Assign(Asset island,uint[] defs,Dictionary<uint,List<uint>>bags,Rng r){var z=new List<uint>();foreach(var pool in defs){if(!Pools.TryGetValue(pool,out var src)){z.Add(pool);continue;}var rejected=0;var fresh=false;while(true){if(!bags.TryGetValue(pool,out var bag))bags[pool]=bag=[];if(bag.Count==0){bag.AddRange(src);r.Shuffle(bag);fresh=true;rejected=0;}var v=bag[^1];bag.RemoveAt(bag.Count-1);if(!z.Contains(v)&&(!(v is 8577 or 32027)||island.HasRiver)){z.Add(v);break;}if(bag.Count!=rejected){bag.Add(v);(bag[rejected],bag[^1])=(bag[^1],bag[rejected]);rejected++;continue;}if(!fresh){bag.Clear();continue;}throw new InvalidOperationException();}}return[..z];}
  static List<Asset>A(params string[]n)=>n.Select(x=>Assets[x]).ToList();
  static (int Type,string Size)PoolKey(int type,string size)=>type==1&&size!="XL"?(0,size):(type,size);
@@ -1002,59 +896,13 @@ internal static class Generator
   (0,"Small")=>A(Enumerable.Range(1,7).Select(i=>$"roman_island_small_{i:00}").ToArray()),
   _=>throw new InvalidOperationException($"Kein Latium-Inselpool für Typ {key.Type}, Größe {key.Size}.")
  };
- static byte StarterRotation(Slot slot,string name,IReadOnlyList<Slot> starters)
+ // A starting island turns so that its "start coast" faces the middle of the map: the rotation is the quarter turn whose coast
+ // direction is closest to the direction from the starting bay to the map centre. One rule for every template, with or without
+ // DLC.
+ static byte LatiumStarterRotation(MapProfile profile,Slot slot,Asset asset,IReadOnlyList<Slot> starters)
  {
-  var asset=int.Parse(name[^2..])-1;var centerX=starters.Average(x=>x.X);var centerY=starters.Average(x=>x.Y);
-  var east=slot.X>=centerX;var south=slot.Y>=centerY;
-  return (east,south) switch
-  {
-   (false,false)=>new byte[]{2,1,2,1}[asset],
-   (true,true)=>new byte[]{0,3,0,3}[asset],
-   (false,true)=>new byte[]{1,1,1,0}[asset],
-   _=>new byte[]{2,2,3,2}[asset]
-  };
- }
- static byte ArchipelagoStarterRotation(Slot slot,string name,IReadOnlyList<Slot> starters)
- {
-  var asset=int.Parse(name[^2..])-1;var centerX=starters.Average(x=>x.X);var centerY=starters.Average(x=>x.Y);
-  var east=slot.X>=centerX;var south=slot.Y>=centerY;
-  return (east,south) switch
-  {
-   (false,false)=>new byte[]{2,1,2,1}[asset],
-   (true,false)=>new byte[]{2,2,2,1}[asset],
-   (false,true)=>new byte[]{1,1,1,1}[asset],
-   _=>new byte[]{2,2,2,1}[asset]
-  };
- }
- static byte IslandChainStarterRotation(MapProfile profile,Slot slot,Asset asset)
- {
-  // The chain template's four starting bays face along the chain rather than
-  // toward the quadrant centre used by the other templates. The directions
-  // are template geometry; the island-specific StartCoastDirection then picks
-  // the nearest quarter-turn for every seed. Ported from the original author's generator.
-  var targetDegrees=slot.Index switch
-  {
-   18=>45d,
-   19=>profile.Size==MapSizeKind.Large?88d:92d,
-   20=>5d,
-   21=>15d,
-   _=>throw new InvalidOperationException($"Unbekannter Inselketten-Startslot {slot.Index}.")
-  };
-  var target=targetDegrees*Math.PI/180;var direction=RomanStartCoastDirections[asset.Name];var best=0;var distance=double.MaxValue;
-  for(var rotation=0;rotation<4;rotation++){var delta=Math.Abs((direction+rotation*Math.PI/2-target)%(2*Math.PI));delta=Math.Min(delta,2*Math.PI-delta);if(delta<distance){distance=delta;best=rotation;}}
-  return(byte)best;
- }
- static byte RomanStarterRotation(MapProfile profile,Slot slot,Asset asset,IReadOnlyList<Slot> starters)
- {
-  if(profile is {Template:MapTemplateKind.Corners,Size:MapSizeKind.Small})
-  {
-   if(slot.Index==19&&asset.Name=="roman_island_large_04")return 1;
-   if(slot.Index==19&&asset.Name=="roman_island_large_02")return 0;
-   if(slot.Index==20&&asset.Name=="roman_island_large_04")return 0;
-  }
-  if(profile is {Template:MapTemplateKind.Rift,Size:MapSizeKind.Medium}&&slot.Index==23&&asset.Name=="roman_island_large_09")return 2;
-  var direction=RomanStartCoastDirections[asset.Name];var centerX=starters.Average(x=>x.X);var centerY=starters.Average(x=>x.Y);var east=slot.X>=centerX;var south=slot.Y>=centerY;
-  var target=(east,south) switch{(false,false)=>Math.PI/4,(true,false)=>3*Math.PI/4,(false,true)=>7*Math.PI/4,_=>5*Math.PI/4};var best=0;var distance=double.MaxValue;
+  var half=SlotHalf(slot.Size);var centre=profile.LatiumTemplateSize/2d;var target=Math.Atan2(centre-(slot.Y+half),centre-(slot.X+half));if(target<0)target+=2*Math.PI;
+  var direction=RomanStartCoastDirections[asset.Name];var best=0;var distance=double.MaxValue;
   for(var rotation=0;rotation<4;rotation++){var delta=Math.Abs((direction+rotation*Math.PI/2-target)%(2*Math.PI));delta=Math.Min(delta,2*Math.PI-delta);if(delta<distance){distance=delta;best=rotation;}}
   return(byte)best;
  }
@@ -1075,10 +923,11 @@ internal static class AlbionGenerator
  [ThreadStatic]static WorldBits? decorationOccupied;
  [ThreadStatic]static int[]? decorationGrid;
 
- public static List<GeneratedIsland> Generate(uint seed,MapProfile? profile=null,int? debugPhaseDraws=null,FertilitySetting fertilitySetting=FertilitySetting.Abundant)
+ public static List<GeneratedIsland> Generate(uint seed,MapProfile? profile=null,int? debugPhaseDraws=null,FertilitySetting fertilitySetting=FertilitySetting.Abundant,SlotSetting slotSetting=SlotSetting.Abundant,MapLayout? layout=null)
  {
   profile??=MapProfiles.Default;
-  var core=GenerateCore(seed,profile,debugPhaseDraws);var r=core.Rng;var placed=core.Placed;var sitesBySlot=core.SitesBySlot;
+  if(profile.Retro)profile=MapProfiles.Get(profile.Template,profile.Size,false);
+  var core=GenerateCore(seed,profile,debugPhaseDraws,slotSetting,layout:layout);var r=core.Rng;var placed=core.Placed;var sitesBySlot=core.SitesBySlot;
   var rules=new List<uint>{8174,8179,8181};r.Shuffle(rules);r.Shuffle(placed);placed=placed.OrderByDescending(x=>x.Slot.Type).ToList();var bags=new Dictionary<uint,List<uint>>();var result=new List<GeneratedIsland>();
   foreach(var item in placed){var set=Rule(rules,item.Slot.Type);var resolved=Generator.ResolveSet(set,fertilitySetting,profile);var assigned=Assign(item.Asset,Sets[resolved],bags,r);result.Add(new(item.Asset.Name,item.Slot.Index,item.Slot.Size,set,assigned,sitesBySlot[item.Slot.Index]));}return result;
  }
@@ -1096,7 +945,7 @@ internal static class AlbionGenerator
   var core=GeneratePlacementCore(seed,profile);var movement=core.Rng.Clone();movement.Advance(movementAdvance);var positions=MoveIslandChain(movement,core.Placed,core.Specials);return MapWidth(core.Placed,core.Specials,profile,positions.Core,positions.Specials);
  }
 
- static AlbionCore GenerateCore(uint seed,MapProfile profile,int? debugPhaseDraws=null,List<string>? debugDecorationTrace=null)
+ static AlbionCore GenerateCore(uint seed,MapProfile profile,int? debugPhaseDraws=null,SlotSetting slotSetting=SlotSetting.Abundant,List<string>? debugDecorationTrace=null,MapLayout? layout=null)
  {
   var r=new Rng(seed);r.Advance(9);var original=Slots(profile);var starters=original.Where(x=>x.Type==1).ToList();r.Shuffle(starters);var slots=original.Where(x=>x.Type==0).Concat(starters).ToList();r.Shuffle(slots);slots=slots.OrderByDescending(x=>x.Type).ToList();
   var pools=new Dictionary<string,List<AlbionAsset>>{{"Large",A(Enumerable.Range(1,8).Select(i=>$"celtic_island_large_{i:00}"))},{"Medium",A(Enumerable.Range(1,7).Select(i=>$"celtic_island_medium_{i:00}"))},{"Small",A(Enumerable.Range(1,7).Select(i=>$"celtic_island_small_{i:00}"))}};
@@ -1105,12 +954,8 @@ internal static class AlbionGenerator
   var movedPositions=profile.Template==MapTemplateKind.IslandChains?MoveIslandChain(debugPhaseDraws is null?r:r.Clone(),placed,specials):default;
   var width=MapWidth(placed,specials,profile,movedPositions.Core,movedPositions.Specials);
   if(debugPhaseDraws is int draws)r.Advance(draws);
-  else if(profile.Template==MapTemplateKind.Rift)
-  {
-   var retries=PlaceDecorations(r.Clone(),placed,specials,profile,width,movedPositions.Core,movedPositions.Specials,debugDecorationTrace,true);var grid=width/16;r.ShuffleCount(grid*grid);r.ShuffleCount(8);r.Advance(10+(retries>0?1:0));
-  }
-  else PlaceDecorations(r,placed,specials,profile,width,movedPositions.Core,movedPositions.Specials,debugDecorationTrace);
-  var sitesBySlot=new Dictionary<int,SiteCounts>(placed.Count);foreach(var item in placed)sitesBySlot[item.Slot.Index]=SiteActivation.GenerateAlbion(r,item.Asset);
+  else PlaceDecorations(r,placed,specials,profile,width,movedPositions.Core,movedPositions.Specials,debugDecorationTrace,layout:layout);
+  var sitesBySlot=new Dictionary<int,SiteCounts>(placed.Count);foreach(var item in placed)sitesBySlot[item.Slot.Index]=SiteActivation.GenerateAlbion(r,item.Asset,slotSetting);
   return new(r,placed,sitesBySlot,width);
  }
 
@@ -1118,7 +963,7 @@ internal static class AlbionGenerator
  {
   var r=new Rng(seed);r.Advance(9);var original=Slots(profile);var starters=original.Where(x=>x.Type==1).ToList();r.Shuffle(starters);var slots=original.Where(x=>x.Type==0).Concat(starters).ToList();r.Shuffle(slots);slots=slots.OrderByDescending(x=>x.Type).ToList();
   var pools=new Dictionary<string,List<AlbionAsset>>{{"Large",A(Enumerable.Range(1,8).Select(i=>$"celtic_island_large_{i:00}"))},{"Medium",A(Enumerable.Range(1,7).Select(i=>$"celtic_island_medium_{i:00}"))},{"Small",A(Enumerable.Range(1,7).Select(i=>$"celtic_island_small_{i:00}"))}};var result=new List<string>();
-  foreach(var slot in slots){var candidates=pools[slot.Size];if(candidates.Count==0)pools[slot.Size]=candidates=AlbionPool(slot.Size);var choice=candidates.Count==1?0:(int)r.Scaled((uint)candidates.Count);var asset=candidates[choice];candidates.RemoveAt(choice);var raw=r.Next();var rotation=slot.Type==1?StarterRotation(profile,slot,asset,starters):(byte)(raw>>30);var position=Position(asset,rotation,slot.X+(slot.Size=="Large"?216:slot.Size=="Medium"?160:128),slot.Y+(slot.Size=="Large"?216:slot.Size=="Medium"?160:128));result.Add($"{asset.Name}|{rotation}|{slot.Index}|{position.X}|{position.Y}");}return[..result];
+  foreach(var slot in slots){var candidates=pools[slot.Size];if(candidates.Count==0)pools[slot.Size]=candidates=AlbionPool(slot.Size);var choice=candidates.Count==1?0:(int)r.Scaled((uint)candidates.Count);var asset=candidates[choice];candidates.RemoveAt(choice);var raw=r.Next();var rotation=slot.Type==1?StarterRotation(profile,slot,asset,starters):(byte)(raw>>30);var position=Position(asset,rotation,slot.X+(slot.Size=="Large"?216:slot.Size=="Medium"?160:128),slot.Y+(slot.Size=="Large"?216:slot.Size=="Medium"?160:128));result.Add($"{asset.Name}|{rotation}|{slot.Index}|{position.X}|{position.Y}|{slot.Type}|{slot.X}|{slot.Y}");}return[..result];
  }
 
  internal static string[] DebugMovedPlacements(uint seed,MapProfile profile,int movementAdvance=0)
@@ -1130,7 +975,7 @@ internal static class AlbionGenerator
  {
   var core=GeneratePlacementCore(seed,profile);var moved=MoveIslandChain(core.Rng.Clone(),core.Placed,core.Specials);return core.Specials.Select((item,index)=>$"{item.Asset.Name}|{item.Rotation}|{moved.Specials[index].X}|{moved.Specials[index].Y}").ToArray();
  }
- internal static string[] DebugDecorations(uint seed,MapProfile profile){var trace=new List<string>();GenerateCore(seed,profile,null,trace);return[..trace];}
+ internal static string[] DebugDecorations(uint seed,MapProfile profile){var trace=new List<string>();GenerateCore(seed,profile,null,SlotSetting.Abundant,trace);return[..trace];}
  internal static string[] DebugWigglePermutations(uint seed,MapProfile profile)
  {
   var core=GeneratePlacementCore(seed,profile);var permutation=Enumerable.Range(0,80).ToArray();var result=new List<string>();foreach(var item in core.Placed){if(item.Slot.Type==1)continue;core.Rng.Shuffle(permutation);result.Add($"{item.Asset.Name}|{string.Join(',',permutation)}");}return[..result];
@@ -1153,32 +998,64 @@ internal static class AlbionGenerator
   var first=placed[0];var initial=Bounds(first.Asset,first.Rotation,positions?[0]??Position(first));var minX=initial.X0;var minY=initial.Y0;var maxX=initial.X1;var maxY=initial.Y1;
   for(var i=1;i<placed.Count;i++){var item=placed[i];Expand(ref minX,ref minY,ref maxX,ref maxY,Bounds(item.Asset,item.Rotation,positions?[i]??Position(item)));}
   for(var index=0;index<specials.Count;index++){var special=specials[index];Expand(ref minX,ref minY,ref maxX,ref maxY,Bounds(special.Asset,special.Rotation,specialPositions?[index]??special.Position));}
-  var width=(Math.Max(maxX-minX,maxY-minY)+111)/16*16;return profile is {Template:MapTemplateKind.Archipelago,Size:MapSizeKind.Large}?Math.Max(2016,width):width;
+  var width=(Math.Max(maxX-minX,maxY-minY)+111)/16*16;return width;
  }
 
- static int PlaceDecorations(Rng r,List<AlbionPlaced> placed,List<AlbionSpecialPlaced> specials,MapProfile profile,int width,(int X,int Y)[]? positions,(int X,int Y)[]? specialPositions,List<string>? trace=null,bool cardinalCollision=false)
+ static (int X,int Y)[] AlbionStartPoints(MapProfile profile)
+ {
+  var size=profile.Size;
+  return profile.Template switch
+  {
+   MapTemplateKind.Rift=>[(472,1560),(size==MapSizeKind.Large?1560:1552,480)],
+   MapTemplateKind.Atoll=>[size switch{MapSizeKind.Large=>(1016,1000),MapSizeKind.Medium=>(1040,1016),_=>(1032,976)}],
+   MapTemplateKind.Archipelago=>[size==MapSizeKind.Small?(952,1088):(952,1080)],
+   MapTemplateKind.IslandChains=>[size switch{MapSizeKind.Large=>(1096,1040),MapSizeKind.Medium=>(1080,1048),_=>(1072,1056)}],
+   _=>size switch
+   {
+    MapSizeKind.Large=>[(536,1504),(1496,544),(1496,1504),(536,544)],
+    MapSizeKind.Medium=>[(568,1440),(576,608),(1464,1432),(1472,608)],
+    _=>[(600,1408),(600,648),(1432,1416),(1432,640)]
+   }
+  };
+ }
+ static int PlaceDecorations(Rng r,List<AlbionPlaced> placed,List<AlbionSpecialPlaced> specials,MapProfile profile,int width,(int X,int Y)[]? positions,(int X,int Y)[]? specialPositions,List<string>? trace=null,bool cardinalCollision=false,MapLayout? layout=null)
  {
   var first=Bounds(placed[0].Asset,placed[0].Rotation,positions?[0]??Position(placed[0]));var minX=first.X0;var minY=first.Y0;var maxX=first.X1;var maxY=first.Y1;
   for(var index=1;index<placed.Count;index++)Expand(ref minX,ref minY,ref maxX,ref maxY,Bounds(placed[index].Asset,placed[index].Rotation,positions?[index]??Position(placed[index])));
   for(var index=0;index<specials.Count;index++)Expand(ref minX,ref minY,ref maxX,ref maxY,Bounds(specials[index].Asset,specials[index].Rotation,specialPositions?[index]??specials[index].Position));
   var spanX=maxX-minX;var spanY=maxY-minY;var maxSpan=Math.Max(spanX,spanY);
-  static int Shift(int minimum,int span,int mapWidth,int maximumSpan){var free=mapWidth-span;if(span==maximumSpan){var ideal=free/2-minimum;return free==96?ideal:(ideal+15)/16*16;}return (free/2+7)/8*8+8-minimum;}
-  var shiftX=Shift(minX,spanX,width,maxSpan);var shiftY=Shift(minY,spanY,width,maxSpan);
+  int shiftX,shiftY;
+  // The islands are centred on both axes: half the free space rounded up to a multiple of 8, with the same extra step as Latium's
+  // FitOpenMap when the centring shift is negative and not a multiple of 8. The result is the IslandShift of the saved Albion
+  // template.
+  static int Centre(int free,int min){var half=free/2;var shift=(half+7)/8*8-min;return half<min&&(half-min)%8!=0?shift+8:shift;}
+  shiftX=Centre(width-spanX,minX);shiftY=Centre(width-spanY,minY);
   var freeX=width-spanX;var freeY=width-spanY;var playableX0=minX+shiftX-(freeX-40)/2;var playableY0=minY+shiftY-(freeY-40)/2;var playableX1=maxX+shiftX+(freeX-40)/2;var playableY1=maxY+shiftY+(freeY-40)/2;
 
   var occupied=decorationOccupied??=new WorldBits();occupied.Reset(width/8);
   void Add(string name,(int X,int Y) position,byte rotation)=>occupied.Add(IslandMasks.Get(name),(position.X+shiftX)/8,(position.Y+shiftY)/8,rotation);
   for(var index=0;index<placed.Count;index++)Add(placed[index].Asset.Name,positions?[index]??Position(placed[index]),placed[index].Rotation);
   for(var index=0;index<specials.Count;index++)Add(specials[index].Asset.Name,specialPositions?[index]??specials[index].Position,specials[index].Rotation);
-  var fixedPoints=profile.Template==MapTemplateKind.Rift
-   ?new[]{(X:472+shiftX,Y:1560+shiftY),(X:(profile.Size==MapSizeKind.Large?1560:1552)+shiftX,Y:480+shiftY)}
-   :Array.Empty<(int X,int Y)>();
+  // Player start points from celtic_province_*.a7tinfo. The ones stored in a savegame are not used: when Albion is the second
+  // province the ship spawns at a third-party harbour instead.
+  if(layout is not null)
+  {
+   layout.Width=width;layout.FullX=layout.FullY=0;layout.FullSize=width;layout.BaseSize=0;
+   for(var index=0;index<placed.Count;index++){var position=positions?[index]??Position(placed[index]);layout.Add(placed[index].Asset.Name,MapLayout.Island,placed[index].Slot.Index,placed[index].Rotation,position.X+shiftX,position.Y+shiftY);}
+   for(var index=0;index<specials.Count;index++){var position=specialPositions?[index]??specials[index].Position;layout.Add(specials[index].Asset.Name,MapLayout.Special,-1,specials[index].Rotation,position.X+shiftX,position.Y+shiftY);}
+  }
+  var fixedPoints=AlbionStartPoints(profile).Select(point=>(X:point.X+shiftX,Y:point.Y+shiftY)).ToArray();
+  // A start point occupies its own grid cell in the same occupancy grid the decoration scan reads.
+  foreach(var point in fixedPoints)occupied.Set(point.X/8,point.Y/8);
 
   var n=width/16;var length=n*n;if(decorationGrid is null||decorationGrid.Length<length)decorationGrid=new int[length];var grid=decorationGrid.AsSpan(0,length);for(var index=0;index<length;index++)grid[index]=index;r.Shuffle(grid);
   var decorations=new Asset[8];for(var index=0;index<decorations.Length;index++)decorations[index]=IslandMasks.Asset($"celtic_island_deco_{index+1:00}");r.Shuffle(decorations.AsSpan());
   const int clearanceCells=2;
   bool BoundsInside((int X0,int Y0,int X1,int Y1) bounds){var margin=clearanceCells*8;var x0=playableX0-margin;var y0=playableY0-margin;var x1=playableX1+margin;var y1=playableY1+margin;var overlaps=bounds.X1>x0&&bounds.Y1>y0&&bounds.X0<x1&&bounds.Y0<y1;return overlaps&&bounds.X0>=x0&&bounds.Y0>=y0&&bounds.X1<=x1&&bounds.Y1<=y1;}
-  bool AxisClear(Asset asset,int x,int y,int axis){var rotation=(byte)axis;var min=asset.Min(rotation);var size=asset.Size(rotation);var mapWidth=rotation is 0 or 2?asset.W:asset.H;var mapHeight=rotation is 0 or 2?asset.H:asset.W;var full=(X0:x-min.X,Y0:y-min.Y,X1:x-min.X+mapWidth,Y1:y-min.Y+mapHeight);if(!BoundsInside(full))return false;const int fixedBorder=24;foreach(var point in fixedPoints)if(full.X0-fixedBorder<=point.X&&point.X<full.X1+fixedBorder&&full.Y0-fixedBorder<=point.Y&&point.Y<full.Y1+fixedBorder)return false;if(cardinalCollision){var mask=IslandMasks.Get(asset.Name);foreach(var cell in mask.Cells[rotation]){var px=full.X0/8+cell.X;var py=full.Y0/8+cell.Y;if(occupied.Any(px,py,px,py)||occupied.Any(px-clearanceCells,py,px-clearanceCells,py)||occupied.Any(px+clearanceCells,py,px+clearanceCells,py)||occupied.Any(px,py-clearanceCells,px,py-clearanceCells)||occupied.Any(px,py+clearanceCells,px,py+clearanceCells))return false;}return true;}var border=clearanceCells+1;return !occupied.Any(x/8-border,y/8-border,(x+size.X)/8+border,(y+size.Y)/8+border);}
+  bool AxisClear(Asset asset,int x,int y,int axis){var rotation=(byte)axis;var min=asset.Min(rotation);var size=asset.Size(rotation);var mapWidth=rotation is 0 or 2?asset.W:asset.H;var mapHeight=rotation is 0 or 2?asset.H:asset.W;var full=(X0:x-min.X,Y0:y-min.Y,X1:x-min.X+mapWidth,Y1:y-min.Y+mapHeight);var clearanceShift=rotation==1?min.X-asset.Min(3).X:0;if(!BoundsInside((full.X0+clearanceShift,full.Y0,full.X1+clearanceShift,full.Y1)))return false;if(cardinalCollision){var mask=IslandMasks.Get(asset.Name);foreach(var cell in mask.Cells[rotation]){var px=full.X0/8+cell.X;var py=full.Y0/8+cell.Y;if(occupied.Any(px,py,px,py)||occupied.Any(px-clearanceCells,py,px-clearanceCells,py)||occupied.Any(px+clearanceCells,py,px+clearanceCells,py)||occupied.Any(px,py-clearanceCells,px,py-clearanceCells)||occupied.Any(px,py+clearanceCells,px,py+clearanceCells))return false;}return true;}var border=clearanceCells+1;var scanX0=x/8-border;var scanY0=y/8-border;var scanX1=(x+size.X)/8+border;var scanY1=(y+size.Y)/8+border;var cellsPerSide=width/8;
+  // The game's occupancy grid has one cell more than the map is wide on the far (right/bottom) side, so a scan rectangle may reach
+  // exactly one cell past it; anything further out, or past the near edge, is blocked. (Latium treats everything outside as free.)
+  return !(scanX0<0||scanY0<0||scanX1>cellsPerSide||scanY1>cellsPerSide||occupied.Any(scanX0,scanY0,Math.Min(scanX1,cellsPerSide-1),Math.Min(scanY1,cellsPerSide-1),true));}
   var preference=0;
   var retries=0;
   for(var placedIndex=0;placedIndex<10;placedIndex++)
@@ -1186,7 +1063,10 @@ internal static class AlbionGenerator
    var asset=decorations[placedIndex%decorations.Length];
    for(var gridIndex=0;gridIndex<length;gridIndex++)
    {
-    var cell=grid[gridIndex];var x=cell%n*16+8;var y=cell/n*16+8;var axis=preference;if(!AxisClear(asset,x,y,axis)){axis^=1;if(!AxisClear(asset,x,y,axis))continue;}var rotation=(byte)(axis+2*r.Scaled(2));var min=asset.Min(rotation);var mapWidth=rotation is 0 or 2?asset.W:asset.H;var mapHeight=rotation is 0 or 2?asset.H:asset.W;if(!BoundsInside((x-min.X,y-min.Y,x-min.X+mapWidth,y-min.Y+mapHeight))){retries++;trace?.Add($"retry|{placedIndex}|{asset.Name}|{gridIndex}|{x-min.X}|{y-min.Y}|{rotation}");continue;}occupied.Add(IslandMasks.Get(asset.Name),(x-min.X)/8,(y-min.Y)/8,rotation);trace?.Add($"placed|{placedIndex}|{asset.Name}|{gridIndex}|{x-min.X}|{y-min.Y}|{rotation}");preference^=1;break;
+    var cell=grid[gridIndex];var x=cell%n*16+8;var y=cell/n*16+8;var axis=preference;if(!AxisClear(asset,x,y,axis)){axis^=1;if(!AxisClear(asset,x,y,axis))continue;}var flip=(int)r.Scaled(2);var rotation=(byte)(axis+2*flip);var min=asset.Min(rotation);var mapWidth=rotation is 0 or 2?asset.W:asset.H;var mapHeight=rotation is 0 or 2?asset.H:asset.W;
+    // The drawn flip is final: a candidate whose flipped box leaves the map is retried at the next grid cell; the game does not fall
+    // back to the other axis.
+    if(!BoundsInside((x-min.X,y-min.Y,x-min.X+mapWidth,y-min.Y+mapHeight))){retries++;trace?.Add($"retry|{placedIndex}|{asset.Name}|{gridIndex}|{x-min.X}|{y-min.Y}|{rotation}");continue;}occupied.Add(IslandMasks.Get(asset.Name),(x-min.X)/8,(y-min.Y)/8,rotation);layout?.Add(asset.Name,MapLayout.Decoration,-1,rotation,x-min.X,y-min.Y);trace?.Add($"placed|{placedIndex}|{asset.Name}|{gridIndex}|{x-min.X}|{y-min.Y}|{rotation}");preference^=1;break;
    }
   }
   return retries;
@@ -1230,9 +1110,10 @@ internal static class AlbionGenerator
  static void Expand(ref int minX,ref int minY,ref int maxX,ref int maxY,(int X0,int Y0,int X1,int Y1) bounds){minX=Math.Min(minX,bounds.X0);minY=Math.Min(minY,bounds.Y0);maxX=Math.Max(maxX,bounds.X1);maxY=Math.Max(maxY,bounds.Y1);}
  static byte StarterRotation(MapProfile profile,AlbionSlot slot,AlbionAsset asset,IReadOnlyList<AlbionSlot> starters)
  {
-  if(profile.Template==MapTemplateKind.IslandChains&&slot.Index==13&&asset.Name=="celtic_island_large_04")return 1;
-  var centerX=starters.Average(x=>x.X);var centerY=starters.Average(x=>x.Y);var east=slot.X>=centerX;var south=slot.Y>=centerY;
-  var target=(east,south) switch{(false,false)=>Math.PI/4,(true,false)=>3*Math.PI/4,(false,true)=>7*Math.PI/4,_=>5*Math.PI/4};var best=0;var distance=double.MaxValue;for(var rotation=0;rotation<4;rotation++){var delta=Math.Abs((asset.StartCoastDirection+rotation*Math.PI/2-target)%(2*Math.PI));delta=Math.Min(delta,2*Math.PI-delta);if(delta<distance){distance=delta;best=rotation;}}return(byte)best;
+  // Same rule as Latium: the starting island faces the middle of the map (Albion's template is 2048 wide).
+  var target=Math.Atan2(1024-(slot.Y+216),1024-(slot.X+216));if(target<0)target+=2*Math.PI;var best=0;var distance=double.MaxValue;
+  for(var rotation=0;rotation<4;rotation++){var delta=Math.Abs((asset.StartCoastDirection+rotation*Math.PI/2-target)%(2*Math.PI));delta=Math.Min(delta,2*Math.PI-delta);if(delta<distance){distance=delta;best=rotation;}}
+  return(byte)best;
  }
  static uint Rule(List<uint> rules,int type){for(var i=0;i<rules.Count;i++){var value=rules[i];if(type==1?value==8174:value is 8179 or 8181){rules.RemoveAt(i);rules.Add(value);return value;}}throw new InvalidOperationException();}
  static uint[] Assign(AlbionAsset island,uint[] definitions,Dictionary<uint,List<uint>> bags,Rng r)
@@ -1276,57 +1157,112 @@ internal static class SiteActivation
  {
   ["celtic_island_large_01"]=new(6,0,8,3,0,1,6),["celtic_island_large_02"]=new(6,0,8,3,0,1,6),["celtic_island_large_03"]=new(6,0,8,3,0,1,6),["celtic_island_large_04"]=new(6,0,8,3,0,1,6),
   ["celtic_island_large_05"]=new(6,0,8,3,0,1,8),["celtic_island_large_06"]=new(7,0,8,3,0,1,5),["celtic_island_large_07"]=new(6,0,8,3,0,1,6),["celtic_island_large_08"]=new(6,0,8,3,0,1,7),
-  ["celtic_island_medium_01"]=new(3,0,6,1,0,1,5),["celtic_island_medium_02"]=new(4,0,7,1,0,1,3),["celtic_island_medium_03"]=new(3,0,6,1,0,1,5),["celtic_island_medium_04"]=new(4,0,7,1,0,1,2),
+  ["celtic_island_medium_01"]=new(3,0,6,1,0,1,5),["celtic_island_medium_02"]=new(4,0,7,1,0,1,3),["celtic_island_medium_03"]=new(3,0,6,1,0,1,5),["celtic_island_medium_04"]=new(4,0,7,2,0,1,2),
   ["celtic_island_medium_05"]=new(4,0,7,1,0,1,3),["celtic_island_medium_06"]=new(4,0,7,1,0,1,3),["celtic_island_medium_07"]=new(4,0,7,1,0,1,3),
   ["celtic_island_small_01"]=new(0,0,4,1,0,1,0),["celtic_island_small_02"]=new(2,0,4,1,0,1,0),["celtic_island_small_03"]=new(1,0,3,1,0,1,0),["celtic_island_small_04"]=new(0,0,2,1,0,1,0),
   ["celtic_island_small_05"]=new(2,0,3,1,0,1,1),["celtic_island_small_06"]=new(0,0,1,1,0,1,2),["celtic_island_small_07"]=new(1,0,2,1,0,1,0)
  };
 
- public static SiteCounts GenerateLatium(Rng rng,Asset asset)=>Generate(rng,Latium[asset.Name]);
- public static SiteCounts GenerateAlbion(Rng rng,AlbionAsset asset)=>Generate(rng,Albion[asset.Name]);
 
- static SiteCounts Generate(Rng rng,Definition definition)
+ // Slot counts come from MapGeneratorSlotCount in assets.xml (slot assets 2882 Roman Mountain, 2969 Roman River, 5281 Celtic
+ // Mountain; 5282 Celtic Marsh has no RandomMapObject and is therefore always the island's fixed number). The rows Low/Medium/High
+ // are the game's sparse/regular/abundant options; the values below are each row's minimum per island size, and every row spans
+ // three values except Roman Mountain / Small / Low, which is 2..3.
+ // An island offers a number of fixed slots plus a number of random ones (FixedSlots and Definition.Random*, read from the island
+ // files). The fixed ones are handed out first and the rest is filled up until the requested number is reached, so the result is
+ // max(fixed, requested) capped by fixed + random.
+ static readonly Dictionary<(bool Albion,bool River,string Size),(int Low,int Medium,int High)> SlotMinimums=new()
  {
-  var mountain=Activate(rng,definition.RandomMountain,definition.MountainMinimum,definition.MountainVariants);
-  var river=Activate(rng,definition.RandomRiver,definition.RiverMinimum,definition.RiverVariants);
+  [(false,false,"Small")]=(2,3,4),[(false,false,"Medium")]=(3,4,5),[(false,false,"Large")]=(4,5,6),[(false,false,"XL")]=(5,6,7),[(false,false,"Continental")]=(12,16,17),
+  [(false,true,"Small")]=(4,5,6),[(false,true,"Medium")]=(5,6,7),[(false,true,"Large")]=(6,7,8),[(false,true,"XL")]=(7,8,9),[(false,true,"Continental")]=(17,19,21),
+  [(true,false,"Small")]=(4,5,6),[(true,false,"Medium")]=(5,6,7),[(true,false,"Large")]=(6,7,8),[(true,false,"XL")]=(7,8,9)
+ };
+ static readonly Dictionary<string,(int Mountain,int River)> FixedSlots=new(StringComparer.OrdinalIgnoreCase)
+ {
+  ["celtic_island_large_01"]=(6,0),["celtic_island_large_02"]=(6,0),["celtic_island_large_03"]=(6,0),["celtic_island_large_04"]=(6,0),
+  ["celtic_island_large_05"]=(6,0),["celtic_island_large_06"]=(6,0),["celtic_island_large_07"]=(6,0),["celtic_island_large_08"]=(6,0),
+  ["celtic_island_medium_01"]=(3,0),["celtic_island_medium_02"]=(3,0),["celtic_island_medium_03"]=(3,0),["celtic_island_medium_04"]=(4,0),
+  ["celtic_island_medium_05"]=(3,0),["celtic_island_medium_06"]=(3,0),["celtic_island_medium_07"]=(3,0),["celtic_island_small_01"]=(4,0),
+  ["celtic_island_small_02"]=(2,0),["celtic_island_small_03"]=(2,0),["celtic_island_small_04"]=(2,0),["celtic_island_small_05"]=(1,0),
+  ["celtic_island_small_06"]=(1,0),["celtic_island_small_07"]=(1,0),["roman_dlc01_island_continental_01"]=(12,4),["roman_dlc01_island_medium_01"]=(3,0),
+  ["roman_dlc01_island_medium_02"]=(3,0),["roman_dlc01_island_medium_03"]=(2,0),["roman_dlc01_island_small_02"]=(1,0),["roman_dlc_01_island_small_01"]=(1,0),
+  ["roman_island_extralarge_01"]=(5,0),["roman_island_extralarge_02"]=(6,0),["roman_island_extralarge_03"]=(6,13),["roman_island_extralarge_04"]=(5,13),
+  ["roman_island_large_01"]=(5,0),["roman_island_large_02"]=(5,0),["roman_island_large_03"]=(5,0),["roman_island_large_04"]=(5,0),
+  ["roman_island_large_05"]=(5,0),["roman_island_large_06"]=(5,0),["roman_island_large_07"]=(4,1),["roman_island_large_09"]=(5,12),
+  ["roman_island_medium_01"]=(3,0),["roman_island_medium_02"]=(3,0),["roman_island_medium_03"]=(3,0),["roman_island_medium_04"]=(3,0),
+  ["roman_island_medium_05"]=(3,0),["roman_island_medium_06"]=(3,0),["roman_island_medium_07"]=(3,0),["roman_island_medium_08"]=(3,0),
+  ["roman_island_small_01"]=(2,0),["roman_island_small_02"]=(1,0),["roman_island_small_03"]=(1,0),["roman_island_small_04"]=(1,0),
+  ["roman_island_small_05"]=(1,0),["roman_island_small_06"]=(1,0),["roman_island_small_07"]=(1,1)
+ };
+
+ static string SizeOf(string name)
+ {
+  var n=name.ToLowerInvariant();
+  return n.Contains("continental")?"Continental":n.Contains("extralarge")?"XL":n.Contains("large")?"Large":n.Contains("medium")?"Medium":"Small";
+ }
+ static(int Minimum,int Span)Requested(bool albion,bool river,string size,SlotSetting slots)
+ {
+  if(!SlotMinimums.TryGetValue((albion,river,size),out var rows))return(0,1);
+  var minimum=slots switch{SlotSetting.Sparse=>rows.Low,SlotSetting.Regular=>rows.Medium,_=>rows.High};
+  var span=!albion&&!river&&size=="Small"&&slots==SlotSetting.Sparse?2:3;
+  return(minimum,span);
+ }
+ static SiteCounts Generate(Rng rng,string name,Definition definition,bool albion,SlotSetting slots)
+ {
+  var size=SizeOf(name);var fixedSlots=FixedSlots.TryGetValue(name,out var f)?f:(Mountain:0,River:0);
+  var mountain=Activate(rng,definition.RandomMountain,fixedSlots.Mountain,Requested(albion,false,size,slots));
+  var river=Activate(rng,definition.RandomRiver,fixedSlots.River,Requested(albion,true,size,slots));
   return new(mountain,river,definition.Marsh);
  }
-
- static int Activate(Rng rng,int candidates,int minimum,int variants)
+ static int Activate(Rng rng,int random,int fixedSlots,(int Minimum,int Span) requested)
  {
-  if(candidates==0)return minimum;
-  var result=minimum;if(variants>1){result+=(int)rng.Scaled((uint)variants);candidates--;}
-  rng.Advance(candidates);return result;
+  if(random==0)return fixedSlots;
+  var remaining=random;var wanted=requested.Minimum;
+  // The variant is drawn uniformly over the row's own span; the uneven split some islands show comes from clamping when one end of
+  // the range is cut off by the fixed slots or the capacity.
+  if(requested.Span>1){wanted+=(int)rng.Scaled((uint)requested.Span);remaining--;}
+  rng.Advance(remaining);
+  return Math.Min(Math.Max(fixedSlots,wanted),fixedSlots+random);
  }
+ public static SiteCounts GenerateLatium(Rng rng,Asset asset,SlotSetting slots=SlotSetting.Abundant)=>Generate(rng,asset.Name,Latium[asset.Name],false,slots);
+ public static SiteCounts GenerateAlbion(Rng rng,AlbionAsset asset,SlotSetting slots=SlotSetting.Abundant)=>Generate(rng,asset.Name,Albion[asset.Name],true,slots);
+
 }
 
+internal enum SlotSetting{Abundant,Regular,Sparse}
 internal readonly record struct SiteCounts(int Mountain,int River,int Marsh=0)
 {
  public static SiteCounts operator +(SiteCounts left,SiteCounts right)=>new(left.Mountain+right.Mountain,left.River+right.River,left.Marsh+right.Marsh);
 }
 internal sealed record GeneratedIsland(string Name,int SlotIndex,string Size,uint FertilitySet,uint[] Fertilities,SiteCounts Sites);
-internal readonly record struct IslandArea(int Total,int Swamp=0);
+internal readonly record struct IslandArea(int Total,int Swamp=0,int Harbour=0);
 internal static class IslandAreas
 {
  static readonly Dictionary<string,IslandArea> Values=new(StringComparer.OrdinalIgnoreCase)
  {
-  ["roman_island_extralarge_01"]=new(37009),["roman_island_extralarge_02"]=new(38861),["roman_island_extralarge_03"]=new(37806),["roman_island_extralarge_04"]=new(41686),
-  ["roman_island_large_01"]=new(31573),["roman_island_large_02"]=new(28392),["roman_island_large_03"]=new(32617),["roman_island_large_04"]=new(27653),["roman_island_large_05"]=new(28377),["roman_island_large_06"]=new(30314),["roman_island_large_07"]=new(30792),["roman_island_large_09"]=new(30089),
-  ["roman_island_medium_01"]=new(13369),["roman_island_medium_02"]=new(12644),["roman_island_medium_03"]=new(11332),["roman_island_medium_04"]=new(11951),["roman_island_medium_05"]=new(12807),["roman_island_medium_06"]=new(11682),["roman_island_medium_07"]=new(13458),["roman_island_medium_08"]=new(17113),
-  ["roman_island_small_01"]=new(5019),["roman_island_small_02"]=new(4145),["roman_island_small_03"]=new(5286),["roman_island_small_04"]=new(6816),["roman_island_small_05"]=new(5622),["roman_island_small_06"]=new(6346),["roman_island_small_07"]=new(5860),
-  // DLC islands use the same active build-area masks, scaled by the measured base-island ratio for their size class.
-  ["roman_dlc01_island_continental_01"]=new(139909),["roman_dlc01_island_medium_01"]=new(13382),["roman_dlc01_island_medium_02"]=new(14686),["roman_dlc01_island_medium_03"]=new(15168),["roman_dlc01_island_small_02"]=new(7819),["roman_dlc_01_island_small_01"]=new(5283),
-  ["celtic_island_large_01"]=new(22032,7144),["celtic_island_large_02"]=new(22563,10182),["celtic_island_large_03"]=new(23232,8834),["celtic_island_large_04"]=new(20794,8676),["celtic_island_large_05"]=new(22457,10939),["celtic_island_large_06"]=new(22865,9224),["celtic_island_large_07"]=new(20826,8757),["celtic_island_large_08"]=new(20721,8279),
-  ["celtic_island_medium_01"]=new(8869,6695),["celtic_island_medium_02"]=new(8881,2301),["celtic_island_medium_03"]=new(14265,5912),["celtic_island_medium_04"]=new(9850,2413),["celtic_island_medium_05"]=new(9946,3187),["celtic_island_medium_06"]=new(9634,2837),["celtic_island_medium_07"]=new(10970,3300),
-  ["celtic_island_small_01"]=new(3498),["celtic_island_small_02"]=new(4352),["celtic_island_small_03"]=new(4216),["celtic_island_small_04"]=new(3064),["celtic_island_small_05"]=new(3239,1348),["celtic_island_small_06"]=new(2174,1646),["celtic_island_small_07"]=new(3616)
+  ["roman_island_extralarge_01"]=new(37009,0,6800),["roman_island_extralarge_02"]=new(38861,0,6310),["roman_island_extralarge_03"]=new(37806,0,7261),["roman_island_extralarge_04"]=new(41686,0,8142),
+  ["roman_island_large_01"]=new(31573,0,7904),["roman_island_large_02"]=new(28392,0,5444),["roman_island_large_03"]=new(32617,0,4877),["roman_island_large_04"]=new(27653,0,5256),["roman_island_large_05"]=new(28377,0,5762),["roman_island_large_06"]=new(30314,0,4856),["roman_island_large_07"]=new(30792,0,5417),["roman_island_large_09"]=new(30089,0,4534),
+  ["roman_island_medium_01"]=new(13369,0,7297),["roman_island_medium_02"]=new(12644,0,5368),["roman_island_medium_03"]=new(11332,0,2363),["roman_island_medium_04"]=new(11951,0,4143),["roman_island_medium_05"]=new(12807,0,4397),["roman_island_medium_06"]=new(11682,0,3500),["roman_island_medium_07"]=new(13458,0,3868),["roman_island_medium_08"]=new(17113,0,3251),
+  ["roman_island_small_01"]=new(5019,0,1144),["roman_island_small_02"]=new(4145,0,1827),["roman_island_small_03"]=new(5286,0,2952),["roman_island_small_04"]=new(6816,0,2223),["roman_island_small_05"]=new(5622,0,4186),["roman_island_small_06"]=new(6346,0,2730),["roman_island_small_07"]=new(5860,0,3118),
+  // Build-area tiles (total, of which swamp) per island from the island atlas, and harbour-area tiles from the game's island files (all 55 islands, base and DLC01).
+  ["roman_dlc01_island_continental_01"]=new(101254,0,8258),["roman_dlc01_island_medium_01"]=new(11497,0,5403),["roman_dlc01_island_medium_02"]=new(11957,0,2803),["roman_dlc01_island_medium_03"]=new(14077,0,3576),["roman_dlc01_island_small_02"]=new(5914,0,3536),["roman_dlc_01_island_small_01"]=new(3863,0,958),
+  ["celtic_island_large_01"]=new(22032,7144,2980),["celtic_island_large_02"]=new(22563,10182,4848),["celtic_island_large_03"]=new(23232,8834,4156),["celtic_island_large_04"]=new(20794,8676,3001),["celtic_island_large_05"]=new(22457,10939,3744),["celtic_island_large_06"]=new(22865,9224,3292),["celtic_island_large_07"]=new(20826,8757,3198),["celtic_island_large_08"]=new(20721,8279,5022),
+  ["celtic_island_medium_01"]=new(8869,6695,2050),["celtic_island_medium_02"]=new(8881,2301,3657),["celtic_island_medium_03"]=new(14265,5912,2674),["celtic_island_medium_04"]=new(9850,2413,3581),["celtic_island_medium_05"]=new(9946,3187,3143),["celtic_island_medium_06"]=new(9634,2837,2449),["celtic_island_medium_07"]=new(10970,3300,2831),
+  ["celtic_island_small_01"]=new(3498,0,2246),["celtic_island_small_02"]=new(4352,0,1725),["celtic_island_small_03"]=new(4216,0,2193),["celtic_island_small_04"]=new(3064,0,2509),["celtic_island_small_05"]=new(3239,1348,1245),["celtic_island_small_06"]=new(2174,1646,1911),["celtic_island_small_07"]=new(3616,0,3181)
  };
  public static IslandArea Get(string name)=>Values.TryGetValue(name,out var value)?value:throw new InvalidOperationException($"Für {name} fehlt die Bauflächenangabe.");
 }
-internal readonly record struct RegionMetrics(SiteCounts Sites,int GoldMineSites,int GoldSites,int SturgeonSites,int BeaverSites,int SmallBirdSites,int BuildableTiles,int SwampTiles,int MineralMineSites=0,int CopperMineSites=0,int SilverMineSites=0,int MarbleSites=0)
+internal readonly record struct RegionMetrics(SiteCounts Sites,int GoldMineSites,int GoldSites,int SturgeonSites,int BeaverSites,int SmallBirdSites,int BuildableTiles,int SwampTiles,int MineralMineSites=0,int CopperMineSites=0,int SilverMineSites=0,int MarbleSites=0,int TinMineSites=0,
+ int HarbourMurexTiles=0,int HarbourOysterTiles=0,int HarbourSaltwortTiles=0,int HarbourSeaShellTiles=0,int MarshSmallBirdTiles=0,int MarshBeaverTiles=0)
 {
+ public int Tiles(AdvancedFilter filter)=>filter switch
+ {
+  AdvancedFilter.LatiumHarbourMurex=>HarbourMurexTiles,AdvancedFilter.LatiumHarbourOysters=>HarbourOysterTiles,AdvancedFilter.AlbionHarbourSaltwort=>HarbourSaltwortTiles,
+  AdvancedFilter.AlbionHarbourSeaShells=>HarbourSeaShellTiles,AdvancedFilter.AlbionMarshSmallBirds=>MarshSmallBirdTiles,_=>MarshBeaverTiles
+ };
  public static RegionMetrics Calculate(IEnumerable<GeneratedIsland> islands)
  {
-  var sites=new SiteCounts(0,0);var goldMines=0;var gold=0;var sturgeon=0;var beaver=0;var smallBirds=0;var buildable=0;var swamp=0;var minerals=0;var copper=0;var silver=0;var marble=0;
+  var sites=new SiteCounts(0,0);var goldMines=0;var gold=0;var sturgeon=0;var beaver=0;var smallBirds=0;var buildable=0;var swamp=0;var minerals=0;var copper=0;var silver=0;var marble=0;var tin=0;var murex=0;var oysters=0;var saltwort=0;var seaShells=0;var smallBirdMarsh=0;var beaverMarsh=0;
   foreach(var island in islands)
   {
    sites+=island.Sites;
@@ -1339,8 +1275,16 @@ internal readonly record struct RegionMetrics(SiteCounts Sites,int GoldMineSites
    if(island.Fertilities.Contains(4063u))copper+=island.Sites.Mountain;
    if(island.Fertilities.Contains(8487u))silver+=island.Sites.Mountain;
    if(island.Fertilities.Contains(4062u))marble+=island.Sites.Mountain;
+   if(island.Fertilities.Contains(4064u))tin+=island.Sites.Mountain;
+   // Harbour and marsh tiles of the islands that carry the fertility (see AdvancedFilters).
+   if(island.Fertilities.Contains(4051u))murex+=area.Harbour;
+   if(island.Fertilities.Contains(2208u))oysters+=area.Harbour;
+   if(island.Fertilities.Contains(2218u))saltwort+=area.Harbour;
+   if(island.Fertilities.Contains(8432u))seaShells+=area.Harbour;
+   if(island.Fertilities.Contains(2219u))smallBirdMarsh+=area.Swamp;
+   if(island.Fertilities.Contains(4082u))beaverMarsh+=area.Swamp;
   }
-  return new(sites,goldMines,gold,sturgeon,beaver,smallBirds,buildable,swamp,minerals,copper,silver,marble);
+  return new(sites,goldMines,gold,sturgeon,beaver,smallBirds,buildable,swamp,minerals,copper,silver,marble,tin,murex,oysters,saltwort,seaShells,smallBirdMarsh,beaverMarsh);
  }
 }
 internal static class SiteRangeAnalyzer
@@ -1362,34 +1306,58 @@ internal sealed record AggregateSiteRange(int GoldMin,int GoldMax,int SturgeonMi
  int LatiumAreaMin=0,int LatiumAreaMax=0,int AlbionAreaMin=0,int AlbionAreaMax=0,int AlbionSwampMin=0,int AlbionSwampMax=0,int LatiumAreaAverage=0,int LatiumAreaMedian=0,int AlbionAreaAverage=0,int AlbionAreaMedian=0,int AlbionSwampAverage=0,int AlbionSwampMedian=0,
  int MineralMin=0,int MineralMax=0,double MineralAverage=0,double MineralMedian=0,int CopperMin=0,int CopperMax=0,double CopperAverage=0,double CopperMedian=0,int SilverMin=0,int SilverMax=0,double SilverAverage=0,double SilverMedian=0,
  int MarbleMin=0,int MarbleMax=0,double MarbleAverage=0,double MarbleMedian=0,
- int GoldMineMin=0,int GoldMineMax=0,double GoldMineAverage=0,double GoldMineMedian=0);
+ int GoldMineMin=0,int GoldMineMax=0,double GoldMineAverage=0,double GoldMineMedian=0,
+ int TinMin=0,int TinMax=0,double TinAverage=0,double TinMedian=0);
 internal static class AggregateSiteRanges
 {
- public static AggregateSiteRange For(MapProfile profile)=>profile.Dlc01?Poa(profile):Vanilla(profile);
+ public static AggregateSiteRange For(MapProfile profile)
+ {
+  var range=profile.Dlc01?Poa(profile):Vanilla(profile);
+  return TinRanges.TryGetValue((profile.Template,profile.Size),out var tin)?range with{TinMin=tin.Min,TinMax=tin.Max,TinAverage=tin.Average,TinMedian=tin.Median}:range;
+ }
+ // Albion tin-mine sites (mountain sites on islands with tin), seeds 1..N per template and size (--analyze-tin). Same for both DLC states.
+ static readonly Dictionary<(MapTemplateKind,MapSizeKind),(int Min,int Max,double Average,double Median)> TinRanges=new()
+ {
+[(MapTemplateKind.Archipelago,MapSizeKind.Large)]=(29,55,41.15,41),
+  [(MapTemplateKind.Atoll,MapSizeKind.Large)]=(29,54,41.13,41),
+  [(MapTemplateKind.Rift,MapSizeKind.Large)]=(15,55,32.94,33),
+  [(MapTemplateKind.Corners,MapSizeKind.Large)]=(20,55,37.04,37),
+  [(MapTemplateKind.IslandChains,MapSizeKind.Large)]=(20,55,37.05,37),
+  [(MapTemplateKind.Archipelago,MapSizeKind.Medium)]=(20,49,34.85,35),
+  [(MapTemplateKind.Atoll,MapSizeKind.Medium)]=(20,49,34.85,35),
+  [(MapTemplateKind.Rift,MapSizeKind.Medium)]=(15,45,29.66,30),
+  [(MapTemplateKind.Corners,MapSizeKind.Medium)]=(20,44,32.67,33),
+  [(MapTemplateKind.IslandChains,MapSizeKind.Medium)]=(15,49,30.77,31),
+  [(MapTemplateKind.Archipelago,MapSizeKind.Small)]=(15,40,26.53,27),
+  [(MapTemplateKind.Atoll,MapSizeKind.Small)]=(15,40,26.53,27),
+  [(MapTemplateKind.Rift,MapSizeKind.Small)]=(12,37,24.47,24),
+  [(MapTemplateKind.Corners,MapSizeKind.Small)]=(12,37,24.48,24),
+  [(MapTemplateKind.IslandChains,MapSizeKind.Small)]=(12,37,24.47,24),
+ };
  static AggregateSiteRange Poa(MapProfile profile)=>(profile.Template,profile.Size) switch
  {
-  (MapTemplateKind.Archipelago,MapSizeKind.Large)=>new(33,116,32,114,11,39,10,39,78.38,79,78.37,79,25.16,25,25.12,25,134,163,124,156,107,128,147.82,148,140.03,140,117.72,118,558,581,238,247,91,99,570,570,244,244,95,96,35,66,48.92,49,31,59,45.23,45,48,79,63.23,63,51,86,66.93,67,29,89,66.12,67),(MapTemplateKind.Atoll,MapSizeKind.Large)=>new(31,116,33,118,10,39,10,39,79.31,80,79.28,80,25.13,25,25.13,25,139,165,124,155,107,128,151.46,151,140.31,140,117.73,118,564,586,238,247,91,99,576,576,244,244,95,96,37,69,50.75,51,31,60,45.25,45,47,78,63.25,63,55,86,68.74,69,35,92,67.12,68),(MapTemplateKind.Rift,MapSizeKind.Large)=>new(33,115,33,118,6,39,6,39,79.28,80,79.24,80,22.78,23,22.71,23,138,166,124,155,92,112,151.46,151,140.30,140,101.71,102,564,586,213,222,78,87,576,576,216,216,82,82,38,67,50.73,51,24,59,39.92,40,40,77,57.90,58,54,84,68.75,69,34,92,67.11,68),(MapTemplateKind.Corners,MapSizeKind.Large)=>new(39,117,39,118,7,39,8,39,85.23,86,85.25,86,24.11,24,24.10,24,132,158,139,173,100,121,144.96,145,156.03,156,109.72,110,613,625,224,236,82,94,617,617,230,231,88,88,33,64,47.46,47,24,58,42.58,43,41,78,60.58,61,51,84,65.50,65,33,90,65.81,67),(MapTemplateKind.IslandChains,MapSizeKind.Large)=>new(30,111,30,111,8,39,8,39,76.63,78,76.60,78,24.13,24,24.13,24,128,153,114,150,98,121,139.96,140,133.05,133,109.73,110,538,562,224,236,82,94,550,550,230,231,88,88,32,61,44.99,45,24,59,42.56,43,41,79,60.59,61,50,79,63.00,63,29,87,63.32,64),
-  (MapTemplateKind.Archipelago,MapSizeKind.Medium)=>new(28,101,27,97,7,37,8,37,68.84,71,68.80,71,21.89,22,21.89,22,129,154,100,121,96,115,142.25,142,110.61,111,105.15,105,491,498,199,213,70,83,493,493,207,207,78,78,35,60,46.14,46,24,54,41.02,41,41,74,59.08,59,52,79,64.14,64,25,90,62.30,63),(MapTemplateKind.Atoll,MapSizeKind.Medium)=>new(30,111,29,108,8,37,8,37,73.61,75,73.60,75,21.90,22,21.91,22,133,158,109,136,97,114,144.74,145,122.12,122,105.15,105,518,534,199,213,70,83,527,527,207,207,78,78,35,63,47.37,47,24,54,41.05,41,40,74,59.06,59,53,84,65.36,65,29,96,63.70,65),(MapTemplateKind.Rift,MapSizeKind.Medium)=>new(27,111,27,110,6,34,5,34,72.17,73,72.13,73,19.21,19,19.17,19,131,155,108,144,88,103,143.27,143,125.12,125,94.86,95,520,531,173,189,57,72,525,526,182,182,66,66,36,65,48.63,49,24,51,37.62,38,40,70,55.64,56,52,83,66.65,67,25,89,62.20,63),(MapTemplateKind.Corners,MapSizeKind.Medium)=>new(32,115,31,116,8,33,9,32,76.68,78,76.68,78,19.70,20,19.70,20,127,153,114,151,93,108,139.97,140,133.04,133,100.57,101,537,562,177,193,61,75,550,550,184,184,68,68,32,61,44.98,45,25,48,39.50,40,41,68,57.53,58,49,80,62.98,63,30,89,63.33,64),(MapTemplateKind.IslandChains,MapSizeKind.Medium)=>new(24,106,23,106,6,37,6,37,71.12,72,71.08,72,20.39,20,20.38,20,122,145,99,132,89,106,133.28,133,114.87,115,97.14,97,491,510,186,200,63,78,501,501,193,193,71,71,31,57,41.63,42,24,54,38.38,38,40,74,56.38,56,48,74,59.62,60,26,85,59.96,61),
-  (MapTemplateKind.Archipelago,MapSizeKind.Small)=>new(23,87,21,90,5,31,5,31,60.04,62,60.04,62,17.07,17,17.07,17,121,144,76,108,84,94,131.92,132,92.09,92,88.57,89,422,447,155,169,49,64,435,435,163,164,58,58,32,56,42.97,43,24,48,35.53,36,40,68,53.53,54,49,77,60.97,61,19,82,55.47,56),(MapTemplateKind.Atoll,MapSizeKind.Small)=>new(23,90,21,89,5,31,5,31,61.87,64,61.91,64,17.07,17,17.07,17,124,148,88,110,84,94,136.14,136,98.78,99,88.56,89,443,458,155,169,49,64,450,450,163,164,58,58,34,58,45.09,45,24,48,35.52,36,40,68,53.52,54,51,79,63.08,63,23,83,58.18,59),(MapTemplateKind.Rift,MapSizeKind.Small)=>new(23,98,21,98,5,30,5,31,66.07,67,66.01,67,16.03,16,16.04,16,124,149,89,124,78,91,136.52,137,106.93,107,84.58,85,465,488,147,164,46,62,476,476,156,156,54,54,33,62,45.27,45,22,48,34.19,34,39,68,52.21,52,50,81,63.29,63,19,85,58.41,59),(MapTemplateKind.Corners,MapSizeKind.Small)=>new(26,102,26,103,5,31,5,30,68.01,69,67.99,69,16.04,16,16.02,16,126,150,103,128,78,91,138.47,138,116.55,117,84.57,85,485,502,147,164,46,62,494,494,156,156,54,54,32,62,46.22,46,22,48,34.19,34,39,67,52.19,52,48,82,64.23,64,28,84,60.81,62),(MapTemplateKind.IslandChains,MapSizeKind.Small)=>new(21,92,21,91,5,30,5,30,60.13,62,60.16,62,16.03,16,16.03,16,116,139,81,108,78,91,126.76,127,94.88,95,84.57,85,421,440,147,164,46,62,432,432,156,156,54,54,30,54,40.37,40,22,48,34.19,34,39,67,52.17,52,47,76,58.38,58,18,79,55.61,57),
+  (MapTemplateKind.Archipelago,MapSizeKind.Large)=>new(33,116,32,115,11,39,10,39,78.40,79,78.43,80,25.15,25,25.14,25,135,163,124,155,108,128,148.43,148,140.14,140,118.30,118,511,535,238,247,91,99,524,525,244,244,95,96,35,68,49.22,49,31,59,45.43,46,48,79,63.42,64,51,86,67.23,67,29,89,66.23,67),(MapTemplateKind.Atoll,MapSizeKind.Large)=>new(35,116,31,117,10,39,10,39,79.32,80,79.32,80,25.12,25,25.13,25,139,166,123,156,108,129,152.10,152,140.41,141,118.30,118,517,540,238,247,91,99,530,530,244,244,95,96,38,69,51.06,51,31,60,45.44,46,48,78,63.43,64,55,86,69.05,69,31,92,67.25,68),(MapTemplateKind.Rift,MapSizeKind.Large)=>new(33,114,33,116,6,39,6,39,79.27,80,79.32,80,22.79,23,22.71,23,139,166,124,156,92,112,152.10,152,140.42,141,101.90,102,517,540,213,222,78,87,530,530,216,216,82,82,38,66,51.04,51,24,59,39.99,40,40,77,57.95,58,54,87,69.07,69,34,92,67.22,68),(MapTemplateKind.Corners,MapSizeKind.Large)=>new(40,117,39,119,7,39,8,39,85.28,86,85.30,86,24.11,24,24.11,24,132,158,139,173,100,121,145.34,145,156.14,156,110.10,110,566,579,224,236,82,94,572,572,230,231,88,88,33,64,47.65,48,24,58,42.72,43,41,78,60.71,61,51,84,65.70,66,33,90,65.86,67),(MapTemplateKind.IslandChains,MapSizeKind.Large)=>new(30,113,32,114,8,39,6,39,76.68,78,76.66,78,24.10,24,24.11,24,128,154,115,151,99,122,140.52,141,133.17,133,110.10,110,491,516,224,236,82,94,504,504,230,231,88,88,32,61,45.26,45,24,59,42.68,43,41,79,60.71,61,50,78,63.27,63,30,87,63.41,64),
+  (MapTemplateKind.Archipelago,MapSizeKind.Medium)=>new(28,101,27,97,7,37,8,37,68.90,71,68.87,71,21.90,22,21.89,22,130,155,100,121,96,116,143.02,143,110.72,111,105.72,106,444,452,199,213,70,83,447,447,207,207,78,78,35,62,46.52,46,24,55,41.22,41,41,74,59.27,59,52,79,64.53,64,25,91,62.43,63),(MapTemplateKind.Atoll,MapSizeKind.Medium)=>new(28,107,31,115,8,37,8,37,73.63,75,73.64,75,21.88,22,21.93,22,133,158,109,136,97,115,145.42,145,122.23,122,105.73,106,472,488,199,213,70,83,481,481,207,207,78,78,35,64,47.70,48,24,55,41.25,41,42,75,59.22,59,53,83,65.70,66,28,93,63.79,65),(MapTemplateKind.Rift,MapSizeKind.Medium)=>new(26,108,26,107,6,34,5,34,72.14,73,72.27,73,19.20,19,19.17,19,131,157,108,143,88,104,143.87,144,125.22,125,95.33,95,473,485,173,189,57,72,480,480,182,182,66,66,36,65,48.91,49,24,52,37.77,38,40,71,55.80,56,53,83,66.95,67,27,89,62.28,63),(MapTemplateKind.Corners,MapSizeKind.Medium)=>new(32,115,31,116,8,33,8,32,76.74,78,76.71,78,19.70,20,19.69,20,128,154,115,152,93,110,140.52,141,133.15,133,101.33,101,491,516,177,193,61,75,504,504,184,184,68,68,32,61,45.26,45,25,50,39.76,40,41,69,57.78,58,49,80,63.26,63,30,89,63.43,64),(MapTemplateKind.IslandChains,MapSizeKind.Medium)=>new(24,104,23,105,6,37,6,37,71.13,72,71.16,72,20.37,20,20.38,20,123,146,99,131,89,107,133.87,134,114.98,115,97.52,98,445,465,186,200,63,78,455,455,193,193,71,71,31,57,41.93,42,24,55,38.51,38,40,75,56.50,56,48,75,59.91,60,26,85,60.04,61),
+  (MapTemplateKind.Archipelago,MapSizeKind.Small)=>new(22,86,22,88,5,31,5,31,60.09,62,60.09,62,17.07,17,17.07,17,122,144,76,109,84,95,132.63,133,92.20,92,89.05,89,374,403,155,169,49,64,390,390,163,164,58,58,32,57,43.32,43,24,49,35.68,36,40,68,53.69,54,49,78,61.32,61,19,81,55.55,57),(MapTemplateKind.Atoll,MapSizeKind.Small)=>new(23,90,24,91,6,31,5,31,61.92,64,62.01,64,17.06,17,17.06,17,125,149,88,110,84,95,136.89,137,98.88,99,89.04,89,396,412,155,169,49,64,404,404,163,164,58,58,34,59,45.46,45,24,49,35.67,36,40,69,53.67,54,51,79,63.45,63,23,83,58.30,59),(MapTemplateKind.Rift,MapSizeKind.Small)=>new(23,99,20,101,5,30,5,31,66.08,67,66.12,67,16.02,16,16.04,16,126,149,89,126,78,92,137.19,137,107.05,107,84.96,85,418,442,147,164,46,62,431,431,156,156,54,54,33,62,45.57,45,22,49,34.32,34,39,68,52.34,52,50,81,63.60,64,23,85,58.48,59),(MapTemplateKind.Corners,MapSizeKind.Small)=>new(26,102,26,104,5,31,5,30,68.06,69,68.08,69,16.04,16,16.01,16,127,151,104,128,78,92,139.22,139,116.71,117,84.95,85,437,455,147,164,46,62,447,447,156,156,54,54,32,63,46.59,47,22,49,34.31,34,39,68,52.32,52,48,82,64.61,65,28,84,60.93,62),(MapTemplateKind.IslandChains,MapSizeKind.Small)=>new(21,90,21,91,5,31,5,30,60.15,62,60.17,62,16.04,16,16.01,16,117,139,81,108,78,92,127.43,127,94.99,95,84.95,85,375,394,147,164,46,62,386,386,156,156,54,54,30,55,40.71,41,22,49,34.31,34,39,67,52.30,52,47,76,58.73,59,18,80,55.72,57),
   _=>throw new InvalidOperationException("Für das Kartenprofil fehlen die analysierten Bauplatzbereiche.")
  };
  static AggregateSiteRange Vanilla(MapProfile profile)=>(profile.Template,profile.Size) switch
  {
-  (MapTemplateKind.Archipelago,MapSizeKind.Large)=>new(22,83,21,85,11,39,10,39,53.69,54,53.64,54,25.16,25,25.12,25,94,117,85,113,107,128,104.85,105,99.73,100,117.72,118,349,372,238,247,91,99,360,360,244,244,95,96,26,50,36.40,36,31,59,45.23,45,48,79,63.23,63,26,50,36.42,36,15,65,43.43,43),
-  (MapTemplateKind.Atoll,MapSizeKind.Large)=>new(24,85,26,83,10,39,10,39,54.98,55,54.97,55,25.13,25,25.13,25,97,122,94,119,107,128,109.08,109,106.39,106,117.73,118,363,386,238,247,91,99,375,376,244,244,95,96,28,51,38.53,38,31,60,45.25,45,47,78,63.25,63,28,52,38.54,38,20,64,45.75,46),
-  (MapTemplateKind.Rift,MapSizeKind.Large)=>new(25,85,24,85,6,39,6,39,54.96,55,55.01,55,22.78,23,22.71,23,97,121,93,119,92,112,109.08,109,106.39,106,101.71,102,363,386,213,222,78,87,375,376,216,216,82,82,28,51,38.56,39,24,59,39.92,40,40,77,57.90,58,28,51,38.52,38,20,63,45.75,46),
-  (MapTemplateKind.Corners,MapSizeKind.Large)=>new(30,84,30,84,7,39,8,39,61.17,62,61.14,62,24.11,24,24.10,24,90,115,112,132,100,121,102.58,103,122.15,122,109.72,110,415,419,224,236,82,94,417,417,230,231,88,88,25,48,35.29,35,24,58,42.58,43,41,78,60.58,61,25,48,35.30,35,21,63,44.68,45),
-  (MapTemplateKind.IslandChains,MapSizeKind.Large)=>new(22,79,22,79,8,39,8,39,52.47,53,52.47,53,24.13,24,24.13,24,87,109,85,113,98,121,97.57,98,99.15,99,109.73,110,337,362,224,236,82,94,349,349,230,231,88,88,23,45,32.79,33,24,59,42.56,43,41,79,60.59,61,23,44,32.78,33,17,59,42.06,42),
-  (MapTemplateKind.Archipelago,MapSizeKind.Medium)=>new(20,62,20,62,7,37,8,37,44.12,45,44.07,45,21.89,22,21.89,22,90,110,73,79,96,115,99.86,100,76.72,77,105.15,105,291,294,199,213,70,83,293,293,207,207,78,78,26,46,33.93,34,24,54,41.02,41,41,74,59.08,59,26,45,33.93,34,18,60,40.54,41),
-  (MapTemplateKind.Atoll,MapSizeKind.Medium)=>new(22,75,21,74,8,37,8,37,48.90,49,48.90,49,21.90,22,21.91,22,92,113,77,99,97,114,102.38,102,88.20,88,105.15,105,317,335,199,213,70,83,327,327,207,207,78,78,26,48,35.19,35,24,54,41.05,41,40,74,59.06,59,26,48,35.17,35,18,62,42.01,42),
-  (MapTemplateKind.Rift,MapSizeKind.Medium)=>new(19,75,18,77,6,34,5,34,48.00,48,47.95,48,19.21,19,19.17,19,89,113,78,105,88,103,100.87,101,91.21,91,94.86,95,319,331,173,189,57,72,325,325,182,182,66,66,26,51,36.43,36,24,51,37.62,38,40,70,55.64,56,26,51,36.44,36,13,61,40.76,41),
-  (MapTemplateKind.Corners,MapSizeKind.Medium)=>new(20,79,20,79,8,33,9,32,52.45,53,52.46,53,19.70,20,19.70,20,85,109,85,113,93,108,97.57,98,99.14,99,100.57,101,337,361,177,193,61,75,349,349,184,184,68,68,23,45,32.79,33,25,48,39.50,40,41,68,57.53,58,23,46,32.79,33,18,59,42.03,42),
-  (MapTemplateKind.IslandChains,MapSizeKind.Medium)=>new(20,71,19,72,6,37,6,37,46.22,46,46.18,46,20.39,20,20.38,20,81,101,68,93,89,106,90.86,91,80.96,81,97.14,97,291,311,186,200,63,78,301,301,193,193,71,71,21,43,29.42,29,24,54,38.38,38,40,74,56.38,56,21,41,29.42,29,16,58,38.06,38),
-  (MapTemplateKind.Archipelago,MapSizeKind.Small)=>new(16,54,16,55,5,31,5,31,34.81,35,34.81,35,17.07,17,17.07,17,80,100,46,71,84,94,89.53,90,58.21,58,88.57,89,223,246,155,169,49,64,235,235,163,164,58,58,23,42,30.78,31,24,48,35.53,36,40,68,53.53,54,23,41,30.77,31,12,55,33.08,33),
-  (MapTemplateKind.Atoll,MapSizeKind.Small)=>new(17,56,16,57,5,31,5,31,37.33,38,37.32,38,17.07,17,17.07,17,84,103,56,73,84,94,93.76,94,64.88,65,88.56,89,240,257,155,169,49,64,250,250,163,164,58,58,25,45,32.88,33,24,48,35.52,36,40,68,53.52,54,25,45,32.88,33,13,56,36.41,37),
-  (MapTemplateKind.Rift,MapSizeKind.Small)=>new(16,66,16,66,5,30,5,31,41.26,41,41.29,41,16.03,16,16.04,16,84,105,58,87,78,91,94.16,94,73.04,73,84.58,85,266,286,147,164,46,62,276,276,156,156,54,54,24,47,33.09,33,22,48,34.19,34,39,68,52.21,52,24,46,33.07,33,12,59,36.43,37),
-  (MapTemplateKind.Corners,MapSizeKind.Small)=>new(18,64,18,64,5,31,5,30,42.31,42,42.30,42,16.04,16,16.02,16,80,104,65,91,78,91,91.06,91,79.14,79,84.57,85,269,289,147,164,46,62,280,280,156,156,54,54,23,43,31.53,31,22,48,34.19,34,39,67,52.19,52,23,44,31.55,31,12,55,38.05,38),
-  (MapTemplateKind.IslandChains,MapSizeKind.Small)=>new(16,53,16,54,5,30,5,30,35.55,36,35.56,36,16.03,16,16.03,16,75,95,49,71,78,91,84.36,84,60.97,61,84.57,85,220,241,147,164,46,62,231,231,156,156,54,54,21,39,28.18,28,22,48,34.19,34,39,67,52.17,52,21,39,28.19,28,12,52,33.91,34),
+  (MapTemplateKind.Archipelago,MapSizeKind.Large)=>new(21,84,22,85,11,39,10,39,53.71,54,53.65,54,25.15,25,25.14,25,94,117,85,113,108,128,105.17,105,99.72,100,118.30,118,349,372,238,247,91,99,360,360,244,244,95,96,26,51,36.58,36,31,59,45.43,46,48,79,63.42,64,26,50,36.59,37,18,63,43.51,44),
+  (MapTemplateKind.Atoll,MapSizeKind.Large)=>new(24,83,24,84,10,39,10,39,54.99,55,55.01,55,25.12,25,25.13,25,97,122,93,119,108,129,109.42,109,106.40,106,118.30,118,363,386,238,247,91,99,375,376,244,244,95,96,28,53,38.70,39,31,60,45.44,46,48,78,63.43,64,28,51,38.72,39,19,64,45.80,46),
+  (MapTemplateKind.Rift,MapSizeKind.Large)=>new(22,84,24,85,6,39,6,39,54.98,55,54.98,55,22.79,23,22.71,23,97,123,93,119,92,112,109.42,109,106.41,106,101.90,102,363,386,213,222,78,87,375,376,216,216,82,82,28,51,38.71,39,24,59,39.99,40,40,77,57.95,58,28,52,38.71,39,24,64,45.79,46),
+  (MapTemplateKind.Corners,MapSizeKind.Large)=>new(27,82,29,87,7,39,8,39,61.14,62,61.11,62,24.11,24,24.11,24,91,115,112,132,100,121,102.66,103,122.15,122,110.10,110,415,419,224,236,82,94,417,417,230,231,88,88,25,48,35.35,35,24,58,42.72,43,41,78,60.71,61,25,48,35.35,35,20,59,44.63,45),
+  (MapTemplateKind.IslandChains,MapSizeKind.Large)=>new(19,78,24,79,8,39,6,39,52.44,53,52.48,53,24.10,24,24.11,24,87,110,84,113,99,122,97.82,98,99.14,99,110.10,110,337,362,224,236,82,94,349,349,230,231,88,88,23,45,32.93,33,24,59,42.68,43,41,79,60.71,61,23,46,32.92,33,16,59,42.08,42),
+  (MapTemplateKind.Archipelago,MapSizeKind.Medium)=>new(20,62,20,62,7,37,8,37,44.11,45,44.12,45,21.90,22,21.89,22,90,111,73,79,96,116,100.33,100,76.72,77,105.72,106,291,294,199,213,70,83,293,293,207,207,78,78,26,46,34.17,34,24,55,41.22,41,41,74,59.27,59,26,45,34.17,34,15,59,40.60,41),
+  (MapTemplateKind.Atoll,MapSizeKind.Medium)=>new(22,75,21,75,8,37,8,37,48.94,49,48.90,49,21.88,22,21.93,22,92,113,77,99,97,115,102.76,103,88.21,88,105.73,106,317,335,199,213,70,83,327,327,207,207,78,78,26,48,35.37,35,24,55,41.25,41,42,75,59.22,59,26,48,35.38,35,15,63,42.05,42),
+  (MapTemplateKind.Rift,MapSizeKind.Medium)=>new(18,76,18,77,6,34,5,34,48.00,48,48.03,48,19.20,19,19.17,19,90,113,76,104,88,104,101.17,101,91.23,91,95.33,95,319,331,173,189,57,72,325,325,182,182,66,66,26,51,36.58,37,24,52,37.77,38,40,71,55.80,56,26,51,36.59,37,14,60,40.81,41),
+  (MapTemplateKind.Corners,MapSizeKind.Medium)=>new(22,79,21,79,8,33,8,32,52.49,53,52.43,53,19.70,20,19.69,20,87,110,84,113,93,110,97.84,98,99.14,99,101.33,101,337,361,177,193,61,75,349,349,184,184,68,68,23,45,32.91,33,25,50,39.76,40,41,69,57.78,58,23,46,32.93,33,19,59,42.09,42),
+  (MapTemplateKind.IslandChains,MapSizeKind.Medium)=>new(19,72,20,72,6,37,6,37,46.14,46,46.20,47,20.37,20,20.38,20,82,101,68,93,89,107,91.18,91,80.96,81,97.52,98,291,311,186,200,63,78,301,301,193,193,71,71,21,42,29.60,30,24,55,38.51,38,40,75,56.50,56,21,43,29.58,30,14,60,38.06,38),
+  (MapTemplateKind.Archipelago,MapSizeKind.Small)=>new(16,55,16,54,5,31,5,31,34.82,35,34.82,35,17.07,17,17.07,17,80,100,46,73,84,95,89.96,90,58.21,58,89.05,89,222,247,155,169,49,64,235,235,163,164,58,58,23,42,30.98,31,24,49,35.68,36,40,68,53.69,54,23,41,30.97,31,12,55,33.15,33),
+  (MapTemplateKind.Atoll,MapSizeKind.Small)=>new(18,55,18,57,6,31,5,31,37.32,38,37.32,38,17.06,17,17.06,17,85,104,56,73,84,95,94.21,94,64.87,65,89.04,89,240,257,155,169,49,64,250,250,163,164,58,58,25,44,33.09,33,24,49,35.67,36,40,69,53.67,54,25,44,33.10,33,12,57,36.49,37),
+  (MapTemplateKind.Rift,MapSizeKind.Small)=>new(17,67,16,68,5,30,5,31,41.32,41,41.31,41,16.02,16,16.04,16,85,105,58,86,78,92,94.50,94,73.05,73,84.96,85,266,286,147,164,46,62,276,276,156,156,54,54,24,46,33.26,33,22,49,34.32,34,39,68,52.34,52,24,46,33.24,33,12,58,36.50,37),
+  (MapTemplateKind.Corners,MapSizeKind.Small)=>new(19,64,19,65,5,31,5,30,42.28,42,42.32,42,16.04,16,16.01,16,81,104,65,91,78,92,91.40,91,79.14,79,84.95,85,269,289,147,164,46,62,280,280,156,156,54,54,23,44,31.71,32,22,49,34.31,34,39,68,52.32,52,23,43,31.71,32,15,55,38.06,38),
+  (MapTemplateKind.IslandChains,MapSizeKind.Small)=>new(16,53,16,53,5,31,5,30,35.56,36,35.56,36,16.04,16,16.01,16,75,95,49,71,78,92,84.76,85,60.97,61,84.95,85,220,241,147,164,46,62,231,231,156,156,54,54,21,39,28.37,28,22,49,34.31,34,39,67,52.30,52,21,39,28.39,28,13,53,33.93,34),
   _=>throw new InvalidOperationException("Für das Vanilla-Kartenprofil fehlen die analysierten Bauplatzbereiche.")
  };
 }
@@ -1397,7 +1365,6 @@ internal sealed record LatiumGeneration(uint Seed,int Width,SiteCounts CinisSite
 internal sealed record World(uint Seed,int Width,string[] Islands,Dictionary<string,SiteCounts> Sites,Dictionary<string,uint[]> Fertilities,List<GeneratedIsland> GeneratedIslands);
 internal static class SearchProfile
 {
- // Weitere hart codierte Inselbedingungen werden hier ergänzt; der Generator liefert bereits alle Inseln und Fertilitäten.
  public static bool Matches(World world,uint cinisSlot1,uint[] requiredCinisPool,bool requireMaxSites,IReadOnlyList<IslandCondition>? conditions=null)
  {
   if(world.Fertilities.TryGetValue(Generator.CinisName,out var cinis))
@@ -1482,9 +1449,12 @@ internal sealed class WorldBits
  public void Set(int x,int y){if((uint)x<(uint)width&&(uint)y<(uint)width)rows[y*stride+(x>>6)]|=1UL<<(x&63);}
  public void Add(IslandMask mask,int x,int y,byte rotation){foreach(var cell in mask.Cells[rotation])Set(x+cell.X,y+cell.Y);}
  public bool Overlaps(IslandMask mask,int x,int y,byte rotation){foreach(var cell in mask.Cells[rotation]){var px=x+cell.X;var py=y+cell.Y;if((uint)px>=(uint)width||(uint)py>=(uint)width||(rows[py*stride+(px>>6)]&(1UL<<(px&63)))!=0)return true;}return false;}
- public bool Any(int x0,int y0,int x1,int y1)
+ public bool Any(int x0,int y0,int x1,int y1,bool outsideIsFree=false)
  {
-  if(x0<0||y0<0||x1>=width||y1>=width)return true;
+  // Latium: cells outside the grid count as free (the map border is enforced by the separate edge and bounds checks).
+  // Albion: a scan leaving the grid is blocked.
+  if(outsideIsFree){x0=Math.Max(x0,0);y0=Math.Max(y0,0);x1=Math.Min(x1,width-1);y1=Math.Min(y1,width-1);if(x0>x1||y0>y1)return false;}
+  else if(x0<0||y0<0||x1>=width||y1>=width)return true;
   var firstWord=x0>>6;var lastWord=x1>>6;var firstMask=ulong.MaxValue<<(x0&63);var lastMask=ulong.MaxValue>>(63-(x1&63));
   for(var y=y0;y<=y1;y++)
   {
@@ -1505,7 +1475,6 @@ internal sealed class WorldCounts
  public void Add(IslandMask mask,int x,int y,byte rotation){foreach(var cell in mask.Cells[rotation]){var px=x+cell.X;var py=y+cell.Y;if((uint)px<(uint)width&&(uint)py<(uint)width)cells[py*width+px]++;}}
  public void Remove(IslandMask mask,int x,int y,byte rotation){foreach(var cell in mask.Cells[rotation]){var px=x+cell.X;var py=y+cell.Y;if((uint)px<(uint)width&&(uint)py<(uint)width){var index=py*width+px;if(cells[index]==0)throw new InvalidOperationException("Kollisionszelle ist bereits leer.");cells[index]--;}}}
  public bool Overlaps(IslandMask mask,int x,int y,byte rotation){foreach(var cell in mask.Cells[rotation]){var px=x+cell.X;var py=y+cell.Y;if((uint)px>=(uint)width||(uint)py>=(uint)width||cells[py*width+px]!=0)return true;}return false;}
- public bool OverlapsDilated(IslandMask mask,int x,int y,byte rotation,int radius){foreach(var cell in mask.Cells[rotation]){var px=x+cell.X;var py=y+cell.Y;if((uint)px>=(uint)width||(uint)py>=(uint)width)return true;for(var dy=-radius;dy<=radius;dy++)for(var dx=-radius;dx<=radius;dx++){var qx=px+dx;var qy=py+dy;if((uint)qx<(uint)width&&(uint)qy<(uint)width&&cells[qy*width+qx]!=0)return true;}}return false;}
  public bool Overlaps(IslandMask mask,int x,int y,byte rotation,int border){foreach(var cell in mask.Cells[rotation]){var px=x+cell.X;var py=y+cell.Y;if((uint)px>=(uint)width||(uint)py>=(uint)width||cells[py*width+px]!=0)return true;var left=px-border;var right=px+border;var top=py-border;var bottom=py+border;if((uint)left<(uint)width&&cells[py*width+left]!=0)return true;if((uint)right<(uint)width&&cells[py*width+right]!=0)return true;if((uint)top<(uint)width&&cells[top*width+px]!=0)return true;if((uint)bottom<(uint)width&&cells[bottom*width+px]!=0)return true;}return false;}
 }
 internal sealed class GeneratorScratch

@@ -9,7 +9,9 @@ internal sealed class FinderSettingsPreset
  public MapSizeKind Size { get; set; }=MapSizeKind.Large;
  public StartModeKind StartMode { get; set; }=StartModeKind.Flagship;
  public bool Dlc01 { get; set; }=true;
+ public bool DlcRetroactive { get; set; }
  public int FertilitySetting { get; set; }
+ public int SlotSetting { get; set; }
  public string FirstSeed { get; set; }="1";
  public string LastSeed { get; set; }="10000";
  public string Threads { get; set; }="1";
@@ -39,9 +41,20 @@ internal sealed class FinderSettingsPreset
  public string MinimumMineralMines { get; set; }="*";
  public string MinimumCopperMines { get; set; }="*";
  public string MinimumSilverMines { get; set; }="*";
+ public string MinimumTinMines { get; set; }="*";
  public bool MineralMinesEnabled { get; set; }
  public bool CopperMinesEnabled { get; set; }
  public bool SilverMinesEnabled { get; set; }
+ public bool TinMinesEnabled { get; set; }
+ public bool ShowAdvancedFilters { get; set; }
+ // Advanced fertility filters by AdvancedFilter name: the minimum tile count and whether the filter is switched on.
+ public Dictionary<string,int> AdvancedMinimums { get; set; }=[];
+ public Dictionary<string,bool> AdvancedEnabled { get; set; }=[];
+ // Seed scoring (see ScoreMetrics.cs/SCORING-PLAN.md): the master switch, the outlier-range option, and one weight
+ // (0-10) per ScoreMetric name; a metric missing from the dictionary defaults to 0 (not scored).
+ public bool EnableScoring { get; set; }
+ public bool ExtendScoringOutliers { get; set; }
+ public Dictionary<string,int> ScoreWeights { get; set; }=[];
  public uint CinisSlot1 { get; set; }
  public uint[] CinisFertilities { get; set; }=[];
  public bool CinisMaximumSites { get; set; }
@@ -80,11 +93,11 @@ internal static class FinderSettingsStorage
  {
   if(preset.Version!=1)throw new InvalidDataException(Localization.Instance.Format("UnsupportedPresetVersionFormat",preset.Version));
   if(!Enum.IsDefined(preset.StartMode))throw new InvalidDataException(Localization.Instance["InvalidStartMode"]);
-  var profile=MapProfiles.Get(preset.Template,preset.Size,preset.Dlc01);
+  var profile=MapProfiles.Get(preset.Template,preset.Size,preset.Dlc01,preset.Dlc01&&preset.DlcRetroactive);
   var ranges=AggregateSiteRanges.For(profile);
   ValidateMinimum(preset.MinimumGoldSites,ranges.GoldMax,Localization.Instance["LabelGoldRiverSites"]);ValidateMinimum(preset.MinimumSturgeonSites,ranges.SturgeonMax,Localization.Instance["LabelSturgeonRiverSites"]);
   ValidateMinimum(preset.MinimumLatiumMountainSites,ranges.LatiumMountainMax,Localization.Instance["LabelLatiumMountainSites"]);ValidateMinimum(preset.MinimumLatiumRiverSites,ranges.LatiumRiverMax,Localization.Instance["LabelLatiumRiverSites"]);ValidateMinimum(preset.MinimumAlbionMountainSites,ranges.AlbionMountainMax,Localization.Instance["LabelAlbionMountainSites"]);
-  ValidateMinimum(preset.MinimumGoldMines,ranges.GoldMineMax,Localization.Instance["LabelGoldMines"]);ValidateMinimum(preset.MinimumMarbleSites,ranges.MarbleMax,Localization.Instance["LabelMarbleMines"]);ValidateMinimum(preset.MinimumMineralMines,ranges.MineralMax,Localization.Instance["LabelMineralMines"]);ValidateMinimum(preset.MinimumCopperMines,ranges.CopperMax,Localization.Instance["LabelCopperMines"]);ValidateMinimum(preset.MinimumSilverMines,ranges.SilverMax,Localization.Instance["LabelSilverMines"]);
+  ValidateMinimum(preset.MinimumGoldMines,ranges.GoldMineMax,Localization.Instance["LabelGoldMines"]);ValidateMinimum(preset.MinimumMarbleSites,ranges.MarbleMax,Localization.Instance["LabelMarbleMines"]);ValidateMinimum(preset.MinimumMineralMines,ranges.MineralMax,Localization.Instance["LabelMineralMines"]);ValidateMinimum(preset.MinimumCopperMines,ranges.CopperMax,Localization.Instance["LabelCopperMines"]);ValidateMinimum(preset.MinimumSilverMines,ranges.SilverMax,Localization.Instance["LabelSilverMines"]);ValidateMinimum(preset.MinimumTinMines,ranges.TinMax,Localization.Instance["LabelTinMines"]);
   ValidateArea(preset.MinimumLatiumAreaK,ranges.LatiumAreaMin,ranges.LatiumAreaMax,Localization.Instance["LabelLatiumArea"]);ValidateArea(preset.MinimumAlbionAreaK,ranges.AlbionAreaMin,ranges.AlbionAreaMax,Localization.Instance["LabelAlbionArea"]);ValidateArea(preset.MinimumAlbionSwampAreaK,ranges.AlbionSwampMin,ranges.AlbionSwampMax,Localization.Instance["LabelAlbionSwampArea"]);
   if(preset.CinisSlot1 is not(0 or 2206 or 2209))throw new InvalidDataException(Localization.Instance["InvalidCinisSlot1"]);
   if(preset.CinisFertilities.Length>4||preset.CinisFertilities.Distinct().Count()!=preset.CinisFertilities.Length||preset.CinisFertilities.Any(value=>!Generator.Pool6.Contains(value)))throw new InvalidDataException(Localization.Instance["InvalidCinisPresetCount"]);
@@ -100,7 +113,6 @@ internal static class FinderSettingsStorage
     if(values.Any(value=>value!=0&&!definition.Groups[index].Choices.Any(choice=>choice.Guid==value)))throw new InvalidDataException(Localization.Instance.Format("InvalidFertilityInPresetFormat",condition.Region,condition.Set));
     if(values.Where(value=>value!=0).Distinct().Count()!=values.Count(value=>value!=0))throw new InvalidDataException(Localization.Instance["DuplicateFertilityInGroup"]);
    }
-   if(definition.IsAnyCombination&&(condition.RequiredByGroup[0].Any(value=>value==0)||condition.RequiredByGroup[0].Distinct().Count()!=2))throw new InvalidDataException(Localization.Instance["AnyCombinationNeedsTwo"]);
    var positions=condition.Positions??[];
    if(positions.Distinct().Count()!=positions.Length||positions.Any(position=>!MapLayoutPositions.For(profile,condition.Region,condition.Set).Any(slot=>slot.SlotIndex==position)))throw new InvalidDataException(Localization.Instance.Format("InvalidPositionRequirementFormat",condition.Region,condition.Set));
   }
