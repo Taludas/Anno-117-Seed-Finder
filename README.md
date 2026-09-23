@@ -2,6 +2,8 @@
 
 Das deutsche Readme findet ihr [hier](README_de.md)
 
+![Anno 117 Seed Searcher Thumbnail](thumbnail.jpg)
+
 ---
 
 Find the map you want **before** you start a game.

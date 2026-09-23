@@ -1,5 +1,7 @@
 # Anno 117 – Seed Finder
 
+![Anno 117 Seed Searcher Thumbnail](thumbnail_de.jpg)
+
 Finde die Karte, die du willst - **bevor** du ein neues Spiel startest.
 
 Wenn du in Anno 117: Pax Romana ein neues Spiel beginnst, gibst du eine Seed-Zahl ein, wählst ein Kartentemplate, eine Größe und ein paar weitere Optionen - und das Spiel baut daraus eine Welt. Was dabei herauskommt, stammt vom sogenannten „World Generator", der von einigen für den Spieler sichtbaren Vorgaben wie den Kartentemplates gesteuert wird, daneben aber hauptsächlich von einem Zufallsgenerator: welche Inseln in ihren vorgesehenen Plätzen erscheinen, wie sie gedreht sind, welche Fruchtbarkeiten auf ihnen vorhanden sind und wie viele Berg- und Flussplätze sie haben.
