@@ -1,4 +1,4 @@
-internal enum SearchRegionOrder{LatiumOnly,LatiumFirst,AlbionFirst}
+﻿internal enum SearchRegionOrder{LatiumOnly,LatiumFirst,AlbionFirst}
 
 internal sealed class CompiledSearchPlan
 {
@@ -42,6 +42,7 @@ internal sealed class CompiledSearchPlan
 
  public bool NeedsAlbion=>albion.Length!=0||minAlbionMountainSites>0||minAlbionBuildableTiles>0||minAlbionSwampTiles>0||minAlbionCopperMines>0||minAlbionSilverMines>0||minAlbionTinMines>0||advancedAlbionFilters.Length!=0;
  public static CompiledSearchPlan Create(SearchRequest request)=>new(request);
+
 
  public bool MatchesLatium(LatiumGeneration region)
  {

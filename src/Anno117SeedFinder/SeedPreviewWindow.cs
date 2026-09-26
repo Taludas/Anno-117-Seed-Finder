@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Effects;
 using System.Windows.Interop;
@@ -8,34 +8,106 @@ using System.Runtime.InteropServices;
 
 internal sealed class SeedPreviewWindow:Window
 {
- const double DesiredWidth=1540;
+ double DesiredWidth=1540;
  const double DesiredHeight=1160;
  static readonly Brush Ink=new SolidColorBrush(Color.FromRgb(25,36,52));
  static readonly Brush Muted=new SolidColorBrush(Color.FromRgb(102,112,133));
  static readonly Brush Accent=new SolidColorBrush(Color.FromRgb(138,91,36));
  readonly List<(FrameworkElement Target,ToolTip ToolTip)> tooltipTargets=[];
  readonly MapProfile profile;
+ readonly uint seed;readonly FertilitySetting fertilitySetting;readonly SlotSetting slotSetting;
+ // Zoom: the maps are scaled to fit the window (zoom 1) and can be enlarged up to MaxZoom times; Ctrl+mouse wheel zooms around the
+ // cursor, dragging with the left mouse button pans.
+ const double MaxZoom=12;
+ readonly ScrollViewer scroll=new(){HorizontalScrollBarVisibility=ScrollBarVisibility.Auto,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,Background=Brushes.Transparent};
+ readonly ScaleTransform scale=new(1,1);
+ readonly Grid maps=new(){HorizontalAlignment=HorizontalAlignment.Center,VerticalAlignment=VerticalAlignment.Top};
+ readonly Slider zoomSlider=new(){Minimum=1,Maximum=MaxZoom,Value=1,Width=180,VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(6,0,6,0)};
+ readonly TextBlock zoomLabel=new(){Width=48,VerticalAlignment=VerticalAlignment.Center};
+ readonly TextBlock legend=new(){Foreground=new SolidColorBrush(Color.FromRgb(102,112,133)),FontSize=11,TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,6,0,0)};
+ Point? dragStart;double dragH,dragV;
 
+ // The maps start scaled to fit the window and can be zoomed.
  public SeedPreviewWindow(uint seed,MapProfile? profile=null,FertilitySetting fertilitySetting=FertilitySetting.Abundant,SlotSetting slotSetting=SlotSetting.Abundant)
  {
-  this.profile=profile??MapProfiles.Default;
+  AppCulture.Apply(this);this.profile=profile??MapProfiles.Default;this.seed=seed;this.fertilitySetting=fertilitySetting;this.slotSetting=slotSetting;
   Title=Localization.Instance.Format("PreviewTitleFormat",seed);Width=DesiredWidth;Height=DesiredHeight;MinWidth=1120;MinHeight=700;WindowStartupLocation=WindowStartupLocation.CenterOwner;Background=new SolidColorBrush(Color.FromRgb(243,245,248));
   SourceInitialized+=(_,_)=>FitToMonitor();
-  // The layouts are the real placement of the map (island positions, rotations, decorations and third-party islands).
-  var latiumLayout=new MapLayout();var albionLayout=new MapLayout();
-  var latium=Generator.GenerateLatium(seed,new GeneratorScratch(),this.profile,fertilitySetting:fertilitySetting,slotSetting:slotSetting,layout:latiumLayout);
-  var albion=AlbionGenerator.Generate(seed,this.profile,fertilitySetting:fertilitySetting,slotSetting:slotSetting,layout:albionLayout);
 
   var root=new DockPanel{Margin=new Thickness(22)};Content=root;
-  var header=new StackPanel{Margin=new Thickness(4,0,4,14)};DockPanel.SetDock(header,Dock.Top);root.Children.Add(header);
+  var header=new StackPanel{Margin=new Thickness(4,0,4,10)};DockPanel.SetDock(header,Dock.Top);root.Children.Add(header);
   header.Children.Add(new TextBlock{Text=$"Seed {seed:N0}",FontSize=24,FontWeight=FontWeights.SemiBold,Foreground=Ink});
   header.Children.Add(new TextBlock{Text=this.profile.Dlc01?Localization.Instance.Format("PreviewSubtitleDlcFormat",this.profile.Template,this.profile.Size):Localization.Instance.Format("PreviewSubtitleNoDlcFormat",this.profile.Template,this.profile.Size),Foreground=Muted,Margin=new Thickness(0,4,0,0)});
+  // Toolbar: island style and zoom.
+  var toolbar=new StackPanel{Orientation=Orientation.Horizontal,Margin=new Thickness(0,10,0,0)};header.Children.Add(toolbar);
+  toolbar.Children.Add(new TextBlock{Text=Localization.Instance["PreviewStyleLabel"],VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(0,0,6,0)});
+  var style=new ComboBox{Width=170,VerticalAlignment=VerticalAlignment.Center};style.Items.Add(Localization.Instance["PreviewStyleTiles"]);style.Items.Add(Localization.Instance["PreviewStyleArtwork"]);
+  style.SelectedIndex=IslandImages.Style==IslandImageStyle.Tiles?0:1;style.SelectionChanged+=(_,_)=>{IslandImages.Style=style.SelectedIndex==0?IslandImageStyle.Tiles:IslandImageStyle.Artwork;BuildMaps();};toolbar.Children.Add(style);
+  toolbar.Children.Add(new TextBlock{Text=Localization.Instance["PreviewZoomLabel"],VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(24,0,0,0)});
+  var zoomOut=new Button{Content="−",Width=28,Margin=new Thickness(6,0,0,0)};zoomOut.Click+=(_,_)=>SetZoom(zoomSlider.Value/1.5,null);toolbar.Children.Add(zoomOut);
+  zoomSlider.ValueChanged+=(_,_)=>ApplyZoom();toolbar.Children.Add(zoomSlider);
+  var zoomIn=new Button{Content="+",Width=28};zoomIn.Click+=(_,_)=>SetZoom(zoomSlider.Value*1.5,null);toolbar.Children.Add(zoomIn);
+  toolbar.Children.Add(zoomLabel);
+  var fit=new Button{Content=Localization.Instance["PreviewZoomFit"],Padding=new Thickness(10,2,10,2),Margin=new Thickness(6,0,0,0)};fit.Click+=(_,_)=>SetZoom(1,null);toolbar.Children.Add(fit);
+  toolbar.Children.Add(new TextBlock{Text=Localization.Instance["PreviewZoomHint"],Foreground=Muted,FontSize=11,VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(14,0,0,0)});
+  header.Children.Add(legend);
 
-  var scroll=new ScrollViewer{HorizontalScrollBarVisibility=ScrollBarVisibility.Auto,VerticalScrollBarVisibility=ScrollBarVisibility.Auto};root.Children.Add(scroll);
-  var maps=new Grid{MinWidth=1300};maps.ColumnDefinitions.Add(new ColumnDefinition());maps.ColumnDefinitions.Add(new ColumnDefinition());scroll.Content=maps;
-  maps.Children.Add(BuildMap(this.profile.Dlc01?"Latium + Prophecies of Ash":"Latium",RegionKind.Latium,latium.Islands,latiumLayout));
-  var albionMap=BuildMap("Albion",RegionKind.Albion,albion,albionLayout);Grid.SetColumn(albionMap,1);maps.Children.Add(albionMap);
+  maps.LayoutTransform=scale;scroll.Content=maps;root.Children.Add(scroll);
+  scroll.SizeChanged+=(_,_)=>ApplyZoom();
+  scroll.PreviewMouseWheel+=(_,e)=>{if((System.Windows.Input.Keyboard.Modifiers&System.Windows.Input.ModifierKeys.Control)==0)return;e.Handled=true;SetZoom(zoomSlider.Value*(e.Delta>0?1.25:0.8),e.GetPosition(scroll));};
+  scroll.PreviewMouseLeftButtonDown+=(_,e)=>{if(IsInScrollBar(e.OriginalSource as DependencyObject))return;dragStart=e.GetPosition(scroll);dragH=scroll.HorizontalOffset;dragV=scroll.VerticalOffset;};
+  scroll.PreviewMouseMove+=(_,e)=>
+  {
+   if(dragStart is not Point start||e.LeftButton!=System.Windows.Input.MouseButtonState.Pressed){dragStart=null;return;}
+   var now=e.GetPosition(scroll);if(!scroll.IsMouseCaptured&&(Math.Abs(now.X-start.X)>4||Math.Abs(now.Y-start.Y)>4))scroll.CaptureMouse();
+   if(scroll.IsMouseCaptured){scroll.ScrollToHorizontalOffset(dragH-(now.X-start.X));scroll.ScrollToVerticalOffset(dragV-(now.Y-start.Y));scroll.Cursor=System.Windows.Input.Cursors.SizeAll;}
+  };
+  scroll.PreviewMouseLeftButtonUp+=(_,_)=>{dragStart=null;if(scroll.IsMouseCaptured)scroll.ReleaseMouseCapture();scroll.Cursor=null;};
+  BuildMaps();
  }
+
+ // (Re)builds the map cards, e.g. after the island style changed. The layouts are the real placement of the map (island positions,
+ // rotations, decorations and third-party islands).
+ void BuildMaps()
+ {
+  maps.Children.Clear();maps.ColumnDefinitions.Clear();tooltipTargets.Clear();
+  var latiumLayout=new MapLayout();var albionLayout=new MapLayout();
+  var latium=Generator.GenerateLatium(seed,new GeneratorScratch(),profile,fertilitySetting:fertilitySetting,slotSetting:slotSetting,layout:latiumLayout);
+  var albion=AlbionGenerator.Generate(seed,profile,fertilitySetting:fertilitySetting,slotSetting:slotSetting,layout:albionLayout);
+  for(var column=0;column<2;column++)maps.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});
+  maps.Children.Add(BuildMap(profile.Dlc01?"Latium · Prophecies of Ash":"Latium",RegionKind.Latium,latium.Islands,latiumLayout));
+  var albionMap=BuildMap("Albion",RegionKind.Albion,albion,albionLayout);Grid.SetColumn(albionMap,1);maps.Children.Add(albionMap);
+  legend.Text=IslandImages.Style==IslandImageStyle.Tiles?Localization.Instance["PreviewTileLegend"]:"";
+  legend.Visibility=legend.Text.Length==0?Visibility.Collapsed:Visibility.Visible;
+ }
+
+ static bool IsInScrollBar(DependencyObject? element)
+ {
+  for(;element is not null;element=element is Visual or System.Windows.Media.Media3D.Visual3D?VisualTreeHelper.GetParent(element):LogicalTreeHelper.GetParent(element))
+   if(element is System.Windows.Controls.Primitives.ScrollBar)return true;
+  return false;
+ }
+
+ // Zoom relative to "fit the window"; with a point (in viewport coordinates) the map spot under it stays in place.
+ void SetZoom(double zoom,Point? anchor)
+ {
+  zoom=Math.Clamp(zoom,1,MaxZoom);
+  var at=anchor??new Point(scroll.ViewportWidth/2,scroll.ViewportHeight/2);
+  var content=new Point((scroll.HorizontalOffset+at.X)/scale.ScaleX,(scroll.VerticalOffset+at.Y)/scale.ScaleY);
+  zoomSlider.Value=zoom;ApplyZoom();scroll.UpdateLayout();
+  scroll.ScrollToHorizontalOffset(content.X*scale.ScaleX-at.X);scroll.ScrollToVerticalOffset(content.Y*scale.ScaleY-at.Y);
+ }
+
+ void ApplyZoom()
+ {
+  if(maps.ActualWidth<=0||scroll.ActualWidth<=0){zoomLabel.Text=$"{zoomSlider.Value*100:F0} %";return;}
+  var fit=Math.Min(1,Math.Min((scroll.ActualWidth-4)/maps.ActualWidth,(scroll.ActualHeight-4)/maps.ActualHeight));
+  scale.ScaleX=scale.ScaleY=fit*zoomSlider.Value;zoomLabel.Text=$"{zoomSlider.Value*100:F0} %";
+ }
+
+ // Test hook: zoom in around a point given as a fraction of the viewport.
+ internal void SmokeZoom(double zoom,double fx,double fy){UpdateLayout();ApplyZoom();UpdateLayout();SetZoom(zoom,new Point(scroll.ViewportWidth*fx,scroll.ViewportHeight*fy));UpdateLayout();}
+
 
  void FitToMonitor()
  {
@@ -115,6 +187,10 @@ internal sealed class SeedPreviewWindow:Window
   var siteRow=new StackPanel{Orientation=Orientation.Horizontal,Margin=new Thickness(0,9,0,0)};panel.Children.Add(siteRow);
   AddSite(siteRow,"site_mountain",sites?.Mountain);
   if(region==RegionKind.Latium)AddSite(siteRow,"site_river",sites?.River);else AddSiteLabel(siteRow,Localization.Instance["SwampLabel"],sites?.Marsh);
+  // Tile breakdown: buildable land (Albion: of it marsh) and harbour of the island.
+  var area=IslandAreas.Get(island.Name);
+  var tiles=region==RegionKind.Latium?Localization.Instance.Format("LatiumTilesFormat",area.Total.ToString("N0"),area.Harbour.ToString("N0")):Localization.Instance.Format("AlbionTilesFormat",area.Total.ToString("N0"),area.Swamp.ToString("N0"),area.Harbour.ToString("N0"));
+  panel.Children.Add(new TextBlock{Text=tiles,Foreground=new SolidColorBrush(Color.FromRgb(203,213,225)),FontSize=12,Margin=new Thickness(0,8,0,0)});
   return new ToolTip{Content=panel,Placement=System.Windows.Controls.Primitives.PlacementMode.Mouse,Background=new SolidColorBrush(Color.FromRgb(10,23,34)),BorderBrush=new SolidColorBrush(Color.FromRgb(70,102,119)),BorderThickness=new Thickness(2),Padding=new Thickness(8),Foreground=Brushes.White};
  }
 

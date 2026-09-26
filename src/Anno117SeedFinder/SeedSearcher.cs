@@ -4,7 +4,8 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 
-internal sealed record SearchRequest(int FirstSeed,int MaxSeed,int Threads,int Limit,string Output,uint CinisSlot1,uint[] CinisPool,bool CinisMaxSites,IReadOnlyList<IslandCondition>? Conditions=null,MapProfile? Profile=null,int MinLatiumGoldSites=0,int MinLatiumSturgeonSites=0,int MinLatiumMountainSites=0,int MinLatiumRiverSites=0,int MinAlbionMountainSites=0,int MinLatiumBuildableTiles=0,int MinAlbionBuildableTiles=0,int MinAlbionSwampTiles=0,FertilitySetting FertilitySetting=FertilitySetting.Abundant,SlotSetting SlotSetting=SlotSetting.Abundant,int MinLatiumMineralMines=0,int MinAlbionCopperMines=0,int MinAlbionSilverMines=0,int MinLatiumMarbleSites=0,int MinLatiumGoldMines=0,int MinAlbionTinMines=0,IReadOnlyList<uint>? SeedList=null,IReadOnlyList<int>? AdvancedMinimums=null)
+internal sealed record SearchRequest(int FirstSeed,int MaxSeed,int Threads,int Limit,string Output,uint CinisSlot1,uint[] CinisPool,bool CinisMaxSites,IReadOnlyList<IslandCondition>? Conditions=null,MapProfile? Profile=null,int MinLatiumGoldSites=0,int MinLatiumSturgeonSites=0,int MinLatiumMountainSites=0,int MinLatiumRiverSites=0,int MinAlbionMountainSites=0,int MinLatiumBuildableTiles=0,int MinAlbionBuildableTiles=0,int MinAlbionSwampTiles=0,FertilitySetting FertilitySetting=FertilitySetting.Abundant,SlotSetting SlotSetting=SlotSetting.Abundant,int MinLatiumMineralMines=0,int MinAlbionCopperMines=0,int MinAlbionSilverMines=0,int MinLatiumMarbleSites=0,int MinLatiumGoldMines=0,int MinAlbionTinMines=0,IReadOnlyList<uint>? SeedList=null,IReadOnlyList<int>? AdvancedMinimums=null
+ )
 {
  // Minimum tile counts of the advanced fertility filters, indexed by AdvancedFilter; 0 (or no list) means the filter is off.
  public int AdvancedMinimum(AdvancedFilter filter)=>AdvancedMinimums is null||(int)filter>=AdvancedMinimums.Count?0:AdvancedMinimums[(int)filter];
@@ -166,6 +167,7 @@ internal static class SeedSearcher
    if(positions.Distinct().Count()!=positions.Length||positions.Any(slot=>!MapLayoutPositions.For(profile,condition.Region,condition.Set).Any(position=>position.SlotIndex==slot)))throw new ArgumentException(Localization.Instance["InvalidPositionForProfile"]);
   }
  }
+
 
  public static SelfTestResult RunSelfTest()
  {

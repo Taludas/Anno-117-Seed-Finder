@@ -67,7 +67,7 @@ These settings must match what you will later choose in the game's "New Game" sc
 | **Map size** | Small, Medium or Large. Larger maps have more islands and more space between them. |
 | **DLC01 – PoA** | Whether *Prophecies of Ash* DLC is active. With it, Latium is expanded by the continental island Cinis, and gains several extra islands in the Northern corner of the map. |
 | **activated later (experimental)** | For maps that were **created without** the DLC01 and had it switched on afterwards. See [Switching the DLC on later](#switching-the-dlc-on-later). |
-| **DLC03 – DotD** | Greyed out. Reserved for the future DLC03 *Dawn of Delta* expansion; it does nothing today. |
+| **DLC03 – DotD** | Greyed out. DLC03 *Dawn of the Delta* is prepared for, but not active yet. |
 | **Start mode** | Flagship or starting island. This is the game's choice of how you arrive in the map; it does **not** change the generated map. Tested with the starting-island option switched on, with the continental island forced as the start, and with DLC01 on and off (Archipelago and Corners, Large): all six savegames are identical to the plain ones. |
 
 ### 2. Additional map options
@@ -98,7 +98,7 @@ Use the "add" buttons to create a condition row, then pick the fertility distrib
 
 **Minimum sizes.** Three sliders demand a minimum amount of usable tiles: buildable area in Latium, in Albion, and marsh area in Albion. The "median" button next to each one fills in the typical value for the current map profile, so you can quickly ask for "better than average" (derived of 100k seeds).
 
-**Minimum building slots.** A row of boxes lets you demand a minimum number of mountain slots, river slots, gold river slots, sturgeon river slots, gold mines, raw marble mines and mineral mines in Latium, silver, tin and copper mines in Albion. Again each has a "median" button.
+**Minimum building slots.** A row of boxes lets you demand a minimum number of mountain slots, river slots, gold river slots, sturgeon river slots, gold mines, raw marble mines and mineral mines in Latium, silver, tin and copper mines in Albion. Again each has a "median" button. The mountain and river slot totals are always shown; the fertility-specific ones (gold and sturgeon river slots and the single mines) appear with **Show advanced fertility filters** and only apply while it is on.
 
 **Advanced fertility filters.** The check box **Show advanced fertility filters** above the results table reveals six more sliders and adds their columns to the table. Each one adds up the harbour or swamp tiles of all islands in the region that carry a given fertility: harbour tiles of the Murex islands and of the Oyster islands in Latium; harbour tiles of the Saltwort islands and of the Sea Shell islands in Albion; swamp tiles of the Small Birds islands and of the Beaver islands in Albion. The sliders move in steps of 500 tiles and have a "median" button like the others. Filters are only applied while the check box is on; the box is saved with the presets.
 
@@ -116,15 +116,21 @@ Use the "add" buttons to create a condition row, then pick the fertility distrib
 
 Press **Start** to run and **Cancel** to stop early. Results appear in the table as they are found.
 
+**How fast is it?** Measured with the built-in `--benchmark` switch on a Ryzen 9 9950X3D (16 cores, 32 threads), Corners Large with DLC01:
+
+| Work per seed | 1 thread | 32 threads |
+|---|---|---|
+| A search with Latium filters (the usual case) | about 5,700 seeds/s | about 93,000 seeds/s |
+| Generating Latium alone | about 5,700 seeds/s | about 90,000 seeds/s |
+| Generating Albion alone | about 10,300 seeds/s | about 173,000 seeds/s |
+
+So a million seeds take about 11 seconds on all cores, and the whole range the game accepts (almost a billion seeds) takes about three hours. Albion is generated only for seeds that already passed Latium (or first, when its filters are the stricter ones). A slower machine scales roughly with its core count.
+
 ### 5. Results
 
-The table lists every matching seed with its key numbers: buildable tiles per region, marsh area, slot counts
-and the fertility distribution on Cinis. The check boxes above the table switch individual columns on and off, so you can keep it
-readable. Hover any of these numbers for a small gauge: where this seed's value falls between the 100k-seed
-population's minimum and maximum, with the median marked, so a bare number like "145" gets context without opening
-the corresponding filter.
+The table lists every matching seed with its key numbers: buildable tiles per region, marsh area, slot counts and the fertility distribution on Cinis. By default the table stays compact: the areas and the total mountain and river slots of each region. Headers marked ▦ are tile counts. Ticking **Show advanced fertility filters** adds every fertility-specific column (gold and sturgeon river slots, the single mines, the advanced filter columns) together with the matching filter rows. Numbers follow the window language: German groups thousands as 1.234, English as 1,234. When all columns do not fit the window, the table scrolls sideways. Hover any of these numbers for a small gauge: where this seed's value falls between the 100k-seed population's minimum and maximum, with the median marked, so a bare number like "145" gets context without opening the corresponding filter.
 
-- **Preview** – type a seed and press Preview to see both regions drawn as a map: every island exactly where the game puts it and turned the way the game turns it, with its top-down image, plus the decoration islands and the third-party islands (traders and the raider). Hover an island for its fertilities and slot counts; the outline colour on hover shows its role. The border of the regular map and of the Prophecies of Ash area are drawn as the real rectangles. This works for any seed, whether it came from a search or not. **Random** puts a random valid seed into the box.
+- **Preview** – type a seed and press Preview to see both regions drawn as a map: every island exactly where the game puts it and turned the way the game turns it, with its top-down image, plus the decoration islands and the third-party islands (traders and the raider). Hover an island for its fertilities and slot counts; the outline colour on hover shows its role. The border of the regular map and of the Prophecies of Ash area are drawn as the real rectangles. This works for any seed, whether it came from a search or not. **Random** puts a random valid seed into the box. The islands can be drawn as a **tile map** (the default: every tile coloured by type - buildable, marsh, river, harbour, not buildable) or with the game's **artwork**. Zoom with the slider, the + and − buttons or Ctrl + mouse wheel (around the cursor), drag with the left mouse button to move around, and **Fit** shows everything again; in the tile map every pixel is one tile. The island tooltips also show the tile breakdown: buildable land, marsh (Albion) and harbour.
 - **Add seed** – put a single specific seed into the table without searching.
 - **Load seed list** – read a list of seeds from a file and evaluate them all in the results table. A plain text file with one seed per line (like the output file, `treffer.txt`) and a CSV exported by the app both work; other columns are ignored. The seeds carry no map profile: set the profile they were found with before you load them.
 - **Export CSV** – write the results table to a spreadsheet file. The suggested file name is stamped with the current
@@ -149,17 +155,13 @@ language - in a small file, so you can come back to a search later or share it w
 
 ## How Anno 117 builds a map
 
-This is the part the tool had to reproduce. It is described here in plain language; you do not need any of it to use
-the app, but it explains what the settings really do.
+This is the part the tool had to reproduce. It is described here in plain language; you do not need any of it to use the app, but it explains what the settings really do.
 
 ### The dice
 
-Everything starts with the seed. The game turns it into a set of **17 numbers**: it takes the seed and repeatedly
-multiplies and adds a fixed amount, filling the 17 places one after another.
+Everything starts with the seed. The game turns it into a set of **17 numbers**: it takes the seed and repeatedly multiplies and adds a fixed amount, filling the 17 places one after another.
 
-From then on, every "roll of the dice" works the same way: the game takes two of those 17 numbers, rotates their bits
-(nine steps for one, thirteen for the other), adds them together, and writes the result back over one of the two.
-A pointer moves on, and the next roll uses the next pair. So the 17 numbers keep stirring each other, and out comes a
+From then on, every "roll of the dice" works the same way: the game takes two of those 17 numbers, rotates their bits (nine steps for one, thirteen for the other), adds them together, and writes the result back over one of the two. A pointer moves on, and the next roll uses the next pair. So the 17 numbers keep stirring each other, and out comes a
 stream of numbers that looks random but is completely determined by the seed.
 
 Two things matter for understanding the rest:
@@ -259,19 +261,14 @@ Every rule was derived from real savegames and from the game's own island and te
 | Decorative islands | 1080 / 1080 | 900 / 900 |
 
 **11,844 checks, no mismatches.** On top of that, a larger archive of several hundred older savegames is used as a
-regression test after every change, and the three slot settings and the retroactive DLC were each verified against
-their own savegames.
+regression test after every change, and the three slot settings and the retroactive DLC were each verified against their own savegames.
 
 ---
 
 ## Known limits
 
-- **"DLC activated later" is experimental.** The extra dice rolls the game makes before placing the new islands are
-  known only for the map sizes that appear in the savegames we have. For an untested size the app falls back to a
-  formula that is right for most values but wrong for some, and then the **fertilities on the newly added islands** can be
-  wrong. The old part of the map is always correct. It has also not been tested with the regular and sparse fertility
-  settings.
-- **DLC03** is not implemented; the box is inactive.
+- **"DLC activated later" is experimental.** The extra dice rolls the game makes before placing the new islands are known only for the map sizes that appear in the savegames we have. For an untested size the app falls back to a formula that is right for most values but wrong for some, and then the **fertilities on the newly added islands** can be wrong. The old part of the map is always correct. It has also not been tested with the regular and sparse fertility settings.
+- **DLC03** is prepared for, but not active yet; the box does nothing.
 
 ---
 
@@ -289,11 +286,9 @@ The executable lands in `src/Anno117SeedFinder/bin/Debug/net10.0-windows/`. For 
 dotnet publish src/Anno117SeedFinder/Anno117SeedFinder.csproj -c Release --self-contained false -o publish
 ```
 
-The result needs the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) (x64) on the machine that
-runs it.
+The result needs the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) (x64) on the machine that runs it.
 
-Five self-checks are built in and are the quickest way to see that a build is sound. Each returns exit code 0 when it
-passes:
+Five self-checks are built in and are the quickest way to see that a build is sound. Each returns exit code 0 when it passes:
 
 ```
 Anno117SeedFinder.exe --self-test                # generator against stored reference results
@@ -303,9 +298,7 @@ Anno117SeedFinder.exe --preview-smoke-test       # the seed preview window build
 Anno117SeedFinder.exe --settings-smoke-test      # presets load and save through the window
 ```
 
-The `tools` folder holds the scripts that compare the generator with your own savegames (`tools/README.md`); they are not
-needed to use or build the app, and no savegames or game files are included. `CAVEATS.md` describes the traps encountered
-while working all this out, and `OPEN-PROBLEMS.md` lists what is still unfinished.
+The `tools` folder holds the scripts that compare the generator with your own savegames (`tools/README.md`); they are not needed to use or build the app, and no savegames or game files are included. `CAVEATS.md` describes the traps encountered while working all this out, and `OPEN-PROBLEMS.md` lists what is still unfinished.
 
 ## Credits
 

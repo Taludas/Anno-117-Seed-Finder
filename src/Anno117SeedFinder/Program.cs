@@ -70,11 +70,13 @@ internal static class Program
    // Optional extra arguments: "en" renders in English, "advanced" switches the advanced fertility filters on, "scoring" also
    // switches seed scoring on, "tall" makes the window taller, "scroll" scrolls to the advanced filters, "bottom" scrolls to the
    // end, "longlabel" fills the progress line with a message as long as a real one on a huge range.
-   if(args.Contains("en",StringComparer.OrdinalIgnoreCase))Localization.Instance.Language=AppLanguage.English;
+   if(args.Contains("en",StringComparer.OrdinalIgnoreCase))window.CmbLanguage.SelectedIndex=1;
    if(args.Contains("advanced",StringComparer.OrdinalIgnoreCase))window.SmokeShowAdvanced();
    if(args.Contains("scoring",StringComparer.OrdinalIgnoreCase)){window.ChkScoring.IsChecked=true;window.SmokeShowAdvanced();}
    if(args.Contains("longlabel",StringComparer.OrdinalIgnoreCase))window.SmokeLongProgressLabel();
    if(args.Contains("tall",StringComparer.OrdinalIgnoreCase))window.Height=1800;
+   // RENDER_SIZE="width;height" renders the window at that size (e.g. a maximised window on 1080p or 1440p).
+   if(Environment.GetEnvironmentVariable("RENDER_SIZE")?.Split(';') is [var rw,var rh]){window.Width=double.Parse(rw);window.Height=double.Parse(rh);}
    var scrollFilters=args.Contains("scroll",StringComparer.OrdinalIgnoreCase);
    var scrollToEnd=args.Contains("bottom",StringComparer.OrdinalIgnoreCase);
    window.Show();window.UpdateLayout();if(scrollFilters)window.SmokeScrollFilters();if(scrollToEnd)window.SmokeScrollToEnd();
@@ -84,8 +86,8 @@ internal static class Program
   }
   if((args.Length==3||args.Length==6)&&args[0].Equals("--render-preview",StringComparison.OrdinalIgnoreCase)&&uint.TryParse(args[1],out var previewSeed))
   {
-   var previewApp=new Application();var previewProfile=args.Length==6?MapProfiles.Get(Enum.Parse<MapTemplateKind>(args[3],true),Enum.Parse<MapSizeKind>(args[4],true),args[5]!="0"):null;var window=new SeedPreviewWindow(previewSeed,previewProfile){WindowStartupLocation=WindowStartupLocation.Manual,Left=-20000,Top=-20000};
-   window.Show();window.UpdateLayout();var bitmap=new RenderTargetBitmap((int)window.ActualWidth,(int)window.ActualHeight,96,96,PixelFormats.Pbgra32);bitmap.Render(window);
+   var previewApp=new Application();var previewProfile=args.Length==6?MapProfiles.Get(Enum.Parse<MapTemplateKind>(args[3],true),Enum.Parse<MapSizeKind>(args[4],true),args[5]!="0"):null;if(Environment.GetEnvironmentVariable("ARTWORK")=="1")IslandImages.Style=IslandImageStyle.Artwork;var window=new SeedPreviewWindow(previewSeed,previewProfile){WindowStartupLocation=WindowStartupLocation.Manual,Left=-20000,Top=-20000};
+   window.Show();window.UpdateLayout();if(Environment.GetEnvironmentVariable("PREVIEW_ZOOM")?.Split(';') is [var z,var zx,var zy])window.SmokeZoom(double.Parse(z,System.Globalization.CultureInfo.InvariantCulture),double.Parse(zx,System.Globalization.CultureInfo.InvariantCulture),double.Parse(zy,System.Globalization.CultureInfo.InvariantCulture));var bitmap=new RenderTargetBitmap((int)window.ActualWidth,(int)window.ActualHeight,96,96,PixelFormats.Pbgra32);bitmap.Render(window);
    var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(bitmap));using(var stream=File.Create(args[2]))encoder.Save(stream);
    window.Close();previewApp.Shutdown();return 0;
   }
@@ -192,6 +194,26 @@ internal static class Program
     rows.Add($"{template}|{aaSize}|dlc={aaDlc}|{string.Join('|',AdvancedFilters.All.Select(definition=>$"{definition.Filter}={MineStats(values[(int)definition.Filter])}"))}");
    }
    File.WriteAllLines(args[4],rows);return 0;
+  }
+  // Throughput (--benchmark <seeds> <threads>): seeds per second for the generation of each region alone, and for a real
+  // search over seeds 1..N on Corners Large with DLC01 whose Latium filter lets nothing through (every seed generated in Latium,
+  // the usual first region). Written to the console as one line per measurement.
+  if(args.Length==3&&args[0].Equals("--benchmark",StringComparison.OrdinalIgnoreCase)&&int.TryParse(args[1],out var bmSeeds)&&int.TryParse(args[2],out var bmThreads))
+  {
+   var bmProfile=MapProfiles.Get(MapTemplateKind.Corners,MapSizeKind.Large,true);var options=new ParallelOptions{MaxDegreeOfParallelism=bmThreads};
+   double Rate(Action<uint> work){Parallel.For(1,Math.Min(bmSeeds,2000)+1,options,i=>work((uint)i));var watch=System.Diagnostics.Stopwatch.StartNew();Parallel.For(1,bmSeeds+1,options,i=>work((uint)i));return bmSeeds/watch.Elapsed.TotalSeconds;}
+   var scratch=new ThreadLocal<GeneratorScratch>(()=>new GeneratorScratch());
+   Console.WriteLine($"latium {Rate(seed=>Generator.GenerateLatium(seed,scratch.Value!,bmProfile)):F0}");
+   Console.WriteLine($"albion {Rate(seed=>RegionMetrics.Calculate(AlbionGenerator.Generate(seed,bmProfile))):F0}");
+   var output=Path.Combine(Path.GetTempPath(),$"anno117-benchmark-{Guid.NewGuid():N}.txt");
+   try
+   {
+    var request=new SearchRequest(1,bmSeeds,bmThreads,0,output,0,[],false,Profile:bmProfile,MinLatiumGoldSites:999);
+    var watch=System.Diagnostics.Stopwatch.StartNew();var summary=SeedSearcher.SearchAsync(request,null,CancellationToken.None).GetAwaiter().GetResult();
+    Console.WriteLine($"search {bmSeeds/watch.Elapsed.TotalSeconds:F0} ({summary.Strategy})");
+   }
+   finally{if(File.Exists(output))File.Delete(output);}
+   return 0;
   }
   // Headless counterpart of the window's "Seedliste laden" + "CSV exportieren" pair:
   // reads one seed per line and writes the same table the UI would show.
@@ -464,6 +486,9 @@ internal static class Generator
  static readonly Dictionary<string,uint> Names=new(StringComparer.OrdinalIgnoreCase){{"Mackerel",2206},{"Lavender",2209},{"Grapes",2205},{"Flax",2202},{"Murex",4051},{"Sea Snails",4051},{"Oysters",2208},{"Sturgeon",8577},{"Gold",32027}};
  static readonly Dictionary<uint,string> Labels=new(){{2206,"Mackerel"},{2209,"Lavender"},{2210,"Olives"},{51212,"Resin"},{4049,"Iron"},{4062,"Marble"},{2205,"Grapes"},{2202,"Flax"},{4051,"Murex"},{2208,"Oysters"},{8577,"Sturgeon"},{32027,"Gold"},{4052,"Sandarac"},{4053,"Minerals"}};
  static readonly Dictionary<string,Asset> Assets=Asset.All.ToDictionary(x=>x.Name);
+ // Game version 3.0 re-shipped roman_island_extralarge_04 and moved its start coast: 37 starter placements in the 3.0 savegames
+ // allow only 5.428..5.468 (the 2.1 value 5.4925 rotates it wrongly on Rift slot 23 and Archipelago Medium slot 20).
+ static double StartCoastDirection(string name)=>RomanStartCoastDirections[name];
  static readonly Dictionary<string,double> RomanStartCoastDirections=new()
  {
   ["roman_island_extralarge_01"]=4.567947,["roman_island_extralarge_02"]=4.950634,["roman_island_extralarge_03"]=4.128881,["roman_island_extralarge_04"]=5.4925,
@@ -794,7 +819,10 @@ internal static class Generator
    Add(placed.Asset,x,y,placed.Rot);layout?.Add(placed.Asset.Name,MapLayout.Island,placed.Slot.Index,placed.Rot,x,y);
   }
   var fixedPoints=StartPoints(profile);
-  foreach(var point in fixedPoints)occupied.Set((point.Item1+shiftX)/8,(point.Item2+shiftY)/8);
+  // The player start points keep decorations away. With DLC01 (fixed map size) the engine uses their template position, without the
+  // map shift that applies where islands stick out past the map edge (Corners Large seed 27028); without DLC01 (shrink-wrapped,
+  // centred map) it uses the shifted position (1204 Archipelago Small without DLC).
+  foreach(var point in fixedPoints)occupied.Set((point.Item1+(profile.Dlc01?0:shiftX))/8,(point.Item2+(profile.Dlc01?0:shiftY))/8);
 
   var specialPositionIndex=0;void AtAnchor(Asset asset,(int X,int Y) anchor,byte rotation)
   {
@@ -902,7 +930,7 @@ internal static class Generator
  static byte LatiumStarterRotation(MapProfile profile,Slot slot,Asset asset,IReadOnlyList<Slot> starters)
  {
   var half=SlotHalf(slot.Size);var centre=profile.LatiumTemplateSize/2d;var target=Math.Atan2(centre-(slot.Y+half),centre-(slot.X+half));if(target<0)target+=2*Math.PI;
-  var direction=RomanStartCoastDirections[asset.Name];var best=0;var distance=double.MaxValue;
+  var direction=StartCoastDirection(asset.Name);var best=0;var distance=double.MaxValue;
   for(var rotation=0;rotation<4;rotation++){var delta=Math.Abs((direction+rotation*Math.PI/2-target)%(2*Math.PI));delta=Math.Min(delta,2*Math.PI-delta);if(delta<distance){distance=delta;best=rotation;}}
   return(byte)best;
  }
@@ -986,7 +1014,7 @@ internal static class AlbionGenerator
   return rows.Where(row=>Assets.ContainsKey(row.Split('|')[0])).Select(row=>
   {
    var parts=row.Split('|');var name=parts[0];var rotation=byte.Parse(parts[1]);var actualX=int.Parse(parts[2]);var actualY=int.Parse(parts[3]);var asset=Assets[name];var size=name.Contains("_large_",StringComparison.Ordinal)?"Large":name.Contains("_medium_",StringComparison.Ordinal)?"Medium":"Small";
-   var candidates=profile.AlbionSlots.Where(slot=>slot.Size==size).Select(slot=>{var half=size=="Large"?216:size=="Medium"?160:128;var position=Position(asset,rotation,slot.X+half,slot.Y+half);return(Slot:slot,Distance:Math.Abs(position.X-actualX)+Math.Abs(position.Y-actualY),Position:position);}).ToArray();
+   var candidates=AlbionSlotsOf(profile).Where(slot=>slot.Size==size).Select(slot=>{var half=size=="Large"?216:size=="Medium"?160:128;var position=Position(asset,rotation,slot.X+half,slot.Y+half);return(Slot:slot,Distance:Math.Abs(position.X-actualX)+Math.Abs(position.Y-actualY),Position:position);}).ToArray();
    if(candidates.Length==0)return $"-1|-1|{name}|{rotation}|{actualX}|{actualY}|unmatched|unmatched";
    var match=candidates.MinBy(candidate=>candidate.Distance);
    return $"{match.Slot.Index}|{match.Distance}|{name}|{rotation}|{actualX}|{actualY}|{match.Position.X}|{match.Position.Y}";
@@ -1122,7 +1150,8 @@ internal static class AlbionGenerator
  }
  static List<AlbionAsset>A(IEnumerable<string> names)=>names.Select(x=>Assets[x]).ToList();
  static List<AlbionAsset>AlbionPool(string size)=>size switch{"Large"=>A(Enumerable.Range(1,8).Select(i=>$"celtic_island_large_{i:00}")),"Medium"=>A(Enumerable.Range(1,7).Select(i=>$"celtic_island_medium_{i:00}")),"Small"=>A(Enumerable.Range(1,7).Select(i=>$"celtic_island_small_{i:00}")),_=>throw new InvalidOperationException($"Kein Albion-Inselpool für Größe {size}.")};
- static List<AlbionSlot>Slots(MapProfile profile)=>profile.AlbionSlots.Select(slot=>new AlbionSlot(slot.Index,slot.X,slot.Y,slot.Size,slot.Type)).ToList();
+ static List<AlbionSlot>Slots(MapProfile profile)=>AlbionSlotsOf(profile).Select(slot=>new AlbionSlot(slot.Index,slot.X,slot.Y,slot.Size,slot.Type)).ToList();
+ static IEnumerable<MapSlot> AlbionSlotsOf(MapProfile profile)=>profile.AlbionSlots;
  sealed record AlbionSlot(int Index,int X,int Y,string Size,int Type);sealed record AlbionPlaced(AlbionAsset Asset,AlbionSlot Slot,byte Rotation);sealed record AlbionSpecialPlaced(AlbionAsset Asset,byte Rotation,(int X,int Y) Position);sealed record AlbionCore(Rng Rng,List<AlbionPlaced> Placed,Dictionary<int,SiteCounts> SitesBySlot,int Width);
 }
 

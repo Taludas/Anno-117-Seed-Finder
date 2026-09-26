@@ -38,8 +38,7 @@ Ein Seed ist einfach eine Zahl. Das Spiel startet damit eine lange Kette von „
 **Was du brauchst**
 
 - Windows
-- [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) (die „Desktop"-Variante, nicht nur die
-  Konsolenversion)
+- [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) (die „Desktop"-Variante, nicht nur die Konsolenversion)
 
 **Starten**
 
@@ -63,7 +62,7 @@ Diese Einstellungen müssen zu dem passen, was du später im Menü „Neues Spie
 | **Kartengröße** | Klein, mittel oder groß. Größere Karten haben mehr Inseln und mehr Platz dazwischen. |
 | **DLC01 – PoA** | Ob das DLC *Verheißung des Vulkans* aktiv ist. Damit wird Latium um die Kontinentalinsel Cinis erweitert und bekommt mehrere zusätzliche Inseln in der nördlichen Ecke der Karte. |
 | **nachträglich aktiviert (experimentell)** | Für Karten, die **ohne** DLC01 erstellt und bei denen es danach eingeschaltet wurde. Siehe [DLC nachträglich einschalten](#dlc-nachträglich-einschalten). |
-| **DLC03 – DotD** | Ausgegraut. Für das kommende DLC03 *Erwachen des Deltas* vorgesehen, hat derzeit keine Wirkung. |
+| **DLC03 – DotD** | Ausgegraut. DLC03 *Erwachen des Deltas* ist vorbereitet, aber noch nicht aktiv. |
 | **Startart** | Flaggschiff oder Startinsel. Das ist die Wahl des Spiels, wie du ankommst; sie ändert die erzeugte Karte **nicht**. Geprüft mit eingeschalteter Startinsel-Option, mit erzwungener kontinentaler Insel als Start und mit DLC01 an und aus (Archipel und Ecken, groß): alle sechs Spielstände sind mit den normalen identisch. |
 
 ### 2. Weitere Kartenoptionen
@@ -94,7 +93,7 @@ Mit den „Hinzufügen"-Schaltflächen legst du eine Bedingungszeile an und wäh
 
 **Mindestgrößen.** Drei Regler verlangen eine Mindestmenge nutzbarer Kacheln: bebaubare Fläche in Latium, in Albion und Sumpffläche in Albion. Die Schaltfläche „Median" daneben trägt den typischen Wert für das aktuelle Kartenprofil ein - so fragst du schnell nach „besser als Durchschnitt" (aus 100.000 Seeds ermittelt).
 
-**Mindestzahl an Bauplätzen.** Eine Reihe von Feldern verlangt eine Mindestzahl an Bergbauplätzen, Flussbauplätzen, Goldflussbauplätzen, Störflussbauplätzen, Goldminen, Rohmarmor-Steinbrüchen und Mineralienminen in Latium sowie Silber-, Zinn- und Kupferminen in Albion. Auch hier gibt es je eine Median-Schaltfläche.
+**Mindestzahl an Bauplätzen.** Eine Reihe von Feldern verlangt eine Mindestzahl an Bergbauplätzen, Flussbauplätzen, Goldflussbauplätzen, Störflussbauplätzen, Goldminen, Rohmarmor-Steinbrüchen und Mineralienminen in Latium sowie Silber-, Zinn- und Kupferminen in Albion. Auch hier gibt es je eine Median-Schaltfläche. Berg- und Flussbauplätze gesamt sind immer sichtbar; die fruchtbarkeitsbezogenen (Gold- und Störfluss, die einzelnen Minen) erscheinen mit **Erweiterte Fruchtbarkeitsfilter anzeigen** und wirken nur, solange der Haken gesetzt ist.
 
 **Erweiterte Fruchtbarkeitsfilter.** Das Kästchen **Erweiterte Fruchtbarkeitsfilter anzeigen** über der Ergebnistabelle blendet sechs weitere Regler ein und fügt der Tabelle ihre Spalten hinzu. Jeder Regler addiert die Hafen- oder Sumpfkacheln aller Inseln der Region, die eine bestimmte Fruchtbarkeit tragen: Hafenkacheln der Inseln mit Purpurschnecken und mit Austern in Latium; Hafenkacheln der Inseln mit Salzkraut und mit Kammmuscheln in Albion; Sumpfkacheln der Inseln mit Kleinen Vögeln und mit Bibern in Albion. Die Regler springen in Schritten zu 500 Kacheln und haben wie die anderen eine Median-Schaltfläche. Die Filter wirken nur, solange das Kästchen angehakt ist; das Kästchen wird in den Presets mitgespeichert.
 
@@ -112,11 +111,21 @@ Mit den „Hinzufügen"-Schaltflächen legst du eine Bedingungszeile an und wäh
 
 **Start** führt die Suche aus, **Abbrechen** hält sie vorzeitig an. Treffer erscheinen laufend in der Tabelle.
 
+**Wie schnell ist das Ganze?** Gemessen mit dem eingebauten Schalter `--benchmark` auf einem Ryzen 9 9950X3D (16 Kerne, 32 Threads), Corners Large mit DLC01:
+
+| Aufgabe pro Seed | 1 Thread | 32 Threads |
+|---|---|---|
+| Eine Suche mit Latium-Filtern (der Normalfall) | etwa 5.700 Seeds/s | etwa 93.000 Seeds/s |
+| Nur Latium erzeugen | etwa 5.700 Seeds/s | etwa 90.000 Seeds/s |
+| Nur Albion erzeugen | etwa 10.300 Seeds/s | etwa 173.000 Seeds/s |
+
+Eine Million Seeds dauert also auf allen Kernen etwa 11 Sekunden, der ganze Bereich, den das Spiel annimmt (fast eine Milliarde Seeds), etwa drei Stunden. Albion wird nur für Seeds erzeugt, die Latium schon bestanden haben (oder zuerst, wenn seine Filter die strengeren sind). Ein langsamerer Rechner skaliert ungefähr mit der Kernzahl seiner CPU.
+
 ### 5. Ergebnisse
 
-Die Tabelle listet jeden passenden Seed mit seinen Kennzahlen: bebaubare Kacheln je Region, Sumpffläche, Zahl der Bauplätze und die Fruchtbarkeitsverteilung auf Cinis. Mit den Kästchen über der Tabelle blendest du einzelne Spalten ein und aus, damit sie lesbar bleibt. Der Mauszeiger über einer dieser Zahlen zeigt eine kleine Anzeige: wo der Wert dieses Seeds zwischen dem Minimum und Maximum der 100.000-Seed-Statistik liegt, mit markiertem Median - so bekommt eine nackte Zahl wie „145" Einordnung, ohne den zugehörigen Filter zu öffnen.
+Die Tabelle listet jeden passenden Seed mit seinen Kennzahlen: bebaubare Kacheln je Region, Sumpffläche, Zahl der Bauplätze und die Fruchtbarkeitsverteilung auf Cinis. Standardmäßig bleibt die Tabelle kompakt: die Flächen und die Berg- und Flussbauplätze gesamt je Region. Spaltenköpfe mit ▦ sind Kachelzahlen. Der Haken bei **Erweiterte Fruchtbarkeitsfilter anzeigen** blendet alle fruchtbarkeitsbezogenen Spalten ein (Gold- und Störfluss-Bauplätze, die einzelnen Minen, die Spalten der erweiterten Filter), zusammen mit den passenden Filterzeilen. Zahlen folgen der Fenstersprache: Deutsch trennt Tausender mit 1.234, Englisch mit 1,234. Passen nicht alle Spalten ins Fenster, lässt sich die Tabelle seitlich scrollen. Der Mauszeiger über einer dieser Zahlen zeigt eine kleine Anzeige: wo der Wert dieses Seeds zwischen dem Minimum und Maximum der 100.000-Seed-Statistik liegt, mit markiertem Median - so bekommt eine nackte Zahl wie „145" Einordnung, ohne den zugehörigen Filter zu öffnen.
 
-- **Vorschau** – Seed eintippen und Vorschau drücken, um beide Regionen als Karte zu sehen: jede Insel genau dort, wo das Spiel sie hinsetzt, und so gedreht, wie das Spiel sie dreht, mit ihrem Draufsicht-Bild, dazu die Dekorationsinseln und die Drittanbieter-Inseln (Händler und Räuber). Beim Darüberfahren erscheinen Fruchtbarkeiten und Bauplätze; die Rahmenfarbe zeigt die Rolle. Der Rand der normalen Karte und der des Prophecies-of-Ash-Bereichs sind als echte Rechtecke eingezeichnet. Das geht für jeden Seed, auch ohne Suche. **Zufall** setzt einen zufälligen gültigen Seed in das Feld.
+- **Vorschau** – Seed eintippen und Vorschau drücken, um beide Regionen als Karte zu sehen: jede Insel genau dort, wo das Spiel sie hinsetzt, und so gedreht, wie das Spiel sie dreht, mit ihrem Draufsicht-Bild, dazu die Dekorationsinseln und die Drittanbieter-Inseln (Händler und Räuber). Beim Darüberfahren erscheinen Fruchtbarkeiten und Bauplätze; die Rahmenfarbe zeigt die Rolle. Der Rand der normalen Karte und der des Prophecies-of-Ash-Bereichs sind als echte Rechtecke eingezeichnet. Das geht für jeden Seed, auch ohne Suche. **Zufall** setzt einen zufälligen gültigen Seed in das Feld. Die Inseln lassen sich als **Kachelkarte** zeichnen (Voreinstellung: jede Kachel nach Typ eingefärbt - Baufläche, Sumpf, Fluss, Hafen, nicht bebaubar) oder mit den **Grafiken des Spiels**. Gezoomt wird mit dem Regler, den Schaltflächen + und − oder Strg + Mausrad (um den Mauszeiger), Ziehen mit der linken Maustaste verschiebt, **Einpassen** zeigt wieder alles; in der Kachelkarte ist jedes Pixel eine Kachel. Die Insel-Tooltips zeigen auch die Kachelaufteilung: Baufläche, Sumpf (Albion) und Hafen.
 - **Seed hinzufügen** – einen einzelnen, bestimmten Seed ohne Suche in die Tabelle aufnehmen.
 - **Seed-Liste laden** – eine Liste von Seeds aus einer Datei einlesen und alle in der Ergebnistabelle auswerten. Eine Textdatei mit einem Seed pro Zeile (wie die Ausgabedatei `treffer.txt`) und eine von der App exportierte CSV-Datei funktionieren beide; weitere Spalten werden ignoriert. Die Seeds tragen kein Kartenprofil: stelle das Profil ein, mit dem sie gefunden wurden, bevor du sie lädst.
 - **CSV exportieren** – die Ergebnistabelle als Tabellendatei schreiben. Der vorgeschlagene Dateiname trägt denselben
@@ -243,20 +252,14 @@ Jede Regel wurde aus echten Spielständen und aus den Insel- und Vorlagendateien
 | Zahl der Bauplätze | 1863 / 1863 | 1440 / 1440 |
 | Dekorationsinseln | 1080 / 1080 | 900 / 900 |
 
-**11.844 Prüfungen, keine Abweichung.** Zusätzlich dient ein größeres Archiv mehrerer hundert älterer Spielstände nach
-jeder Änderung als Regressionstest, und die drei Bauplatz-Stufen sowie das nachträgliche DLC wurden jeweils gegen eigene
-Spielstände geprüft.
+**11.844 Prüfungen, keine Abweichung.** Zusätzlich dient ein größeres Archiv mehrerer hundert älterer Spielstände nach jeder Änderung als Regressionstest, und die drei Bauplatz-Stufen sowie das nachträgliche DLC wurden jeweils gegen eigene Spielstände geprüft.
 
 ---
 
 ## Bekannte Grenzen
 
-- **„DLC nachträglich aktiviert" ist experimentell.** Die zusätzlichen Würfe, die das Spiel vor dem Setzen der neuen
-  Inseln macht, sind nur für die Kartengrößen bekannt, die in unseren Spielständen vorkommen. Bei einer ungetesteten
-  Größe greift eine Formel, die für die meisten Werte stimmt, für manche aber nicht - dann können die
-  **Fruchtbarkeiten auf den neu hinzugekommenen Inseln** falsch sein. Der alte Teil der Karte stimmt immer. Mit den
-  Stufen normal und spärlich wurde es außerdem noch nicht geprüft.
-- **DLC03** ist nicht umgesetzt; das Kästchen ist inaktiv.
+- **„DLC nachträglich aktiviert" ist experimentell.** Die zusätzlichen Würfe, die das Spiel vor dem Setzen der neuen Inseln macht, sind nur für die Kartengrößen bekannt, die in unseren Spielständen vorkommen. Bei einer ungetesteten Größe greift eine Formel, die für die meisten Werte stimmt, für manche aber nicht - dann können die **Fruchtbarkeiten auf den neu hinzugekommenen Inseln** falsch sein. Der alte Teil der Karte stimmt immer. Mit den Stufen normal und spärlich wurde es außerdem noch nicht geprüft.
+- **DLC03** ist vorbereitet, aber noch nicht aktiv; das Kästchen ist inaktiv.
 
 ---
 
@@ -269,8 +272,7 @@ Die App ist ein einzelnes C#-Projekt. Mit installiertem
 dotnet build src/Anno117SeedFinder/Anno117SeedFinder.csproj -c Debug
 ```
 
-Die ausführbare Datei liegt danach in `src/Anno117SeedFinder/bin/Debug/net10.0-windows/`. Für ein Paket, das du weitergeben
-kannst:
+Die ausführbare Datei liegt danach in `src/Anno117SeedFinder/bin/Debug/net10.0-windows/`. Für ein Paket, das du weitergeben kannst:
 
 ```
 dotnet publish src/Anno117SeedFinder/Anno117SeedFinder.csproj -c Release --self-contained false -o publish

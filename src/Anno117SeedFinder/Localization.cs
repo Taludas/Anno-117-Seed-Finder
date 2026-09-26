@@ -3,6 +3,21 @@ using System.IO;
 
 public enum AppLanguage{German,English}
 
+// Number formatting follows the window language, not the Windows settings: German groups thousands with ".", English with ",".
+// Applied by the windows only (the command-line switches keep their own formats). WPF bindings (StringFormat=N0) use the
+// element's Language, not the thread culture, so the windows set both.
+internal static class AppCulture
+{
+ public static System.Globalization.CultureInfo Current=>Localization.Instance.Language==AppLanguage.English?new("en-US"):new("de-DE");
+ public static void Apply(System.Windows.FrameworkElement window)
+ {
+  var culture=Current;
+  System.Globalization.CultureInfo.CurrentCulture=System.Globalization.CultureInfo.CurrentUICulture=culture;
+  System.Globalization.CultureInfo.DefaultThreadCurrentCulture=System.Globalization.CultureInfo.DefaultThreadCurrentUICulture=culture;
+  window.Language=System.Windows.Markup.XmlLanguage.GetLanguage(culture.IetfLanguageTag);
+ }
+}
+
 // Runtime UI language switch. XAML binds via the indexer with an explicit Source
 // (works even on non-visual-tree objects like DataGridColumn, which have no DataContext
 // to inherit): Text="{Binding [Key], Source={x:Static loc:Localization.Instance}}".
@@ -59,6 +74,13 @@ internal sealed class Localization:INotifyPropertyChanged
   ["DlcRetroLabel"]=("nachträglich aktiviert (experimentell)","activated later (experimental)"),
   ["DlcRetroTooltip"]=("Karte ohne DLC erstellt, Prophecies of Ash erst danach im Spiel aktiviert. Alte Inseln bleiben, nur die neuen Inseln und Cinis kommen dazu. Neue Inseln: Fruchtbarkeit nur für gemessene Erweiterungsgrößen sicher.","Map created without DLC, Prophecies of Ash switched on afterwards. Old islands stay, only the new islands and Cinis are added. New islands: fertility is only reliable for measured enlargement sizes."),
   ["Dlc03Tooltip"]=("Dawn of the Delta · vorbereitet für eine spätere Generatorerweiterung","Dawn of the Delta · prepared for a future generator extension"),
+  ["PreviewTileLegend"]=("Kachelkarte: sandfarben = Baufläche, oliv = Sumpf (Albion), blau = Fluss, hellblau = Hafen, braun = nicht bebaubar.","Tile map: sand = buildable, olive = marsh (Albion), blue = river, light blue = harbour, brown = not buildable."),
+  ["PreviewStyleLabel"]=("Inseln:","Islands:"),
+  ["PreviewStyleTiles"]=("Kachelkarte","Tile map"),
+  ["PreviewStyleArtwork"]=("Spielgrafik","Game artwork"),
+  ["PreviewZoomLabel"]=("Zoom:","Zoom:"),
+  ["PreviewZoomFit"]=("Einpassen","Fit"),
+  ["PreviewZoomHint"]=("Strg + Mausrad zoomt, Ziehen mit der linken Maustaste verschiebt","Ctrl + mouse wheel zooms, drag with the left mouse button to pan"),
   ["MapProfileHeader"]=("KARTENPROFIL","MAP PROFILE"),
   ["MapTemplateLabel"]=("KARTENFORM","SHAPE"),
   ["MapSizeLabel"]=("GRÖSSE","SIZE"),
@@ -131,7 +153,7 @@ internal sealed class Localization:INotifyPropertyChanged
   ["TinMinesAlbion"]=("Zinn-Minen · Albion","Tin mines · Albion"),
   ["AdvancedFiltersHeader"]=("Erweiterte Fruchtbarkeitsfilter · Kacheln der Inseln mit der Fruchtbarkeit · Schritte zu je 500 Kacheln","Advanced fertility filters · tiles of the islands that carry the fertility · steps of 500 tiles"),
   ["ShowAdvancedFilters"]=("Erweiterte Fruchtbarkeitsfilter anzeigen","Show advanced fertility filters"),
-  ["ShowAdvancedFiltersTooltip"]=("Blendet die erweiterten Filter (Hafen- und Sumpfkacheln der Inseln mit einer bestimmten Fruchtbarkeit) und ihre Ergebnisspalten ein. Ausgeblendete Filter werden bei der Suche nicht angewendet.","Shows the advanced filters (harbour and swamp tiles of the islands that carry a given fertility) and their result columns. Hidden filters are not applied to the search."),
+  ["ShowAdvancedFiltersTooltip"]=("Blendet die erweiterten Filter (Hafen- und Sumpfkacheln der Inseln mit einer bestimmten Fruchtbarkeit) und alle fruchtbarkeitsbezogenen Spalten und Filterzeilen ein: Gold- und Störfluss, die einzelnen Minen und die Spalten der erweiterten Filter. Ohne den Haken zeigt die Tabelle nur Flächen und Bauplätze gesamt. Ausgeblendete Filter werden bei der Suche nicht angewendet.","Shows the advanced filters (harbour and swamp tiles of the islands that carry a given fertility) and every fertility-specific column and filter row: gold and sturgeon river, the single mines and the advanced filter columns. Without it the table shows only areas and total slots. Hidden filters are not applied to the search."),
   ["AdvLatiumHarbourMurex"]=("Hafenfläche · Purpurschnecken · Latium","Harbour tiles · Murex · Latium"),
   ["AdvEnableLatiumHarbourMurex"]=("Hafenfläche der Purpurschnecken-Inseln in Latium als Filter aktivieren","Enable the harbour tiles of the Murex islands in Latium as a filter"),
   ["AdvColumnLatiumHarbourMurex"]=("Hafenfläche der Inseln mit Purpurschnecken · Latium","Harbour tiles of the islands with Murex · Latium"),
@@ -226,9 +248,9 @@ internal sealed class Localization:INotifyPropertyChanged
   // Results table
   ["GridTooltip"]=("Doppelklick öffnet die Weltvorschau für den gewählten Seed.","Double-click opens the world preview for the selected seed."),
   ["Seed"]=("Seed","Seed"),
-  ["LatiumAreaHeader"]=("Latium Fläche ≈","Latium area ≈"),
-  ["AlbionAreaHeader"]=("Albion Fläche ≈","Albion area ≈"),
-  ["SwampAreaHeader"]=("davon Sumpf ≈","of which swamp ≈"),
+  ["LatiumAreaHeader"]=("▦ Latium","▦ Latium"),
+  ["AlbionAreaHeader"]=("▦ Albion","▦ Albion"),
+  ["SwampAreaHeader"]=("▦ Sumpf","▦ Swamp"),
   ["MountainSitesInLatiumTooltip"]=("Bergbauplätze in Latium","Mountain sites in Latium"),
   ["RiverSitesInLatiumTooltip"]=("Flussbauplätze in Latium","River sites in Latium"),
   ["MountainSitesInAlbionTooltip"]=("Bergbauplätze in Albion","Mountain sites in Albion"),

@@ -314,14 +314,6 @@
                 </Grid>
                 <WrapPanel Grid.Row="2" Margin="0,2,0,6">
                     <TextBlock Text="{Binding [ColumnsHeader], Source={x:Static loc:Localization.Instance}}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                    <CheckBox x:Name="ChkColGoldRiver" Content="{Binding [GoldRiverColumn], Source={x:Static loc:Localization.Instance}}" IsChecked="False" Checked="ResultColumnsChanged" Unchecked="ResultColumnsChanged"/>
-                    <CheckBox x:Name="ChkColSturgeon" Content="{Binding [SturgeonRiverColumn], Source={x:Static loc:Localization.Instance}}" IsChecked="False" Checked="ResultColumnsChanged" Unchecked="ResultColumnsChanged"/>
-                    <CheckBox x:Name="ChkColMarble" Content="{Binding [MarbleMinesColumn], Source={x:Static loc:Localization.Instance}}" IsChecked="False" Checked="ResultColumnsChanged" Unchecked="ResultColumnsChanged"/>
-                    <CheckBox x:Name="ChkColMinerals" Content="{Binding [MineralMinesColumn], Source={x:Static loc:Localization.Instance}}" IsChecked="False" Checked="ResultColumnsChanged" Unchecked="ResultColumnsChanged"/>
-                    <CheckBox x:Name="ChkColGoldMine" Content="{Binding [GoldMinesColumn], Source={x:Static loc:Localization.Instance}}" IsChecked="False" Checked="ResultColumnsChanged" Unchecked="ResultColumnsChanged"/>
-                    <CheckBox x:Name="ChkColSilver" Content="{Binding [SilverMinesColumn], Source={x:Static loc:Localization.Instance}}" IsChecked="False" Checked="ResultColumnsChanged" Unchecked="ResultColumnsChanged"/>
-                    <CheckBox x:Name="ChkColTin" Content="{Binding [TinMinesColumn], Source={x:Static loc:Localization.Instance}}" IsChecked="False" Checked="ResultColumnsChanged" Unchecked="ResultColumnsChanged"/>
-                    <CheckBox x:Name="ChkColCopper" Content="{Binding [CopperMinesColumn], Source={x:Static loc:Localization.Instance}}" IsChecked="False" Checked="ResultColumnsChanged" Unchecked="ResultColumnsChanged"/>
                     <CheckBox x:Name="ChkAdvanced" Content="{Binding [ShowAdvancedFilters], Source={x:Static loc:Localization.Instance}}" ToolTip="{Binding [ShowAdvancedFiltersTooltip], Source={x:Static loc:Localization.Instance}}" IsChecked="False" Checked="ResultColumnsChanged" Unchecked="ResultColumnsChanged"/><CheckBox x:Name="ChkScoreOutliers" Content="{Binding [ExtendScoringOutliers], Source={x:Static loc:Localization.Instance}}" ToolTip="{Binding [ExtendScoringOutliersTooltip], Source={x:Static loc:Localization.Instance}}" IsChecked="False" Checked="ScoringOutliersChanged" Unchecked="ScoringOutliersChanged"/>
                     <TextBlock Text="{Binding [MultiSortHint], Source={x:Static loc:Localization.Instance}}" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="6,0,0,0"/>
                 </WrapPanel>
@@ -330,7 +322,7 @@
                 <Border Grid.Row="2" Style="{StaticResource Card}" Padding="0" Margin="0,0,12,0" ClipToBounds="True">
                     <DataGrid x:Name="GridResults" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal" BorderThickness="0" RowHeaderWidth="0" AlternatingRowBackground="#F8FAFC" MouseDoubleClick="PreviewSelectedResult" ToolTip="{Binding [GridTooltip], Source={x:Static loc:Localization.Instance}}">
                         <DataGrid.Columns>
-                            <DataGridTemplateColumn Header="{Binding [Seed], Source={x:Static loc:Localization.Instance}}" Width="105">
+                            <DataGridTemplateColumn Header="{Binding [Seed], Source={x:Static loc:Localization.Instance}}" Width="Auto" MinWidth="46">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal">
@@ -341,7 +333,7 @@
                             </DataGridTemplateColumn>
                             <!-- A HeaderStyle/CellStyle here (instead of a plain Header/CellTemplate, like every other
                                  column with its own tooltip) silently broke Shift+click multi-sort for the whole grid. -->
-                            <DataGridTemplateColumn SortMemberPath="ScoreSortKey" Width="70">
+                            <DataGridTemplateColumn SortMemberPath="ScoreSortKey" Width="Auto" MinWidth="46">
                                 <DataGridTemplateColumn.Header>
                                     <TextBlock Text="{Binding [ScoreColumnHeader], Source={x:Static loc:Localization.Instance}}" ToolTip="{Binding [ScoreColumnTooltip], Source={x:Static loc:Localization.Instance}}"/>
                                 </DataGridTemplateColumn.Header>
@@ -351,10 +343,10 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTemplateColumn Header="{Binding [LatiumAreaHeader], Source={x:Static loc:Localization.Instance}}" SortMemberPath="LatiumAreaValue" Width="105"><DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding LatiumArea}" VerticalAlignment="Center" ToolTip="{Binding Gauges[LatiumArea]}"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
-                            <DataGridTemplateColumn Header="{Binding [AlbionAreaHeader], Source={x:Static loc:Localization.Instance}}" SortMemberPath="AlbionAreaValue" Width="105"><DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding AlbionArea}" VerticalAlignment="Center" ToolTip="{Binding Gauges[AlbionArea]}"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
-                            <DataGridTemplateColumn Header="{Binding [SwampAreaHeader], Source={x:Static loc:Localization.Instance}}" SortMemberPath="AlbionSwampValue" Width="105"><DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding AlbionSwampArea}" VerticalAlignment="Center" ToolTip="{Binding Gauges[AlbionSwampArea]}"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
-                            <DataGridTemplateColumn SortMemberPath="LatiumMountain" Width="88">
+                            <DataGridTemplateColumn Header="{Binding [LatiumAreaHeader], Source={x:Static loc:Localization.Instance}}" SortMemberPath="LatiumAreaValue" Width="Auto" MinWidth="46"><DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding LatiumArea}" VerticalAlignment="Center" ToolTip="{Binding Gauges[LatiumArea]}"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="{Binding [AlbionAreaHeader], Source={x:Static loc:Localization.Instance}}" SortMemberPath="AlbionAreaValue" Width="Auto" MinWidth="46"><DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding AlbionArea}" VerticalAlignment="Center" ToolTip="{Binding Gauges[AlbionArea]}"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="{Binding [SwampAreaHeader], Source={x:Static loc:Localization.Instance}}" SortMemberPath="AlbionSwampValue" Width="Auto" MinWidth="46"><DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding AlbionSwampArea}" VerticalAlignment="Center" ToolTip="{Binding Gauges[AlbionSwampArea]}"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                            <DataGridTemplateColumn SortMemberPath="LatiumMountain" Width="Auto" MinWidth="46">
                                 <DataGridTemplateColumn.Header>
                                     <StackPanel Orientation="Horizontal" ToolTip="{Binding [MountainSitesInLatiumTooltip], Source={x:Static loc:Localization.Instance}}">
                                         <Rectangle Fill="{StaticResource SiteIcon}" OpacityMask="{StaticResource MountainSiteMask}" Width="20" Height="20" Margin="0,0,5,0"/>
@@ -362,7 +354,7 @@
                                     </StackPanel>
                                 </DataGridTemplateColumn.Header>
                             <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding LatiumMountain}" VerticalAlignment="Center" ToolTip="{Binding Gauges[LatiumMountainSites]}"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
-                            <DataGridTemplateColumn SortMemberPath="LatiumRiver" Width="88">
+                            <DataGridTemplateColumn SortMemberPath="LatiumRiver" Width="Auto" MinWidth="46">
                                 <DataGridTemplateColumn.Header>
                                     <StackPanel Orientation="Horizontal" ToolTip="{Binding [RiverSitesInLatiumTooltip], Source={x:Static loc:Localization.Instance}}">
                                         <Rectangle Fill="{StaticResource SiteIcon}" OpacityMask="{StaticResource RiverSiteMask}" Width="20" Height="20" Margin="0,0,5,0"/>
@@ -370,7 +362,7 @@
                                     </StackPanel>
                                 </DataGridTemplateColumn.Header>
                             <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding LatiumRiver}" VerticalAlignment="Center" ToolTip="{Binding Gauges[LatiumRiverSites]}"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
-                            <DataGridTemplateColumn SortMemberPath="AlbionMountain" Width="88">
+                            <DataGridTemplateColumn SortMemberPath="AlbionMountain" Width="Auto" MinWidth="46">
                                 <DataGridTemplateColumn.Header>
                                     <StackPanel Orientation="Horizontal" ToolTip="{Binding [MountainSitesInAlbionTooltip], Source={x:Static loc:Localization.Instance}}">
                                         <Rectangle Fill="{StaticResource SiteIcon}" OpacityMask="{StaticResource MountainSiteMask}" Width="20" Height="20" Margin="0,0,5,0"/>
@@ -378,7 +370,7 @@
                                     </StackPanel>
                                 </DataGridTemplateColumn.Header>
                             <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding AlbionMountain}" VerticalAlignment="Center" ToolTip="{Binding Gauges[AlbionMountainSites]}"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
-                            <DataGridTemplateColumn x:Name="GoldRiverColumn" SortMemberPath="GoldRiverSites" Width="72" Visibility="Collapsed">
+                            <DataGridTemplateColumn x:Name="GoldRiverColumn" SortMemberPath="GoldRiverSites" Width="Auto" MinWidth="46" Visibility="Collapsed">
                                 <DataGridTemplateColumn.Header>
                                     <StackPanel Orientation="Horizontal" ToolTip="{Binding [GoldRiverSitesTooltip], Source={x:Static loc:Localization.Instance}}">
                                         <Image Source="pack://application:,,,/icons/32027.png" Width="20" Height="20" Margin="0,0,3,0"/>
@@ -386,7 +378,7 @@
                                     </StackPanel>
                                 </DataGridTemplateColumn.Header>
                             <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding GoldRiverSites}" VerticalAlignment="Center" ToolTip="{Binding Gauges[GoldRiverSites]}"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
-                            <DataGridTemplateColumn x:Name="SturgeonRiverColumn" SortMemberPath="SturgeonRiverSites" Width="72" Visibility="Collapsed">
+                            <DataGridTemplateColumn x:Name="SturgeonRiverColumn" SortMemberPath="SturgeonRiverSites" Width="Auto" MinWidth="46" Visibility="Collapsed">
                                 <DataGridTemplateColumn.Header>
                                     <StackPanel Orientation="Horizontal" ToolTip="{Binding [SturgeonRiverSitesTooltip], Source={x:Static loc:Localization.Instance}}">
                                         <Image Source="pack://application:,,,/icons/8577.png" Width="20" Height="20" Margin="0,0,3,0"/>
@@ -394,7 +386,7 @@
                                     </StackPanel>
                                 </DataGridTemplateColumn.Header>
                             <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding SturgeonRiverSites}" VerticalAlignment="Center" ToolTip="{Binding Gauges[SturgeonRiverSites]}"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
-                            <DataGridTemplateColumn x:Name="MarbleSitesColumn" SortMemberPath="MarbleSites" Width="72" Visibility="Collapsed">
+                            <DataGridTemplateColumn x:Name="MarbleSitesColumn" SortMemberPath="MarbleSites" Width="Auto" MinWidth="46" Visibility="Collapsed">
                                 <DataGridTemplateColumn.Header>
                                     <StackPanel Orientation="Horizontal" ToolTip="{Binding [MarbleSitesTooltip], Source={x:Static loc:Localization.Instance}}">
                                         <Image Source="pack://application:,,,/icons/4062.png" Width="20" Height="20" Margin="0,0,3,0"/>
@@ -402,7 +394,7 @@
                                     </StackPanel>
                                 </DataGridTemplateColumn.Header>
                             <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding MarbleSites}" VerticalAlignment="Center" ToolTip="{Binding Gauges[MarbleSites]}"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
-                            <DataGridTemplateColumn x:Name="MineralMinesColumn" SortMemberPath="MineralMines" Width="72" Visibility="Collapsed">
+                            <DataGridTemplateColumn x:Name="MineralMinesColumn" SortMemberPath="MineralMines" Width="Auto" MinWidth="46" Visibility="Collapsed">
                                 <DataGridTemplateColumn.Header>
                                     <StackPanel Orientation="Horizontal" ToolTip="{Binding [MineralMinesTooltip], Source={x:Static loc:Localization.Instance}}">
                                         <Image Source="pack://application:,,,/icons/4053.png" Width="20" Height="20" Margin="0,0,3,0"/>
@@ -410,7 +402,7 @@
                                     </StackPanel>
                                 </DataGridTemplateColumn.Header>
                             <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding MineralMines}" VerticalAlignment="Center" ToolTip="{Binding Gauges[MineralMines]}"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
-                            <DataGridTemplateColumn x:Name="GoldMinesColumn" SortMemberPath="GoldMines" Width="72" Visibility="Collapsed">
+                            <DataGridTemplateColumn x:Name="GoldMinesColumn" SortMemberPath="GoldMines" Width="Auto" MinWidth="46" Visibility="Collapsed">
                                 <DataGridTemplateColumn.Header>
                                     <StackPanel Orientation="Horizontal" ToolTip="{Binding [GoldMinesTooltip], Source={x:Static loc:Localization.Instance}}">
                                         <Image Source="pack://application:,,,/icons/32027.png" Width="20" Height="20" Margin="0,0,3,0"/>
@@ -418,7 +410,7 @@
                                     </StackPanel>
                                 </DataGridTemplateColumn.Header>
                             <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding GoldMines}" VerticalAlignment="Center" ToolTip="{Binding Gauges[GoldMines]}"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
-                            <DataGridTemplateColumn x:Name="SilverMinesColumn" SortMemberPath="SilverMines" Width="72" Visibility="Collapsed">
+                            <DataGridTemplateColumn x:Name="SilverMinesColumn" SortMemberPath="SilverMines" Width="Auto" MinWidth="46" Visibility="Collapsed">
                                 <DataGridTemplateColumn.Header>
                                     <StackPanel Orientation="Horizontal" ToolTip="{Binding [SilverMinesTooltip], Source={x:Static loc:Localization.Instance}}">
                                         <Image Source="pack://application:,,,/icons/8487.png" Width="20" Height="20" Margin="0,0,3,0"/>
@@ -426,7 +418,7 @@
                                     </StackPanel>
                                 </DataGridTemplateColumn.Header>
                             <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding SilverMines}" VerticalAlignment="Center" ToolTip="{Binding Gauges[SilverMines]}"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
-                            <DataGridTemplateColumn x:Name="TinMinesColumn" SortMemberPath="TinMines" Width="72" Visibility="Collapsed">
+                            <DataGridTemplateColumn x:Name="TinMinesColumn" SortMemberPath="TinMines" Width="Auto" MinWidth="46" Visibility="Collapsed">
                                 <DataGridTemplateColumn.Header>
                                     <StackPanel Orientation="Horizontal" ToolTip="{Binding [TinMinesTooltip], Source={x:Static loc:Localization.Instance}}">
                                         <Image Source="pack://application:,,,/icons/4064.png" Width="20" Height="20" Margin="0,0,3,0"/>
@@ -434,7 +426,7 @@
                                     </StackPanel>
                                 </DataGridTemplateColumn.Header>
                             <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding TinMines}" VerticalAlignment="Center" ToolTip="{Binding Gauges[TinMines]}"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
-                            <DataGridTemplateColumn x:Name="CopperMinesColumn" SortMemberPath="CopperMines" Width="72" Visibility="Collapsed">
+                            <DataGridTemplateColumn x:Name="CopperMinesColumn" SortMemberPath="CopperMines" Width="Auto" MinWidth="46" Visibility="Collapsed">
                                 <DataGridTemplateColumn.Header>
                                     <StackPanel Orientation="Horizontal" ToolTip="{Binding [CopperMinesTooltip], Source={x:Static loc:Localization.Instance}}">
                                         <Image Source="pack://application:,,,/icons/4063.png" Width="20" Height="20" Margin="0,0,3,0"/>
@@ -442,7 +434,7 @@
                                     </StackPanel>
                                 </DataGridTemplateColumn.Header>
                             <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding CopperMines}" VerticalAlignment="Center" ToolTip="{Binding Gauges[CopperMines]}"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
-                            <DataGridTemplateColumn x:Name="AdvColLatiumHarbourMurex" SortMemberPath="LatiumHarbourMurex" Width="84" Visibility="Collapsed">
+                            <DataGridTemplateColumn x:Name="AdvColLatiumHarbourMurex" SortMemberPath="LatiumHarbourMurex" Width="Auto" MinWidth="46" Visibility="Collapsed">
                                 <DataGridTemplateColumn.Header>
                                     <StackPanel Orientation="Horizontal" ToolTip="{Binding [AdvColumnLatiumHarbourMurex], Source={x:Static loc:Localization.Instance}}">
                                         <Image Source="pack://application:,,,/icons/4051.png" Width="20" Height="20" Margin="0,0,3,0"/>
@@ -450,7 +442,7 @@
                                     </StackPanel>
                                 </DataGridTemplateColumn.Header>
                             <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding LatiumHarbourMurex,StringFormat=N0}" VerticalAlignment="Center" ToolTip="{Binding Gauges[AdvLatiumHarbourMurex]}"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
-                            <DataGridTemplateColumn x:Name="AdvColLatiumHarbourOysters" SortMemberPath="LatiumHarbourOysters" Width="84" Visibility="Collapsed">
+                            <DataGridTemplateColumn x:Name="AdvColLatiumHarbourOysters" SortMemberPath="LatiumHarbourOysters" Width="Auto" MinWidth="46" Visibility="Collapsed">
                                 <DataGridTemplateColumn.Header>
                                     <StackPanel Orientation="Horizontal" ToolTip="{Binding [AdvColumnLatiumHarbourOysters], Source={x:Static loc:Localization.Instance}}">
                                         <Image Source="pack://application:,,,/icons/2208.png" Width="20" Height="20" Margin="0,0,3,0"/>
@@ -458,7 +450,7 @@
                                     </StackPanel>
                                 </DataGridTemplateColumn.Header>
                             <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding LatiumHarbourOysters,StringFormat=N0}" VerticalAlignment="Center" ToolTip="{Binding Gauges[AdvLatiumHarbourOysters]}"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
-                            <DataGridTemplateColumn x:Name="AdvColAlbionHarbourSaltwort" SortMemberPath="AlbionHarbourSaltwort" Width="84" Visibility="Collapsed">
+                            <DataGridTemplateColumn x:Name="AdvColAlbionHarbourSaltwort" SortMemberPath="AlbionHarbourSaltwort" Width="Auto" MinWidth="46" Visibility="Collapsed">
                                 <DataGridTemplateColumn.Header>
                                     <StackPanel Orientation="Horizontal" ToolTip="{Binding [AdvColumnAlbionHarbourSaltwort], Source={x:Static loc:Localization.Instance}}">
                                         <Image Source="pack://application:,,,/icons/2218.png" Width="20" Height="20" Margin="0,0,3,0"/>
@@ -466,7 +458,7 @@
                                     </StackPanel>
                                 </DataGridTemplateColumn.Header>
                             <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding AlbionHarbourSaltwort,StringFormat=N0}" VerticalAlignment="Center" ToolTip="{Binding Gauges[AdvAlbionHarbourSaltwort]}"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
-                            <DataGridTemplateColumn x:Name="AdvColAlbionHarbourSeaShells" SortMemberPath="AlbionHarbourSeaShells" Width="84" Visibility="Collapsed">
+                            <DataGridTemplateColumn x:Name="AdvColAlbionHarbourSeaShells" SortMemberPath="AlbionHarbourSeaShells" Width="Auto" MinWidth="46" Visibility="Collapsed">
                                 <DataGridTemplateColumn.Header>
                                     <StackPanel Orientation="Horizontal" ToolTip="{Binding [AdvColumnAlbionHarbourSeaShells], Source={x:Static loc:Localization.Instance}}">
                                         <Image Source="pack://application:,,,/icons/8432.png" Width="20" Height="20" Margin="0,0,3,0"/>
@@ -474,23 +466,23 @@
                                     </StackPanel>
                                 </DataGridTemplateColumn.Header>
                             <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding AlbionHarbourSeaShells,StringFormat=N0}" VerticalAlignment="Center" ToolTip="{Binding Gauges[AdvAlbionHarbourSeaShells]}"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
-                            <DataGridTemplateColumn x:Name="AdvColAlbionMarshSmallBirds" SortMemberPath="AlbionMarshSmallBirds" Width="84" Visibility="Collapsed">
+                            <DataGridTemplateColumn x:Name="AdvColAlbionMarshSmallBirds" SortMemberPath="AlbionMarshSmallBirds" Width="Auto" MinWidth="46" Visibility="Collapsed">
                                 <DataGridTemplateColumn.Header>
                                     <StackPanel Orientation="Horizontal" ToolTip="{Binding [AdvColumnAlbionMarshSmallBirds], Source={x:Static loc:Localization.Instance}}">
                                         <Image Source="pack://application:,,,/icons/2219.png" Width="20" Height="20" Margin="0,0,3,0"/>
-                                        <TextBlock Text="≈" FontFamily="Segoe UI Symbol" VerticalAlignment="Center"/>
+                                        <TextBlock Text="▦" FontFamily="Segoe UI Symbol" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </DataGridTemplateColumn.Header>
                             <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding AlbionMarshSmallBirds,StringFormat=N0}" VerticalAlignment="Center" ToolTip="{Binding Gauges[AdvAlbionMarshSmallBirds]}"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
-                            <DataGridTemplateColumn x:Name="AdvColAlbionMarshBeaver" SortMemberPath="AlbionMarshBeaver" Width="84" Visibility="Collapsed">
+                            <DataGridTemplateColumn x:Name="AdvColAlbionMarshBeaver" SortMemberPath="AlbionMarshBeaver" Width="Auto" MinWidth="46" Visibility="Collapsed">
                                 <DataGridTemplateColumn.Header>
                                     <StackPanel Orientation="Horizontal" ToolTip="{Binding [AdvColumnAlbionMarshBeaver], Source={x:Static loc:Localization.Instance}}">
                                         <Image Source="pack://application:,,,/icons/4082.png" Width="20" Height="20" Margin="0,0,3,0"/>
-                                        <TextBlock Text="≈" FontFamily="Segoe UI Symbol" VerticalAlignment="Center"/>
+                                        <TextBlock Text="▦" FontFamily="Segoe UI Symbol" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </DataGridTemplateColumn.Header>
                             <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding AlbionMarshBeaver,StringFormat=N0}" VerticalAlignment="Center" ToolTip="{Binding Gauges[AdvAlbionMarshBeaver]}"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
-                            <DataGridTemplateColumn x:Name="CinisResultsColumn" Header="{Binding [CinisFertilitiesHeader], Source={x:Static loc:Localization.Instance}}" Width="*" MinWidth="220">
+                            <DataGridTemplateColumn x:Name="CinisResultsColumn" Header="{Binding [CinisFertilitiesHeader], Source={x:Static loc:Localization.Instance}}" Width="*" MinWidth="210">
                                 <DataGridTemplateColumn.CellTemplate><DataTemplate>
                                     <ItemsControl ItemsSource="{Binding CinisFertilities}">
                                         <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>

@@ -1,4 +1,4 @@
-// Player-assigned importance (0-10) per existing filter, combined into one score per seed. See SCORING-PLAN.md.
+﻿// Player-assigned importance (0-10) per existing filter, combined into one score per seed. See SCORING-PLAN.md.
 // Deliberately a pure, UI-independent layer: it reads the values a search already produced (SearchResultRow),
 // never gates which seeds appear (that stays the hard filters' job), and never re-generates anything.
 internal enum ScoreMetric

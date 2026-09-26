@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
@@ -14,6 +14,7 @@
     <EmbeddedResource Include="island-masks.txt" />
     <Resource Include="icons\*.png" />
     <Resource Include="island_images\**\*.png" />
+    <Resource Include="island_tiles\*.png" />
     <Resource Include="..\..\app_icon.ico" Link="app_icon.ico" />
   </ItemGroup>
 </Project>

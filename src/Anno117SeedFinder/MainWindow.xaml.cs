@@ -30,7 +30,7 @@ public partial class MainWindow:Window
 
  public MainWindow()
  {
-  InitializeComponent();
+  AppCulture.Apply(this);InitializeComponent();
   advancedRows=[..AdvancedFilters.All.Select(definition=>{var name=definition.Filter.ToString();return new AdvancedRow(definition.Filter,(CheckBox)FindName("ChkAdv"+name),(Slider)FindName("SldAdv"+name),(TextBlock)FindName("LblAdv"+name),(TextBlock)FindName("LblAdv"+name+"Range"),(Button)FindName("BtnAdv"+name+"Median"));})];
   scoreRows=[..Enum.GetValues<ScoreMetric>().Select(metric=>new ScoreWeightRow(metric,(Slider)FindName("Wgt"+metric),(TextBlock)FindName("LblWgt"+metric),ScoreApplicability(metric)))];
   CmbMapTemplate.ItemsSource=templateChoices;CmbMapSize.ItemsSource=sizeChoices;
@@ -51,7 +51,9 @@ public partial class MainWindow:Window
  void LanguageChanged(object sender,SelectionChangedEventArgs e)
  {
   Localization.Instance.Language=CmbLanguage.SelectedIndex==1?AppLanguage.English:AppLanguage.German;
-  RefreshProfileLabels();UpdateConditionAddButtons();UpdateTableSeedsOption();
+  // Numbers follow the language: re-format everything that was already shown.
+  AppCulture.Apply(this);foreach(var box in new[]{TxtFirstSeed,TxtMaxSeed})if(box is not null)box.Text=FormatSeedText(box.Text);
+  RefreshProfileLabels();UpdateConditionAddButtons();UpdateTableSeedsOption();GridResults.Items.Refresh();Dispatcher.BeginInvoke(FitResultColumns,System.Windows.Threading.DispatcherPriority.Loaded);
  }
 
  void BrowseOutput(object sender,RoutedEventArgs e)
@@ -116,6 +118,8 @@ public partial class MainWindow:Window
    if(preset.AdvancedMinimums.TryGetValue(key,out var tiles)&&tiles>0)row.Slider.Tag=tiles/AdvancedStep;
    row.Enabled.IsChecked=preset.AdvancedEnabled.TryGetValue(key,out var enabled)&&enabled;
   }
+  // Presets from before the switch covered these filters: an enabled detail filter turns the switch on, so it keeps applying.
+  if(DetailFilterChecks.Any(box=>box.IsChecked==true))ChkAdvanced.IsChecked=true;
   CmbSlot1.SelectedItem=(CmbSlot1.Items.OfType<FertilityChoice>().First(choice=>choice.Guid==preset.CinisSlot1));
   foreach(var box in cinisChecks)box.IsChecked=preset.CinisFertilities.Contains(uint.Parse(box.Tag.ToString()!));ChkMaxSites.IsChecked=preset.CinisMaximumSites;
   ChkScoring.IsChecked=preset.EnableScoring;ChkScoreOutliers.IsChecked=preset.ExtendScoringOutliers;
@@ -146,8 +150,8 @@ public partial class MainWindow:Window
    // box between two searches no longer silently overwrites the previous run's results (see TimestampedFileName).
    var outputPath=TimestampedFileName(TxtOutput.Text,DateTime.Now);
    var request=new SearchRequest(tableSeeds is null?ParseSeed(TxtFirstSeed,Localization.Instance["FirstSeed"]):(int)tableSeeds.Min(),tableSeeds is null?ParseSeed(TxtMaxSeed,Localization.Instance["LastSeed"]):(int)tableSeeds.Max(),ParsePositive(TxtThreads,Localization.Instance["Threads"]),ParseNonNegative(TxtLimit,Localization.Instance["MaxHits"]),outputPath,cinisSlot1,selected,activeProfile.Dlc01&&ChkMaxSites.IsChecked==true,conditions,activeProfile,
-    ActiveMinimum(ChkMinGoldSites,CmbMinGoldSites),ActiveMinimum(ChkMinSturgeonSites,CmbMinSturgeonSites),ActiveMinimum(ChkMinLatiumMountainSites,CmbMinLatiumMountainSites),ActiveMinimum(ChkMinLatiumRiverSites,CmbMinLatiumRiverSites),ActiveMinimum(ChkMinAlbionMountainSites,CmbMinAlbionMountainSites),ActiveAreaMinimum(ChkMinLatiumArea,SldMinLatiumArea),ActiveAreaMinimum(ChkMinAlbionArea,SldMinAlbionArea),ActiveAreaMinimum(ChkMinAlbionSwampArea,SldMinAlbionSwampArea),CurrentFertilitySetting(),CurrentSlotSetting(),
-    ActiveMinimum(ChkMinMineralMines,CmbMinMineralMines),ActiveMinimum(ChkMinCopperMines,CmbMinCopperMines),ActiveMinimum(ChkMinSilverMines,CmbMinSilverMines),ActiveMinimum(ChkMinMarbleSites,CmbMinMarbleSites),ActiveMinimum(ChkMinGoldMines,CmbMinGoldMines),ActiveMinimum(ChkMinTinMines,CmbMinTinMines),tableSeeds,ActiveAdvancedMinimums());
+    ActiveDetail(ChkMinGoldSites,CmbMinGoldSites),ActiveDetail(ChkMinSturgeonSites,CmbMinSturgeonSites),ActiveMinimum(ChkMinLatiumMountainSites,CmbMinLatiumMountainSites),ActiveMinimum(ChkMinLatiumRiverSites,CmbMinLatiumRiverSites),ActiveMinimum(ChkMinAlbionMountainSites,CmbMinAlbionMountainSites),ActiveAreaMinimum(ChkMinLatiumArea,SldMinLatiumArea),ActiveAreaMinimum(ChkMinAlbionArea,SldMinAlbionArea),ActiveAreaMinimum(ChkMinAlbionSwampArea,SldMinAlbionSwampArea),CurrentFertilitySetting(),CurrentSlotSetting(),
+    ActiveDetail(ChkMinMineralMines,CmbMinMineralMines),ActiveDetail(ChkMinCopperMines,CmbMinCopperMines),ActiveDetail(ChkMinSilverMines,CmbMinSilverMines),ActiveDetail(ChkMinMarbleSites,CmbMinMarbleSites),ActiveDetail(ChkMinGoldMines,CmbMinGoldMines),ActiveDetail(ChkMinTinMines,CmbMinTinMines),tableSeeds,ActiveAdvancedMinimums());
    SetRunning(true);GridResults.ItemsSource=null;SearchProgress.Value=0;LblProgress.Text=Localization.Instance["SearchStarting"];
    cancellation=new CancellationTokenSource();
    var reporter=new Progress<SearchProgress>(x=>{SearchProgress.Value=Math.Min(100,(long)x.Processed*100/x.Total);LblProgress.Text=Localization.Instance.Format("ProgressFormat",x.Processed.ToString("N0"),x.Total.ToString("N0"),x.Hits.ToString("N0"));});
@@ -211,17 +215,42 @@ public partial class MainWindow:Window
  void ResultColumnsChanged(object sender,RoutedEventArgs e)
  {
   if(GoldMinesColumn is null)return;
-  MarbleSitesColumn.Visibility=ColumnVisibility(ChkColMarble);GoldMinesColumn.Visibility=ColumnVisibility(ChkColGoldMine);GoldRiverColumn.Visibility=ColumnVisibility(ChkColGoldRiver);SturgeonRiverColumn.Visibility=ColumnVisibility(ChkColSturgeon);
-  MineralMinesColumn.Visibility=ColumnVisibility(ChkColMinerals);CopperMinesColumn.Visibility=ColumnVisibility(ChkColCopper);SilverMinesColumn.Visibility=ColumnVisibility(ChkColSilver);TinMinesColumn.Visibility=ColumnVisibility(ChkColTin);
-  // One switch shows or hides all advanced filters together with their columns.
+  // The table always shows the tile totals and the total mountain/river slots. One switch ("advanced fertility filters") adds the
+  // advanced filters and every fertility-specific column: gold/sturgeon river sites, the single mines, the harbour/marsh tiles
+  // of the advanced filters.
   var advanced=ChkAdvanced.IsChecked==true;AdvancedFilterPanel.Visibility=advanced?Visibility.Visible:Visibility.Collapsed;
+  // The same switch shows the fertility-specific filter rows (and only then are they applied, like the advanced filters).
+  foreach(var box in DetailFilterChecks)((FrameworkElement)box.Parent).Visibility=advanced?Visibility.Visible:Visibility.Collapsed;
+  foreach(var column in DetailColumns)column.Visibility=advanced?Visibility.Visible:Visibility.Collapsed;
   foreach(var column in AdvancedColumns)column.Visibility=advanced?Visibility.Visible:Visibility.Collapsed;
-  RefreshScoreVisibility();RecomputeScores();
+  RefreshScoreVisibility();RecomputeScores();FitResultColumns();
  }
+ // Every result column gets a fixed width: its header (measured, so it follows the language) plus padding, but at least room for a
+ // seven-digit number. Automatic widths are not used: WPF sizes them once, and a column shown later (advanced filters) came back
+ // squeezed. When all columns do not fit, the table scrolls sideways instead of cutting headers.
+ void FitResultColumns()
+ {
+  if(GridResults is null)return;
+  var face=new Typeface(GridResults.FontFamily,GridResults.FontStyle,FontWeights.SemiBold,GridResults.FontStretch);var dpi=VisualTreeHelper.GetDpi(this).PixelsPerDip;
+  double Text(string text)=>new FormattedText(text,AppCulture.Current,FlowDirection.LeftToRight,face,GridResults.FontSize,Brushes.Black,dpi).WidthIncludingTrailingWhitespace;
+  var number=Text(999_999.ToString("N0"));
+  foreach(var column in GridResults.Columns)
+  {
+   if(column==CinisResultsColumn)continue;
+   double header=column.Header switch{string text=>Text(text),FrameworkElement element=>Measure(element),_=>40};
+   var cells=column.SortMemberPath=="Seed"?Text(999_999_999.ToString("N0")):number;
+   column.Width=new DataGridLength(Math.Ceiling(Math.Max(header+22,cells+18)));column.MinWidth=column.Width.Value;
+  }
+  static double Measure(FrameworkElement element){element.Measure(new Size(double.PositiveInfinity,double.PositiveInfinity));return element.DesiredSize.Width;}
+ }
+ CheckBox[] DetailFilterChecks=>[ChkMinGoldSites,ChkMinSturgeonSites,ChkMinMarbleSites,ChkMinMineralMines,ChkMinGoldMines,ChkMinSilverMines,ChkMinTinMines,ChkMinCopperMines];
+ static readonly HashSet<ScoreMetric> DetailMetrics=[ScoreMetric.GoldRiverSites,ScoreMetric.SturgeonRiverSites,ScoreMetric.MarbleSites,ScoreMetric.MineralMines,ScoreMetric.GoldMines,ScoreMetric.SilverMines,ScoreMetric.TinMines,ScoreMetric.CopperMines];
+ // A fertility-specific site/mine minimum counts only while the advanced switch shows it.
+ int ActiveDetail(CheckBox box,ComboBox choice)=>ChkAdvanced.IsChecked==true?ActiveMinimum(box,choice):0;
+ DataGridColumn[] DetailColumns=>[GoldRiverColumn,SturgeonRiverColumn,MarbleSitesColumn,MineralMinesColumn,GoldMinesColumn,SilverMinesColumn,TinMinesColumn,CopperMinesColumn];
  DataGridColumn[] AdvancedColumns=>[AdvColLatiumHarbourMurex,AdvColLatiumHarbourOysters,AdvColAlbionHarbourSaltwort,AdvColAlbionHarbourSeaShells,AdvColAlbionMarshSmallBirds,AdvColAlbionMarshBeaver];
  // The advanced filters only count while they are shown; each one also needs its own checkbox.
  int[] ActiveAdvancedMinimums()=>[..advancedRows.Select(row=>ChkAdvanced.IsChecked==true&&row.Enabled.IsChecked==true?(int)row.Slider.Value*AdvancedStep:0)];
- static Visibility ColumnVisibility(CheckBox box)=>box.IsChecked==true?Visibility.Visible:Visibility.Collapsed;
 
  void ExportCsv(object sender,RoutedEventArgs e)
  {
@@ -301,7 +330,7 @@ public partial class MainWindow:Window
  static string FormatSeedText(string text)
  {
   var digits=SeedDigits(text);if(digits.Length==0)return "";digits=digits.TrimStart('0');if(digits.Length==0)return "0";
-  var first=digits.Length%3;if(first==0)first=3;var parts=new List<string>{digits[..first]};for(var index=first;index<digits.Length;index+=3)parts.Add(digits.Substring(index,3));return string.Join('.',parts);
+  var first=digits.Length%3;if(first==0)first=3;var parts=new List<string>{digits[..first]};for(var index=first;index<digits.Length;index+=3)parts.Add(digits.Substring(index,3));return string.Join(AppCulture.Current.NumberFormat.NumberGroupSeparator,parts);
  }
  static int CaretAfterDigits(string text,int digitCount)
  {
@@ -665,6 +694,7 @@ public partial class MainWindow:Window
   if(metric==ScoreMetric.CinisSlot1)return ()=>activeProfile.Dlc01&&(CmbSlot1.SelectedItem as FertilityChoice)?.Guid is > 0u;
   if(ScoreMetrics.IsCinis(metric))return ()=>activeProfile.Dlc01;
   if(ScoreMetrics.IsAdvanced(metric))return ()=>ChkAdvanced.IsChecked==true;
+  if(DetailMetrics.Contains(metric))return ()=>ChkAdvanced.IsChecked==true;
   return ()=>true;
  }
  // Shows or hides every weight control: only while scoring is enabled, and only for metrics that currently apply.
@@ -723,6 +753,7 @@ internal sealed record SearchResultRow(uint Seed,int MarbleSites,int GoldMines,i
  // the profile the row was generated with, so there is nothing for it to be recomputed against later.
  public IReadOnlyDictionary<string, RangeGauge> Gauges { get; private set; } = new Dictionary<string, RangeGauge>();
  void ComputeGauges(MapProfile profile) => Gauges = ScoreMetrics.NumericMetrics.ToDictionary(metric => metric.ToString(), metric => ScoreMetrics.Gauge(metric, this, profile)!.Value);
+
 
  // The advanced filter values, in AdvancedFilter order; the properties give the grid one column each.
  public int LatiumHarbourMurex=>AdvancedTiles[(int)AdvancedFilter.LatiumHarbourMurex];

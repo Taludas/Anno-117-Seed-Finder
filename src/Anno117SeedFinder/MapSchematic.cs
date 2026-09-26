@@ -67,7 +67,8 @@ internal static class MapSchematic
  // A placed island, third-party island or decoration: the island image, rotated to the island's rotation and fitted into its
  // diamond (the island's outline box seen from the isometric side), over a tinted plate. Islands without an image get the
  // plate alone. Returns the diamond (for hover and tooltip) and its centre.
- internal static (Polygon Diamond,Point Centre) AddPlacedTile(Canvas canvas,LayoutItem item,Brush fill,Brush stroke,double strokeThickness)
+ // footprint: an optional box (island units, rotation 0) for the diamond instead of the image's box, e.g. only the buildable land.
+ internal static (Polygon Diamond,Point Centre) AddPlacedTile(Canvas canvas,LayoutItem item,Brush fill,Brush stroke,double strokeThickness,(int X0,int Y0,int X1,int Y1)? footprint=null)
  {
   var view=canvas.Tag as MapView??MapView.Default;
   var asset=IslandMasks.Asset(item.Name);var min=asset.Min(item.Rotation);var size=asset.Size(item.Rotation);
@@ -78,18 +79,20 @@ internal static class MapSchematic
   if(image is not null)
   {
    var quarter=item.Rotation%2==1;
-   boxW=(quarter?image.Height:image.Width)/IslandImages.PixelsPerUnit;boxH=(quarter?image.Width:image.Height)/IslandImages.PixelsPerUnit;
+   boxW=(quarter?image.Height:image.Width)/image.PixelsPerUnit;boxH=(quarter?image.Width:image.Height)/image.PixelsPerUnit;
   }
   var diamond=new Polygon{Fill=fill,Stroke=stroke,StrokeThickness=strokeThickness,StrokeLineJoin=PenLineJoin.Round,Cursor=System.Windows.Input.Cursors.Hand};
-  foreach(var corner in new[]{(cx-boxW/2,cy-boxH/2),(cx+boxW/2,cy-boxH/2),(cx+boxW/2,cy+boxH/2),(cx-boxW/2,cy+boxH/2)}){diamond.Points.Add(view.Project(corner.Item1,corner.Item2));}
+  double dx=cx,dy=cy,dw=boxW,dh=boxH;
+  if(footprint is {} f){dw=f.X1-f.X0;dh=f.Y1-f.Y0;dx=item.X+f.X0+dw/2;dy=item.Y+f.Y0+dh/2;}
+  foreach(var corner in new[]{(dx-dw/2,dy-dh/2),(dx+dw/2,dy-dh/2),(dx+dw/2,dy+dh/2),(dx-dw/2,dy+dh/2)}){diamond.Points.Add(view.Project(corner.Item1,corner.Item2));}
   canvas.Children.Add(diamond);
   if(image is not null)
   {
    var picture=new Image{Source=image.Source,Width=image.Width,Height=image.Height,Stretch=Stretch.Fill,IsHitTestVisible=false,RenderTransform=ImageTransform(view,image,item.Rotation,cx,cy)};
-   RenderOptions.SetBitmapScalingMode(picture,BitmapScalingMode.HighQuality);
+   RenderOptions.SetBitmapScalingMode(picture,image.Pixelated?BitmapScalingMode.NearestNeighbor:BitmapScalingMode.HighQuality);
    canvas.Children.Add(picture);
   }
-  return(diamond,view.Project(cx,cy));
+  return(diamond,view.Project(dx,dy));
  }
 
  // Maps the image's own pixel grid onto the canvas. The image is drawn north-up: its top edge points towards +y of the map, its
@@ -100,7 +103,7 @@ internal static class MapSchematic
   var origin=view.Project(centreX,centreY);
   (double X,double Y) Map(double column,double row)
   {
-   var east=(column-image.Width/2d)/IslandImages.PixelsPerUnit;var north=-(row-image.Height/2d)/IslandImages.PixelsPerUnit;
+   var east=(column-image.Width/2d)/image.PixelsPerUnit;var north=-(row-image.Height/2d)/image.PixelsPerUnit;
    var(x,y)=rotation switch{0=>(east,north),1=>(-north,east),2=>(-east,-north),_=>(north,-east)};
    return(origin.X+(x-y)*MapLayoutPositions.ScaleX*view.Scale,origin.Y-(x+y)*MapLayoutPositions.ScaleY*view.Scale);
   }
