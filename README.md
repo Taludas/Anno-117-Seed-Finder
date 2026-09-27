@@ -88,8 +88,7 @@ Everything in the middle of the window is optional. Leave it all empty and every
 **Island conditions.** For each region (Latium and Albion) you can demand specific characteristics on specific kinds of island:
 
 - **Starting island** – the island you actually begin on
-- **Secondary** and **Tertiary** – the two groups the remaining islands are split into (explained
-  [further down](#step-8-which-goods-grow-where))
+- **Secondary** and **Tertiary** – the two groups the remaining islands are split into (explained [further down](#step-8-which-goods-grow-where))
 - **Any combination** – the fertility simply has to exist somewhere in that region
 
 Use the "add" buttons to create a condition row, then pick the fertility distribution for the island. You can add as many rows as you like; a seed has to satisfy all of them. The position picker next to a row lets you demand the island on a **particular island slot** of the map, if you care where it is.
@@ -133,8 +132,9 @@ The table lists every matching seed with its key numbers: buildable tiles per re
 - **Preview** – type a seed and press Preview to see both regions drawn as a map: every island exactly where the game puts it and turned the way the game turns it, with its top-down image, plus the decoration islands and the third-party islands (traders and the raider). Hover an island for its fertilities and slot counts; the outline colour on hover shows its role. The border of the regular map and of the Prophecies of Ash area are drawn as the real rectangles. This works for any seed, whether it came from a search or not. **Random** puts a random valid seed into the box. The islands can be drawn as a **tile map** (the default: every tile coloured by type - buildable, marsh, river, harbour, not buildable) or with the game's **artwork**. Zoom with the slider, the + and − buttons or Ctrl + mouse wheel (around the cursor), drag with the left mouse button to move around, and **Fit** shows everything again; in the tile map every pixel is one tile. The island tooltips also show the tile breakdown: buildable land, marsh (Albion) and harbour.
 - **Add seed** – put a single specific seed into the table without searching.
 - **Load seed list** – read a list of seeds from a file and evaluate them all in the results table. A plain text file with one seed per line (like the output file, `treffer.txt`) and a CSV exported by the app both work; other columns are ignored. The seeds carry no map profile: set the profile they were found with before you load them.
-- **Export CSV** – write the results table to a spreadsheet file. The suggested file name is stamped with the current
-  moment the same way, so clicking Save without renaming still keeps every export.
+- **Export CSV** – write the results table to a spreadsheet file. The suggested file name is stamped with the current moment the same way, so clicking Save without renaming still keeps every export.
+- **Table tools** (the row above the table, most of them also on right-click): **Find seed** jumps to a seed number in the table (Enter works too; separators are ignored). **Clear sorting** removes every column sorting and brings the original order back. **Clear table** empties the table (the search output file is kept).
+- **Compare seeds** – select a row and click **Set as reference** (★, amber), then select the seeds to compare with Ctrl+click or Shift+click and click **Compare selected**. The table then shows only the reference and those seeds, and every number is green where a seed beats the reference and red where it falls short (higher is better in every column, the score included). A seed added with **Add seed** during a comparison joins it; **End comparison** shows every row again.
 
 #### Filtering step by step
 

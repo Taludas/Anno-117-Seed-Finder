@@ -83,8 +83,7 @@ Alles in der Fenstermitte ist freiwillig. Lässt du es leer, passt jeder Seed.
 **Inselbedingungen.** Für jede Region (Latium und Albion) kannst du bestimmte Eigenschaften auf bestimmten Inselarten verlangen:
 
 - **Startinsel** – die Insel, auf der du tatsächlich beginnst
-- **Sekundär** und **Tertiär** – die beiden Gruppen, in die die übrigen Inseln aufgeteilt werden (erklärt
-  [weiter unten](#schritt-9-welche-fruchtbarkeiten-wo-entstehen))
+- **Sekundär** und **Tertiär** – die beiden Gruppen, in die die übrigen Inseln aufgeteilt werden (erklärt [weiter unten](#schritt-9-welche-fruchtbarkeiten-wo-entstehen))
 - **Beliebige Kombination** – die Fruchtbarkeit muss in der Region einfach irgendwo vorkommen
 
 Mit den „Hinzufügen"-Schaltflächen legst du eine Bedingungszeile an und wählst dann die Fruchtbarkeitsverteilung für die Insel. Du kannst beliebig viele Zeilen anlegen; ein Seed muss alle erfüllen. Über die Positionsauswahl neben einer Zeile kannst du die Insel auf einem **bestimmten Inselplatz** der Karte verlangen, wenn dir die Lage wichtig ist.
@@ -128,8 +127,9 @@ Die Tabelle listet jeden passenden Seed mit seinen Kennzahlen: bebaubare Kacheln
 - **Vorschau** – Seed eintippen und Vorschau drücken, um beide Regionen als Karte zu sehen: jede Insel genau dort, wo das Spiel sie hinsetzt, und so gedreht, wie das Spiel sie dreht, mit ihrem Draufsicht-Bild, dazu die Dekorationsinseln und die Drittanbieter-Inseln (Händler und Räuber). Beim Darüberfahren erscheinen Fruchtbarkeiten und Bauplätze; die Rahmenfarbe zeigt die Rolle. Der Rand der normalen Karte und der des Prophecies-of-Ash-Bereichs sind als echte Rechtecke eingezeichnet. Das geht für jeden Seed, auch ohne Suche. **Zufall** setzt einen zufälligen gültigen Seed in das Feld. Die Inseln lassen sich als **Kachelkarte** zeichnen (Voreinstellung: jede Kachel nach Typ eingefärbt - Baufläche, Sumpf, Fluss, Hafen, nicht bebaubar) oder mit den **Grafiken des Spiels**. Gezoomt wird mit dem Regler, den Schaltflächen + und − oder Strg + Mausrad (um den Mauszeiger), Ziehen mit der linken Maustaste verschiebt, **Einpassen** zeigt wieder alles; in der Kachelkarte ist jedes Pixel eine Kachel. Die Insel-Tooltips zeigen auch die Kachelaufteilung: Baufläche, Sumpf (Albion) und Hafen.
 - **Seed hinzufügen** – einen einzelnen, bestimmten Seed ohne Suche in die Tabelle aufnehmen.
 - **Seed-Liste laden** – eine Liste von Seeds aus einer Datei einlesen und alle in der Ergebnistabelle auswerten. Eine Textdatei mit einem Seed pro Zeile (wie die Ausgabedatei `treffer.txt`) und eine von der App exportierte CSV-Datei funktionieren beide; weitere Spalten werden ignoriert. Die Seeds tragen kein Kartenprofil: stelle das Profil ein, mit dem sie gefunden wurden, bevor du sie lädst.
-- **CSV exportieren** – die Ergebnistabelle als Tabellendatei schreiben. Der vorgeschlagene Dateiname trägt denselben
-  Zeitstempel, sodass ein Klick auf Speichern ohne Umbenennen trotzdem jede Exportdatei behält.
+- **CSV exportieren** – die Ergebnistabelle als Tabellendatei schreiben. Der vorgeschlagene Dateiname trägt denselben Zeitstempel, sodass ein Klick auf Speichern ohne Umbenennen trotzdem jede Exportdatei behält.
+- **Tabellenwerkzeuge** (die Zeile über der Tabelle, das meiste auch per Rechtsklick): **Seed finden** springt zu einer Seed-Nummer in der Tabelle (auch mit Enter; Trennzeichen werden ignoriert). **Sortierung aufheben** entfernt alle Spaltensortierungen und stellt die ursprüngliche Reihenfolge wieder her. **Tabelle leeren** leert die Tabelle (die Ausgabedatei der Suche bleibt erhalten).
+- **Seeds vergleichen** – eine Zeile wählen und **Als Referenz** klicken (★, gelb), dann die zu vergleichenden Seeds mit Strg+Klick oder Umschalt+Klick markieren und **Auswahl vergleichen** klicken. Die Tabelle zeigt dann nur noch die Referenz und diese Seeds, und jede Zahl ist grün, wo ein Seed die Referenz übertrifft, und rot, wo er darunter liegt (in jeder Spalte gilt: mehr ist besser, auch beim Score). Ein während des Vergleichs mit **Seed hinzufügen** hinzugefügter Seed kommt mit in den Vergleich; **Vergleich beenden** zeigt wieder alle Zeilen.
 
 #### Schrittweise filtern
 

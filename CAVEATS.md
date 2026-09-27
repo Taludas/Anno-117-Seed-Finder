@@ -156,7 +156,7 @@ If a metric is both a hard filter and weighted, every surviving hit already sati
 
 ### 22. A DataGridColumn's HeaderStyle/CellStyle silently breaks the grid's Shift+click multi-sort
 
-Setting `HeaderStyle` or `CellStyle` on one `DataGridColumn` — even just to add a tooltip, with no `BasedOn` — drops that header's default template for the *whole grid*, not just that column, and with it the built-in Shift+click multi-sort. A tooltip on a header or a cell belongs on the `Header`/`CellTemplate` content itself (a plain `TextBlock` with its own `ToolTip`), exactly like every other tooltipped column in this grid already does — never on `HeaderStyle`/`CellStyle`. `SmokeColumnStyles()` in the self-test asserts no column ever has either set again.
+Setting `HeaderStyle` or `CellStyle` on one `DataGridColumn` — even just to add a tooltip, with no `BasedOn` — drops that header's default template for the *whole grid*, not just that column, and with it the built-in Shift+click multi-sort. A tooltip on a header or a cell belongs on the `Header`/`CellTemplate` content itself (a plain `TextBlock` with its own `ToolTip`), exactly like every other tooltipped column in this grid already does — never on `HeaderStyle`/`CellStyle`. `SmokeColumnStyles()` in the self-test asserts no column ever has either set again. The one exception is the grid-wide `DataGrid.CellStyle` for the seed-comparison tint (`ResultTableTools.cs`): WPF hands it down to every column's `CellStyle`, so the guard accepts exactly that style, and `SmokeTableTools()` checks that a header click still sorts with it in place.
 
 ### 23. A sort key needs the exact value the player sees, not a finer one
 

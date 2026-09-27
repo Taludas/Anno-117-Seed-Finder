@@ -41,7 +41,7 @@ public partial class MainWindow:Window
   FertilityIcons.Configure(CmbSlot1,[FertilityDefinitions.Choice(RegionKind.Latium,2206),FertilityDefinitions.Choice(RegionKind.Latium,2209)]);CmbSlot1.SelectedIndex=0;
   cinisChecks=[ChkGrapes,ChkFlax,ChkMurex,ChkOysters,ChkSturgeon,ChkGold];
   foreach(var box in cinisChecks)box.Checked+=CinisFertilityChecked;
-  ((System.Collections.Specialized.INotifyCollectionChanged)GridResults.Items).CollectionChanged+=(_,_)=>UpdateTableSeedsOption();UpdateTableSeedsOption();
+  ((System.Collections.Specialized.INotifyCollectionChanged)GridResults.Items).CollectionChanged+=(_,_)=>{UpdateTableSeedsOption();UpdateTableTools();};UpdateTableSeedsOption();SetUpResultTableTools();
   cinisWarningTimer.Tick+=(_,_)=>{TxtCinisWarning.Visibility=Visibility.Collapsed;cinisWarningTimer.Stop();};
   ResultColumnsChanged(this,new RoutedEventArgs());
   UpdateConditionAddButtons();
@@ -203,6 +203,8 @@ public partial class MainWindow:Window
   try
   {
    rows.Add(SearchResultRow.From(SeedSearcher.Describe(seed,activeProfile,CurrentFertilitySetting(),CurrentSlotSetting()),activeProfile));
+   // While seeds are compared, an added seed joins the comparison.
+   if(comparedRows.Count>0)comparedRows.Add(rows[^1]);
    // Replacing ItemsSource builds a fresh view, so the active sorting is carried over by hand.
    var sorting=GridResults.Items.SortDescriptions.ToArray();
    GridResults.ItemsSource=rows.ToArray();
@@ -436,8 +438,9 @@ public partial class MainWindow:Window
   return germanOk&&englishOk;
  }
  // A HeaderStyle or CellStyle on a DataGridColumn (instead of a plain Header/CellTemplate) silently breaks the grid's
- // native Shift+click multi-sort for every column, not just its own - regression guard so it's never set again.
- internal bool SmokeColumnStyles()=>GridResults.Columns.All(column=>column.HeaderStyle is null&&column.CellStyle is null);
+ // native Shift+click multi-sort for every column, not just its own - regression guard so it's never set again. The one
+ // grid-wide CellStyle (the comparison tint, ResultTableTools.cs) is handed down to every column by WPF and is allowed.
+ internal bool SmokeColumnStyles()=>GridResults.Columns.All(column=>column.HeaderStyle is null&&(column.CellStyle is null||ReferenceEquals(column.CellStyle,GridResults.CellStyle)));
  static IEnumerable<DependencyObject> VisualDescendants(DependencyObject root)
  {
   var count=VisualTreeHelper.GetChildrenCount(root);
@@ -505,7 +508,7 @@ public partial class MainWindow:Window
   var stamped=$"{name}_{timestamp:yyyy-MM-dd_HH-mm-ss-fff}{extension}";
   return string.IsNullOrEmpty(directory)?stamped:Path.Combine(directory,stamped);
  }
- void SetRunning(bool value){running=value;BtnRun.IsEnabled=!value;BtnPreview.IsEnabled=!value;BtnCancel.IsEnabled=value;BtnLoadSeedList.IsEnabled=!value;BtnAddSeedToTable.IsEnabled=!value;BtnExportCsv.IsEnabled=!value&&GridResults.Items.Count>0;BtnLoadPreset.IsEnabled=!value;BtnSavePreset.IsEnabled=!value;var rangeEditable=!value&&ChkTableSeeds.IsChecked!=true;BtnMinSeed.IsEnabled=rangeEditable;BtnMaxSeed.IsEnabled=rangeEditable;TxtPreviewSeed.IsEnabled=!value;TxtFirstSeed.IsEnabled=rangeEditable;TxtMaxSeed.IsEnabled=rangeEditable;UpdateTableSeedsOption();TxtThreads.IsEnabled=!value;TxtLimit.IsEnabled=!value;TxtOutput.IsEnabled=!value;CmbStartMode.IsEnabled=!value;ChkDlc01.IsEnabled=!value;CmbFertilitySetting.IsEnabled=!value;CmbMapTemplate.IsEnabled=!value;CmbMapSize.IsEnabled=!value;CmbSlot1.IsEnabled=!value&&activeProfile.Dlc01;foreach(var box in cinisChecks)box.IsEnabled=!value&&activeProfile.Dlc01;ChkMaxSites.IsEnabled=!value&&activeProfile.Dlc01;ConditionsArea.IsEnabled=!value;}
+ void SetRunning(bool value){running=value;BtnRun.IsEnabled=!value;BtnPreview.IsEnabled=!value;BtnCancel.IsEnabled=value;BtnLoadSeedList.IsEnabled=!value;BtnAddSeedToTable.IsEnabled=!value;BtnExportCsv.IsEnabled=!value&&GridResults.Items.Count>0;BtnLoadPreset.IsEnabled=!value;BtnSavePreset.IsEnabled=!value;var rangeEditable=!value&&ChkTableSeeds.IsChecked!=true;BtnMinSeed.IsEnabled=rangeEditable;BtnMaxSeed.IsEnabled=rangeEditable;TxtPreviewSeed.IsEnabled=!value;TxtFirstSeed.IsEnabled=rangeEditable;TxtMaxSeed.IsEnabled=rangeEditable;UpdateTableSeedsOption();TxtThreads.IsEnabled=!value;TxtLimit.IsEnabled=!value;TxtOutput.IsEnabled=!value;CmbStartMode.IsEnabled=!value;ChkDlc01.IsEnabled=!value;CmbFertilitySetting.IsEnabled=!value;CmbMapTemplate.IsEnabled=!value;CmbMapSize.IsEnabled=!value;CmbSlot1.IsEnabled=!value&&activeProfile.Dlc01;foreach(var box in cinisChecks)box.IsEnabled=!value&&activeProfile.Dlc01;ChkMaxSites.IsEnabled=!value&&activeProfile.Dlc01;ConditionsArea.IsEnabled=!value;UpdateTableTools();}
  void CancelSearch(object sender,RoutedEventArgs e)=>cancellation?.Cancel();
  void OpenOutput(object sender,RoutedEventArgs e){if(lastOutput is not null&&File.Exists(lastOutput))Process.Start(new ProcessStartInfo(lastOutput){UseShellExecute=true});}
 
@@ -744,6 +747,8 @@ internal sealed record SearchResultRow(uint Seed,int MarbleSites,int GoldMines,i
  // or Shift+click on another column would have nothing left to resolve them by.
  public double ScoreSortKey => Score ?? double.NegativeInfinity;
  public string? ScoreBreakdown { get; private set; }
+ // "★" on the reference seed of a comparison (see ResultTableTools.cs).
+ public string CompareMark { get; set; } = "";
  public string ScoreDisplay => Score is null ? "–" : Score.Value.ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
  public void SetScore(double score, string breakdown) { Score = score; ScoreBreakdown = breakdown; }
  public void ClearScore() { Score = null; ScoreBreakdown = null; }
