@@ -5,6 +5,6 @@
 internal static class AppVersion
 {
  public const string GameVersion="2.1.0";
- public const int Patch=2;
+ public const int Patch=3;
  public static string WindowTitle=>$"Anno 117 Seed Finder v{GameVersion}.{Patch}";
 }

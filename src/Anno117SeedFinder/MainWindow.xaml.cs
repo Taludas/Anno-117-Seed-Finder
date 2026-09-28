@@ -71,7 +71,7 @@ public partial class MainWindow:Window
    if(dialog.ShowDialog()!=true)return;
    var preset=new FinderSettingsPreset
    {
-    Template=activeProfile.Template,Size=activeProfile.Size,StartMode=CmbStartMode.SelectedIndex==1?StartModeKind.StartIsland:StartModeKind.Flagship,Dlc01=activeProfile.Dlc01,DlcRetroactive=activeProfile.Retro,FertilitySetting=CmbFertilitySetting.SelectedIndex,SlotSetting=CmbSlotSetting.SelectedIndex,
+    Template=activeProfile.Template,Size=activeProfile.Size,StartMode=CmbStartMode.SelectedIndex==1?StartModeKind.StartIsland:StartModeKind.Flagship,Dlc01=activeProfile.Dlc01,DlcRetroactive=activeProfile.Retro,DlcAfterLoad=activeProfile.AfterLoad,FertilitySetting=CmbFertilitySetting.SelectedIndex,SlotSetting=CmbSlotSetting.SelectedIndex,
      FirstSeed=SeedDigits(TxtFirstSeed.Text),LastSeed=SeedDigits(TxtMaxSeed.Text),Threads=TxtThreads.Text,MaximumHits=TxtLimit.Text,OutputPath=TxtOutput.Text,PreviewSeed=TxtPreviewSeed.Text,
     MinimumGoldSites=MinimumText(CmbMinGoldSites),MinimumSturgeonSites=MinimumText(CmbMinSturgeonSites),MinimumLatiumMountainSites=MinimumText(CmbMinLatiumMountainSites),MinimumLatiumRiverSites=MinimumText(CmbMinLatiumRiverSites),MinimumAlbionMountainSites=MinimumText(CmbMinAlbionMountainSites),
     GoldSitesEnabled=ChkMinGoldSites.IsChecked==true,SturgeonSitesEnabled=ChkMinSturgeonSites.IsChecked==true,LatiumMountainSitesEnabled=ChkMinLatiumMountainSites.IsChecked==true,LatiumRiverSitesEnabled=ChkMinLatiumRiverSites.IsChecked==true,AlbionMountainSitesEnabled=ChkMinAlbionMountainSites.IsChecked==true,
@@ -102,7 +102,7 @@ public partial class MainWindow:Window
  void ApplyPreset(FinderSettingsPreset preset)
  {
   profileControlsReady=false;
-  CmbMapTemplate.SelectedItem=templateChoices.Single(choice=>choice.Value==preset.Template);CmbMapSize.SelectedItem=sizeChoices.Single(choice=>choice.Value==preset.Size);CmbStartMode.SelectedIndex=preset.StartMode==StartModeKind.StartIsland?1:0;ChkDlc01.IsChecked=preset.Dlc01;ChkDlcRetro.IsChecked=preset.Dlc01&&preset.DlcRetroactive;activeProfile=MapProfiles.Get(preset.Template,preset.Size,preset.Dlc01,preset.Dlc01&&preset.DlcRetroactive);
+  CmbMapTemplate.SelectedItem=templateChoices.Single(choice=>choice.Value==preset.Template);CmbMapSize.SelectedItem=sizeChoices.Single(choice=>choice.Value==preset.Size);CmbStartMode.SelectedIndex=preset.StartMode==StartModeKind.StartIsland?1:0;ChkDlc01.IsChecked=preset.Dlc01;ChkDlcRetro.IsChecked=preset.Dlc01&&preset.DlcRetroactive;ChkDlcAfterLoad.IsChecked=preset.Dlc01&&!preset.DlcRetroactive&&preset.DlcAfterLoad;activeProfile=MapProfiles.Get(preset.Template,preset.Size,preset.Dlc01,preset.Dlc01&&preset.DlcRetroactive,preset.DlcAfterLoad);
   CmbFertilitySetting.SelectedIndex=Math.Clamp(preset.FertilitySetting,0,CmbFertilitySetting.Items.Count-1);CmbSlotSetting.SelectedIndex=Math.Clamp(preset.SlotSetting,0,CmbSlotSetting.Items.Count-1);
   TxtFirstSeed.Text=preset.FirstSeed;TxtMaxSeed.Text=preset.LastSeed;TxtThreads.Text=preset.Threads;TxtLimit.Text=preset.MaximumHits;TxtOutput.Text=preset.OutputPath;TxtPreviewSeed.Text=preset.PreviewSeed;
   CmbMinGoldSites.Tag=preset.MinimumGoldSites;CmbMinSturgeonSites.Tag=preset.MinimumSturgeonSites;CmbMinLatiumMountainSites.Tag=preset.MinimumLatiumMountainSites;CmbMinLatiumRiverSites.Tag=preset.MinimumLatiumRiverSites;CmbMinAlbionMountainSites.Tag=preset.MinimumAlbionMountainSites;
@@ -480,6 +480,14 @@ public partial class MainWindow:Window
   var csvDefault=TimestampedFileName("seeds.csv",first);
   return plain==Path.Combine("C:\\out","treffer_2026-09-23_15-04-05-123.txt")&&csvDefault=="seeds_2026-09-23_15-04-05-123.csv"&&plain!=repeated;
  }
+ // "After loading a save": switches the profile to the 10-decoration variant; "activated later" switches it off and disables it.
+ internal bool SmokeAfterLoad()
+ {
+  ChkDlcAfterLoad.IsChecked=true;var onOk=activeProfile.AfterLoad&&activeProfile.Dlc01&&!activeProfile.Retro;
+  ChkDlcRetro.IsChecked=true;var retroOk=!ChkDlcAfterLoad.IsEnabled&&ChkDlcAfterLoad.IsChecked!=true&&activeProfile.Retro&&!activeProfile.AfterLoad;
+  ChkDlcRetro.IsChecked=false;var backOk=ChkDlcAfterLoad.IsEnabled&&!activeProfile.AfterLoad&&!activeProfile.Retro;
+  return onOk&&retroOk&&backOk;
+ }
  internal bool SmokeDlcToggle(){ChkDlc01.IsChecked=false;var hidden=!activeProfile.Dlc01&&CinisCard.Visibility==Visibility.Collapsed&&CinisResultsColumn.Visibility==Visibility.Collapsed&&Grid.GetColumnSpan(SearchRangeCard)==2&&!CmbSlot1.IsEnabled;ChkDlc01.IsChecked=true;return hidden&&activeProfile.Dlc01&&CinisCard.Visibility==Visibility.Visible&&CinisResultsColumn.Visibility==Visibility.Visible&&CmbSlot1.IsEnabled;}
  // The option needs seeds in the table; its label shows how many. While a search runs it stays disabled and keeps its label.
  void UpdateTableSeedsOption()
@@ -525,7 +533,7 @@ public partial class MainWindow:Window
  void MapProfileChanged(object sender,SelectionChangedEventArgs e)
  {
   if(!profileControlsReady||CmbMapTemplate.SelectedItem is not ProfileChoice<MapTemplateKind> template||CmbMapSize.SelectedItem is not ProfileChoice<MapSizeKind> size)return;
-  var selected=MapProfiles.Get(template.Value,size.Value,ChkDlc01.IsChecked==true,ChkDlc01.IsChecked==true&&ChkDlcRetro.IsChecked==true);if(selected==activeProfile)return;
+  var selected=MapProfiles.Get(template.Value,size.Value,ChkDlc01.IsChecked==true,ChkDlc01.IsChecked==true&&ChkDlcRetro.IsChecked==true,ChkDlcAfterLoad.IsChecked==true);if(selected==activeProfile)return;
   activeProfile=selected;
   LatiumConditions.Children.Clear();AlbionConditions.Children.Clear();GridResults.ItemsSource=null;
   RefreshProfileLabels();UpdateConditionAddButtons();
@@ -536,13 +544,15 @@ public partial class MainWindow:Window
   if(!profileControlsReady)return;RefreshDlcPresentation();
   if(CmbMapTemplate.SelectedItem is ProfileChoice<MapTemplateKind> template&&CmbMapSize.SelectedItem is ProfileChoice<MapSizeKind> size)
   {
-   activeProfile=MapProfiles.Get(template.Value,size.Value,ChkDlc01.IsChecked==true,ChkDlc01.IsChecked==true&&ChkDlcRetro.IsChecked==true);LatiumConditions.Children.Clear();AlbionConditions.Children.Clear();GridResults.ItemsSource=null;RefreshProfileLabels();UpdateConditionAddButtons();
+   activeProfile=MapProfiles.Get(template.Value,size.Value,ChkDlc01.IsChecked==true,ChkDlc01.IsChecked==true&&ChkDlcRetro.IsChecked==true,ChkDlcAfterLoad.IsChecked==true);LatiumConditions.Children.Clear();AlbionConditions.Children.Clear();GridResults.ItemsSource=null;RefreshProfileLabels();UpdateConditionAddButtons();
   }
  }
  void StartModeChanged(object sender,SelectionChangedEventArgs e){if(profileControlsReady)GridResults.ItemsSource=null;}
  void RefreshDlcPresentation()
  {
-  var visible=ChkDlc01.IsChecked==true;ChkDlcRetro.IsEnabled=visible;if(!visible)ChkDlcRetro.IsChecked=false;CinisCard.Visibility=visible?Visibility.Visible:Visibility.Collapsed;CinisResultsColumn.Visibility=visible?Visibility.Visible:Visibility.Collapsed;Grid.SetColumnSpan(SearchRangeCard,visible?1:2);CmbSlot1.IsEnabled=visible;foreach(var box in cinisChecks)box.IsEnabled=visible;ChkMaxSites.IsEnabled=visible;
+  var visible=ChkDlc01.IsChecked==true;ChkDlcRetro.IsEnabled=visible;if(!visible)ChkDlcRetro.IsChecked=false;
+  // "After loading a save" is a variant of a fresh DLC01 map; for a retroactive map it is not known, so the two exclude each other.
+  ChkDlcAfterLoad.IsEnabled=visible&&ChkDlcRetro.IsChecked!=true;if(!ChkDlcAfterLoad.IsEnabled)ChkDlcAfterLoad.IsChecked=false;CinisCard.Visibility=visible?Visibility.Visible:Visibility.Collapsed;CinisResultsColumn.Visibility=visible?Visibility.Visible:Visibility.Collapsed;Grid.SetColumnSpan(SearchRangeCard,visible?1:2);CmbSlot1.IsEnabled=visible;foreach(var box in cinisChecks)box.IsEnabled=visible;ChkMaxSites.IsEnabled=visible;
   RefreshScoreVisibility();RecomputeScores();
  }
 
@@ -634,7 +644,7 @@ public partial class MainWindow:Window
  string ProfileLabel(RegionKind region)
  {
   var secondary=activeProfile.Capacity(region,FertilitySetKind.Secondary);var tertiary=activeProfile.Capacity(region,FertilitySetKind.Tertiary);
-  var dlc=region==RegionKind.Latium?(activeProfile.Retro?" · PoA (+)":activeProfile.Dlc01?" · PoA":Localization.Instance["WithoutPoASuffix"]):"";
+  var dlc=region==RegionKind.Latium?(activeProfile.Retro?" · PoA (+)":activeProfile.AfterLoad?" · PoA ("+Localization.Instance["AfterLoadShort"]+")":activeProfile.Dlc01?" · PoA":Localization.Instance["WithoutPoASuffix"]):"";
   return Localization.Instance.Format("ProfileLabelFormat",region,activeProfile.Template,activeProfile.Size,dlc,activeProfile.StarterCount(region),Localization.Instance["UpToWord"],secondary,tertiary);
  }
 

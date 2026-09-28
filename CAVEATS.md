@@ -170,6 +170,18 @@ Every filter column's tooltip (`RangeGauge`) plots a seed's value against `Score
 
 `RunSearch` stamps the search's start time into the actual file name (`TimestampedFileName`) before it ever reaches `SeedSearcher` — the box keeps showing the plain name the player typed or browsed to, as a template, so it can be reused search after search without a manual rename in between. Anything that needs the *real* path a search just wrote (a script, a support answer, a "did it save?" check) has to read it from the completed search itself (`SearchSummary.Output` / the app's "Open output" button), never by re-deriving it from the text box. This also retired the old "you're about to overwrite the seed list you loaded" confirmation dialog: since the written file never again has the exact name of an existing file unless two searches start in the same second, there is nothing left for it to warn about.
 
+### 26. A new game started after loading a savegame has 10 instead of 14 Latium decoration islands
+
+DLC01 enlarges the Latium map and adds four decoration islands to the base ten (`EnlargedAdditionalDecoIslands = 4` in every
+Latium map template). A new game that is started after a savegame has been loaded in the same session (load, Quit to Title, New
+Game) misses those four. The islands, their rotations, the traders and the first ten decorations stay exactly the same, but the
+four missing placements also skip their rotation draws: the slot phase starts four draws earlier, and every island's slots and
+fertilities come out different. Reproduced on purpose (Corners Large 2621, fresh start: 14 decorations; after loading a save: 10)
+and found in a player's savegame (Corners Large 856497867) and in older validation saves (Corners Small 3-7), all of which the
+app reproduces completely with the "after loading a save" option (`MapProfile.AfterLoad`; `_afterload` in savegame names for
+`tools/check_savegame.py`). A savegame without any Albion island has simply not created Albion yet; the checker skips such a
+region.
+
 ## Practical traps
 
 - **Running the app with a wrong switch opens the GUI** and the process hangs until the timeout. Always use exact switch names and a timeout, and kill stray processes afterwards.

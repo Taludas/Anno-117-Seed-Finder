@@ -201,6 +201,7 @@ internal sealed class SeedPreviewWindow:Window
   {
    pair.ToolTip.PlacementTarget=pair.Target;pair.ToolTip.IsOpen=true;UpdateLayout();pair.ToolTip.IsOpen=false;
   }
+  if(Localization.Instance.MissingKeys.Count>0)throw new InvalidOperationException("Fehlende Texte: "+string.Join(", ",Localization.Instance.MissingKeys));
  }
 
  static void AddSite(Panel panel,string icon,int? count)

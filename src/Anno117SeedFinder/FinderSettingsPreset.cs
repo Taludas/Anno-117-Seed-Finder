@@ -10,6 +10,7 @@ internal sealed class FinderSettingsPreset
  public StartModeKind StartMode { get; set; }=StartModeKind.Flagship;
  public bool Dlc01 { get; set; }=true;
  public bool DlcRetroactive { get; set; }
+ public bool DlcAfterLoad { get; set; }
  public int FertilitySetting { get; set; }
  public int SlotSetting { get; set; }
  public string FirstSeed { get; set; }="1";
@@ -93,7 +94,7 @@ internal static class FinderSettingsStorage
  {
   if(preset.Version!=1)throw new InvalidDataException(Localization.Instance.Format("UnsupportedPresetVersionFormat",preset.Version));
   if(!Enum.IsDefined(preset.StartMode))throw new InvalidDataException(Localization.Instance["InvalidStartMode"]);
-  var profile=MapProfiles.Get(preset.Template,preset.Size,preset.Dlc01,preset.Dlc01&&preset.DlcRetroactive);
+  var profile=MapProfiles.Get(preset.Template,preset.Size,preset.Dlc01,preset.Dlc01&&preset.DlcRetroactive,preset.DlcAfterLoad);
   var ranges=AggregateSiteRanges.For(profile);
   ValidateMinimum(preset.MinimumGoldSites,ranges.GoldMax,Localization.Instance["LabelGoldRiverSites"]);ValidateMinimum(preset.MinimumSturgeonSites,ranges.SturgeonMax,Localization.Instance["LabelSturgeonRiverSites"]);
   ValidateMinimum(preset.MinimumLatiumMountainSites,ranges.LatiumMountainMax,Localization.Instance["LabelLatiumMountainSites"]);ValidateMinimum(preset.MinimumLatiumRiverSites,ranges.LatiumRiverMax,Localization.Instance["LabelLatiumRiverSites"]);ValidateMinimum(preset.MinimumAlbionMountainSites,ranges.AlbionMountainMax,Localization.Instance["LabelAlbionMountainSites"]);

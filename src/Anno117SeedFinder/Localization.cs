@@ -46,7 +46,11 @@ internal sealed class Localization:INotifyPropertyChanged
   }
  }
 
- public string this[string key]=>Strings.TryGetValue(key,out var pair)?(language==AppLanguage.English?pair.En:pair.De):key;
+ public string this[string key]=>Strings.TryGetValue(key,out var pair)?(language==AppLanguage.English?pair.En:pair.De):Missing(key);
+ // A key without an entry shows as its bare name; the self-checks fail when any such lookup happened.
+ readonly System.Collections.Concurrent.ConcurrentDictionary<string,byte> missingKeys=new();
+ string Missing(string key){missingKeys.TryAdd(key,0);return key;}
+ internal ICollection<string> MissingKeys=>missingKeys.Keys;
  public string Format(string key,params object[] args)=>string.Format(this[key],args);
 
  static AppLanguage Load()
@@ -71,6 +75,9 @@ internal sealed class Localization:INotifyPropertyChanged
   ["DlcHeader"]=("DLCs","DLCs"),
   ["SlotSettingTooltip"]=("Anzahl der Berg- und Flussplaetze auf den Inseln (Kartenoption Rohstoffvorkommen)","How many mountain and river slots the islands have (map option for resource deposits)"),
   ["Dlc01Tooltip"]=("Prophecies of Ash ein- oder ausschalten","Toggle Prophecies of Ash on or off"),
+  ["DlcAfterLoadLabel"]=("nach Laden","after loading a save"),
+  ["DlcAfterLoadTooltip"]=("Das Spiel wurde gestartet, nachdem vorher ein Spielstand geladen war (Laden, „Zurück zum Hauptmenü“, dann neues Spiel). Dann setzt das Spiel in Latium nur 10 statt 14 kleine Dekorationsinseln, und dadurch fallen Bauplätze und Fruchtbarkeiten aller Inseln anders aus. Zeigt deine Karte nur 10 Dekorationsinseln, diesen Haken setzen - oder das Spiel neu starten und das neue Spiel direkt anlegen.","The game was started after a savegame had been loaded before (load, Quit to Title, then New Game). The game then places only 10 instead of 14 small decoration islands in Latium, which changes the slots and fertilities of every island. If your map shows only 10 decoration islands, tick this - or restart the game and create the new game right away."),
+  ["AfterLoadShort"]=("nach Laden","after load"),
   ["DlcRetroLabel"]=("nachträglich aktiviert (experimentell)","activated later (experimental)"),
   ["DlcRetroTooltip"]=("Karte ohne DLC erstellt, Prophecies of Ash erst danach im Spiel aktiviert. Alte Inseln bleiben, nur die neuen Inseln und Cinis kommen dazu. Neue Inseln: Fruchtbarkeit nur für gemessene Erweiterungsgrößen sicher.","Map created without DLC, Prophecies of Ash switched on afterwards. Old islands stay, only the new islands and Cinis are added. New islands: fertility is only reliable for measured enlargement sizes."),
   ["Dlc03Tooltip"]=("Dawn of the Delta · vorbereitet für eine spätere Generatorerweiterung","Dawn of the Delta · prepared for a future generator extension"),
@@ -81,6 +88,8 @@ internal sealed class Localization:INotifyPropertyChanged
   ["PreviewZoomLabel"]=("Zoom:","Zoom:"),
   ["PreviewZoomFit"]=("Einpassen","Fit"),
   ["PreviewZoomHint"]=("Strg + Mausrad zoomt, Ziehen mit der linken Maustaste verschiebt","Ctrl + mouse wheel zooms, drag with the left mouse button to pan"),
+  ["LatiumTilesFormat"]=("Baufläche {0} · Hafen {1}","Buildable {0} · harbour {1}"),
+  ["AlbionTilesFormat"]=("Baufläche {0} · davon Sumpf {1} · Hafen {2}","Buildable {0} · of it marsh {1} · harbour {2}"),
   ["MapProfileHeader"]=("KARTENPROFIL","MAP PROFILE"),
   ["MapTemplateLabel"]=("KARTENFORM","SHAPE"),
   ["MapSizeLabel"]=("GRÖSSE","SIZE"),

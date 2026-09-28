@@ -81,6 +81,10 @@
                         <StackPanel Orientation="Horizontal" Margin="0,4,0,0" Height="31">
                             <CheckBox x:Name="ChkDlc01" Content="DLC01 - PoA" Foreground="White" IsChecked="True" Checked="DlcProfileChanged" Unchecked="DlcProfileChanged" Margin="0,0,10,0" VerticalAlignment="Center" ToolTip="{Binding [Dlc01Tooltip], Source={x:Static loc:Localization.Instance}}"/>
                             <CheckBox x:Name="ChkDlcRetro" Content="{Binding [DlcRetroLabel], Source={x:Static loc:Localization.Instance}}" Foreground="White" IsChecked="False" Checked="DlcProfileChanged" Unchecked="DlcProfileChanged" Margin="0,0,10,0" VerticalAlignment="Center" ToolTip="{Binding [DlcRetroTooltip], Source={x:Static loc:Localization.Instance}}"/>
+                            <CheckBox x:Name="ChkDlcAfterLoad" Content="{Binding [DlcAfterLoadLabel], Source={x:Static loc:Localization.Instance}}" Foreground="White" IsChecked="False" Checked="DlcProfileChanged" Unchecked="DlcProfileChanged" Margin="0,0,10,0" VerticalAlignment="Center" ToolTip="{Binding [DlcAfterLoadTooltip], Source={x:Static loc:Localization.Instance}}"/>
+                        </StackPanel>
+                        <!-- DLC03 in its own row, directly under DLC01 (the first row has no room for it in a windowed layout). -->
+                        <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
                             <CheckBox x:Name="ChkDlc03" Content="DLC03 - DotD" Foreground="White" IsChecked="False" IsEnabled="False" Margin="0" VerticalAlignment="Center" ToolTip="{Binding [Dlc03Tooltip], Source={x:Static loc:Localization.Instance}}"/>
                         </StackPanel>
                     </StackPanel>

@@ -67,6 +67,7 @@ These settings must match what you will later choose in the game's "New Game" sc
 | **Map size** | Small, Medium or Large. Larger maps have more islands and more space between them. |
 | **DLC01 – PoA** | Whether *Prophecies of Ash* DLC is active. With it, Latium is expanded by the continental island Cinis, and gains several extra islands in the Northern corner of the map. |
 | **activated later (experimental)** | For maps that were **created without** the DLC01 and had it switched on afterwards. See [Switching the DLC on later](#switching-the-dlc-on-later). |
+| **after loading a save** | For games that were started **after a savegame had been loaded** (load a save, *Quit to Title*, then *New Game*). The game then places only 10 instead of 14 small decoration islands in Latium, and every island's slots and fertilities come out different. A game started right after launching Anno is the normal case. Count the small decoration islands in Latium: 10 means tick this box. |
 | **DLC03 – DotD** | Greyed out. DLC03 *Dawn of the Delta* is prepared for, but not active yet. |
 | **Start mode** | Flagship or starting island. This is the game's choice of how you arrive in the map; it does **not** change the generated map. Tested with the starting-island option switched on, with the continental island forced as the start, and with DLC01 on and off (Archipelago and Corners, Large): all six savegames are identical to the plain ones. |
 

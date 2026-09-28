@@ -14,9 +14,10 @@ internal sealed record MapProfile(
  IReadOnlyList<MapSlot> AlbionSlots,
  IReadOnlyList<MapSpecial> LatiumSpecials,
  IReadOnlyList<MapSpecial> AlbionSpecials,
- bool Retro=false)
+ bool Retro=false,
+ bool AfterLoad=false)
 {
- public string DisplayName=>$"{Template} / {Size} / {(Retro?"PoA (retroactive)":Dlc01?"PoA":"Vanilla")}";
+ public string DisplayName=>$"{Template} / {Size} / {(Retro?"PoA (retroactive)":AfterLoad?"PoA (after loading a save)":Dlc01?"PoA":"Vanilla")}";
  public IReadOnlyList<MapSlot> Slots(RegionKind region)=>region==RegionKind.Latium?LatiumSlots:AlbionSlots;
  public IReadOnlyList<MapSpecial> Specials(RegionKind region)=>region==RegionKind.Latium?LatiumSpecials:AlbionSpecials;
  public int StarterCount(RegionKind region)=>Slots(region).Count(slot=>slot.Type==1);
@@ -33,8 +34,15 @@ internal static class MapProfiles
 {
  public static MapProfile Default=>Get(MapTemplateKind.Corners,MapSizeKind.Large,true);
  public static IEnumerable<MapProfile> All=>MapProfileData.All.Values;
- public static MapProfile Get(MapTemplateKind template,MapSizeKind size,bool dlc01=true,bool retro=false)
+ // A new game started after a savegame had been loaded (Quit to Title, then New Game) misses the four decoration islands that DLC01
+ // adds to the enlarged Latium map: 10 instead of 14, so every later draw (slots, fertilities) shifts. Only DLC01 maps without the
+ // retroactive switch. AfterLoadDefault is the command-line switch (environment AFTERLOAD=1) for the dump commands.
+ public static bool AfterLoadDefault;
+ public static MapProfile Get(MapTemplateKind template,MapSizeKind size,bool dlc01=true,bool retro=false,bool afterLoad=false)
  {
+  if((afterLoad||AfterLoadDefault)&&dlc01&&!retro)
+   lock(AfterLoadProfiles)
+    return AfterLoadProfiles.TryGetValue((template,size),out var loaded)?loaded:AfterLoadProfiles[(template,size)]=MapProfileData.All[(template,size,true)] with{AfterLoad=true};
   if(!retro||!dlc01)return MapProfileData.All[(template,size,dlc01)];
   lock(RetroProfiles)
   {
@@ -48,5 +56,5 @@ internal static class MapProfiles
   }
  }
  public const int RetroSlotCount=6;
- static readonly Dictionary<(MapTemplateKind,MapSizeKind),MapProfile> RetroProfiles=new();
+ static readonly Dictionary<(MapTemplateKind,MapSizeKind),MapProfile> RetroProfiles=new(),AfterLoadProfiles=new();
 }

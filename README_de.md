@@ -62,6 +62,7 @@ Diese Einstellungen müssen zu dem passen, was du später im Menü „Neues Spie
 | **Kartengröße** | Klein, mittel oder groß. Größere Karten haben mehr Inseln und mehr Platz dazwischen. |
 | **DLC01 – PoA** | Ob das DLC *Verheißung des Vulkans* aktiv ist. Damit wird Latium um die Kontinentalinsel Cinis erweitert und bekommt mehrere zusätzliche Inseln in der nördlichen Ecke der Karte. |
 | **nachträglich aktiviert (experimentell)** | Für Karten, die **ohne** DLC01 erstellt und bei denen es danach eingeschaltet wurde. Siehe [DLC nachträglich einschalten](#dlc-nachträglich-einschalten). |
+| **nach Laden** | Für Spiele, die **nach dem Laden eines Spielstands** gestartet wurden (Spielstand laden, *Zurück zum Hauptmenü*, dann *Neues Spiel*). Das Spiel setzt dann in Latium nur 10 statt 14 kleine Dekorationsinseln, und Bauplätze und Fruchtbarkeiten aller Inseln fallen anders aus. Ein direkt nach dem Start von Anno angelegtes Spiel ist der Normalfall. Kleine Dekorationsinseln in Latium zählen: 10 heißt, diesen Haken setzen. |
 | **DLC03 – DotD** | Ausgegraut. DLC03 *Erwachen des Deltas* ist vorbereitet, aber noch nicht aktiv. |
 | **Startart** | Flaggschiff oder Startinsel. Das ist die Wahl des Spiels, wie du ankommst; sie ändert die erzeugte Karte **nicht**. Geprüft mit eingeschalteter Startinsel-Option, mit erzwungener kontinentaler Insel als Start und mit DLC01 an und aus (Archipel und Ecken, groß): alle sechs Spielstände sind mit den normalen identisch. |
 
