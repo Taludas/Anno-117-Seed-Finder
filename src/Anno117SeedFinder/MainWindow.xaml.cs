@@ -526,7 +526,8 @@ public partial class MainWindow:Window
   ShowPreview((uint)seed);
  }
  void PreviewSelectedResult(object sender,System.Windows.Input.MouseButtonEventArgs e){if(GridResults.SelectedItem is SearchResultRow row)ShowPreview(row.Seed);}
- void ShowPreview(uint seed){new SeedPreviewWindow(seed,activeProfile,CurrentFertilitySetting(),CurrentSlotSetting()){Owner=this}.ShowDialog();}
+ void ShowPreview(uint seed){new SeedPreviewWindow(seed,activeProfile,CurrentFertilitySetting(),CurrentSlotSetting(),CurrentStartMode()){Owner=this}.ShowDialog();}
+ StartModeKind CurrentStartMode()=>CmbStartMode.SelectedIndex==1?StartModeKind.StartIsland:StartModeKind.Flagship;
  FertilitySetting CurrentFertilitySetting()=>(FertilitySetting)CmbFertilitySetting.SelectedIndex;
  SlotSetting CurrentSlotSetting()=>(SlotSetting)CmbSlotSetting.SelectedIndex;
 

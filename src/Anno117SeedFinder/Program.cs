@@ -60,10 +60,67 @@ internal static class Program
     var advancedSearch=SeedSearcher.SearchAsync(new SearchRequest(1,2000,Math.Max(1,Environment.ProcessorCount),0,output,0,[],false,AdvancedMinimums:advancedMinimums),null,CancellationToken.None).GetAwaiter().GetResult();
     var advancedExpected=Enumerable.Range(1,2000).Select(seed=>SeedSearcher.Describe((uint)seed,MapProfiles.Default,FertilitySetting.Abundant)).Where(hit=>hit.Latium.HarbourMurexTiles>=50_000&&hit.Albion.HarbourSeaShellTiles>=17_500).Select(hit=>hit.Seed).ToArray();
     var advancedOk=advancedExpected.Length>0&&advancedExpected.Length<2000&&advancedSearch.Hits.Select(hit=>hit.Seed).SequenceEqual(advancedExpected);
+    // Settling guide: corners_seed4428_latium.csv of ewjax's Anno 117 Island Selection (columns in that tool's fertility order, no
+    // positions). With the app's weights (river 10 and mountain 5 per slot, no gold rule) the best order is [W, 200, 250], 1400 points.
+    uint[] guideColumns=[2206,2209,51212,2210,2205,2202,4051,4052,2208,8577,4049,4062,4053,32027];
+    var guideIslands=new[]{"W,,1,,,1,,1,,,1,,1,,1,9,13,XL","200,1,,,,,1,,1,1,,1,,1,,7,9,L","250,1,,1,1,,1,1,,,,1,,,,8,12,L","340,,1,1,1,,,,,,1,,1,,1,7,8,L","160,,1,1,1,1,,1,,,,,1,,,7,8,L","N,1,,,,,1,,,1,1,,1,,1,8,11,XL","020,,1,,,1,,,1,,1,,1,1,,6,10,L","070,1,,1,1,,,,,1,,1,,,1,8,9,L","E,,1,,,1,1,,,1,,,1,,1,7,13,XL","110,1,,,,,,,1,,1,,1,1,1,6,10,L","S,1,,,,,1,1,,1,1,,1,,,7,10,XL","290,,1,1,1,1,1,,,,,1,,,,7,8,L","C-NE,,1,1,1,1,,,,1,,1,,,,4,0,S","C-SE,1,,,,,,1,1,1,,1,,1,,3,0,S","C-SW,1,,,,,1,1,1,,,,1,1,,4,2,S","C-NW,,1,,,1,,1,1,,,,1,1,,4,0,S"}
+     .Select((line,index)=>{var f=line.Split(',');return new GuideIsland(index,f[0],f[17],[..guideColumns.Where((_,c)=>f[c+1]!="")],int.Parse(f[15]),int.Parse(f[16]),0,true,(0,0,0,0));}).ToList();
+    var guidePlan=SettlingGuide.Latium(guideIslands,false);
+    var guideOk=guidePlan is not null&&guidePlan.Steps.Select(step=>step.Island.Label).SequenceEqual(["W","200","250"])&&Math.Round(guidePlan.Score)==1400;
     var vanillaProfile=MapProfiles.Get(MapTemplateKind.Archipelago,MapSizeKind.Large,false);var vanilla=SeedSearcher.SearchAsync(request with{MaxSeed=20,Limit=3,Profile=vanillaProfile},null,CancellationToken.None).GetAwaiter().GetResult();var vanillaOk=vanilla.Hits.Select(hit=>hit.Seed).SequenceEqual([1u,2u,3u])&&vanilla.Hits.All(hit=>hit.Fertilities.Length==0);
-    return baseOk&&limitedOk&&partialOk&&siteFilteredOk&&filteredOk&&compiledOk&&cancellationOk&&vanillaOk&&tableSearchOk&&emptyTableSearchOk&&advancedOk?0:1;
+    return baseOk&&limitedOk&&partialOk&&siteFilteredOk&&filteredOk&&compiledOk&&cancellationOk&&vanillaOk&&tableSearchOk&&emptyTableSearchOk&&advancedOk&&guideOk?0:1;
    }
    finally{if(File.Exists(output))File.Delete(output);}
+  }
+  // --guide-seed <template> <size> <seed> <out folder>: the settling guide of a seed (DLC01 on, abundant) plus its Latium and Albion
+  // islands as CSV files of ewjax's Anno 117 Island Selection (columns in the order that tool reads them), for comparing with it.
+  // Env FIRST_ISLAND_BONUS overrides the first-island bonus; GUIDE_NO_CINIS=1 leaves the Cinis out of the Latium plan.
+  if(args.Length==5&&args[0].Equals("--guide-seed",StringComparison.OrdinalIgnoreCase))
+  {
+   if(double.TryParse(Environment.GetEnvironmentVariable("FIRST_ISLAND_BONUS"),System.Globalization.NumberStyles.Float,System.Globalization.CultureInfo.InvariantCulture,out var bonus))SettlingGuide.FirstIslandBonus=bonus;
+   var guideProfile=MapProfiles.Get(Enum.Parse<MapTemplateKind>(args[1],true),Enum.Parse<MapSizeKind>(args[2],true));var guideSeed=uint.Parse(args[3]);Directory.CreateDirectory(args[4]);
+   var latiumLayout=new MapLayout();var albionLayout=new MapLayout();
+   var latiumGen=Generator.GenerateLatium(guideSeed,new GeneratorScratch(),guideProfile,layout:latiumLayout);var albionGen=AlbionGenerator.Generate(guideSeed,guideProfile,layout:albionLayout);
+   var latiumIslands=SeedPreviewWindow.GuideIslands(latiumGen.Islands,latiumLayout,RegionKind.Latium);var albionIslands=SeedPreviewWindow.GuideIslands(albionGen,albionLayout,RegionKind.Albion);
+   string Name(GuideIsland island)=>island.Label.Replace(" ","");
+   uint[] latiumColumns=[2206,2209,51212,2210,2205,2202,4051,4052,2208,8577,4049,4062,4053,32027];uint[] albionColumns=[2212,2214,2217,51212,2218,2219,2202,4082,2211,8432,4049,4063,8487,4064,4066];
+   File.WriteAllLines(Path.Combine(args[4],"latium.csv"),["#Name,Mackerel,Lavender,Resin,Olive,Grapes,Flax,Murex Snail,Sandarac,Oyster,Sturgeon,Iron,Marble,Mineral,Gold Ore,Mountains,Rivers,Size",
+    ..latiumIslands.Select(island=>$"{Name(island)},{string.Join(",",latiumColumns.Select(guid=>island.Fertilities.Contains(guid)?"1":""))},{island.Mountain},{island.River},{island.SizeClass}")]);
+   File.WriteAllLines(Path.Combine(args[4],"albion.csv"),["#Name,Barley,Herbs,Dye Plant,Resin,Saltwort,Small Birds,Flax,Beaver,Pony,Sea Shell,Iron,Copper,Silver,Tin,Granite,Mountains,Marshes,Size",
+    ..albionIslands.Select(island=>$"{Name(island)},{string.Join(",",albionColumns.Select(guid=>island.Fertilities.Contains(guid)?"1":""))},{island.Mountain},{island.Marsh},{island.SizeClass}")]);
+   string Describe(GuidePlan? plan)=>plan is null?"none":$"[{string.Join(", ",plan.Steps.Select(step=>step.Island.Label))}] (Score = {plan.Score:F0})";
+   // GUIDE_MAP=0: without the raider and edge ratings (for comparing).
+   var withMap=Environment.GetEnvironmentVariable("GUIDE_MAP")!="0";var latiumMap=withMap?SeedPreviewWindow.GuideMapOf(latiumLayout,RegionKind.Latium):null;var albionMap=withMap?SeedPreviewWindow.GuideMapOf(albionLayout,RegionKind.Albion):null;
+   var report=new List<string>{"Latium "+Describe(SettlingGuide.Latium(latiumIslands,false,latiumMap,Environment.GetEnvironmentVariable("GUIDE_NO_CINIS")=="1"))};
+   foreach(var romanFirst in new[]{true,false}){var guide=SettlingGuide.Albion(albionIslands,romanFirst,albionMap);report.Add((romanFirst?"Albion Roman first ":"Albion Celtic first ")+(guide is null?"none":$"{Describe(guide.First)} then {Describe(guide.Second)} = {guide.Score:F0}"));}
+   File.WriteAllLines(Path.Combine(args[4],"app.txt"),report);
+   // Geometry for exploring further ratings: map size, third parties and every island's outline box (map units).
+   var geometry=new List<string>();
+   void Geometry(string region,MapLayout layout,List<GuideIsland> islands)
+   {
+    geometry.Add($"{region}|map|{layout.Width}|{layout.FullX}|{layout.FullY}|{layout.FullSize}");
+    foreach(var special in layout.Items.Where(x=>x.Kind==MapLayout.Special)){var asset=IslandMasks.Asset(special.Name);var min=asset.Min(special.Rotation);var size=asset.Size(special.Rotation);geometry.Add($"{region}|special|{special.Name}|{special.X+min.X}|{special.Y+min.Y}|{special.X+min.X+size.X}|{special.Y+min.Y+size.Y}");}
+    foreach(var island in islands)geometry.Add($"{region}|island|{island.Label.Replace(" ","")}|{island.Box.X0}|{island.Box.Y0}|{island.Box.X1}|{island.Box.Y1}");
+   }
+   Geometry("Latium",latiumLayout,latiumIslands);Geometry("Albion",albionLayout,albionIslands);
+   File.WriteAllLines(Path.Combine(args[4],"geometry.txt"),geometry);return 0;
+  }
+  // --guide-csv <file> <latium|albion> <out>: the settling guide for a map in the CSV format of ewjax's Anno 117 Island Selection
+  // (columns taken in that tool's own fertility order), for comparing scores with it. No positions, so no distance penalty.
+  if(args.Length==4&&args[0].Equals("--guide-csv",StringComparison.OrdinalIgnoreCase))
+  {
+   var albionCsv=args[2].Equals("albion",StringComparison.OrdinalIgnoreCase);
+   uint[] columns=albionCsv?[2212,2214,2217,51212,2218,2219,2202,4082,2211,8432,4049,4063,8487,4064,4066]:[2206,2209,51212,2210,2205,2202,4051,4052,2208,8577,4049,4062,4053,32027];
+   var csvIslands=File.ReadAllLines(args[1]).Where(line=>line.Length>0&&line[0]!='#').Select((line,index)=>
+   {
+    var f=line.Trim().Split(',');var fertilities=columns.Where((_,c)=>f[c+1]!="").ToArray();var n=columns.Length;
+    return new GuideIsland(index,f[0],f[n+(albionCsv?3:3)] switch{"C"=>"C",var s=>s},fertilities,int.Parse(f[n+1]),albionCsv?0:int.Parse(f[n+2]),albionCsv?int.Parse(f[n+2]):0,true,(0,0,0,0));
+   }).ToList();
+   string Describe(GuidePlan? plan)=>plan is null?"none":$"[{string.Join(", ",plan.Steps.Select(step=>step.Island.Label))}] (Score = {plan.Score:F0})";
+   var lines=new List<string>();
+   if(!albionCsv)lines.Add("Latium "+Describe(SettlingGuide.Latium(csvIslands,false)));
+   else foreach(var romanFirst in new[]{false,true}){var guide=SettlingGuide.Albion(csvIslands,romanFirst);lines.Add((romanFirst?"Roman first ":"Celtic first ")+(guide is null?"none":$"{Describe(guide.First)} then {Describe(guide.Second)}"));}
+   File.WriteAllLines(args[3],lines);return 0;
   }
   if(args.Length>=2&&args[0].Equals("--render-ui",StringComparison.OrdinalIgnoreCase))
   {
@@ -91,7 +148,7 @@ internal static class Program
   }
   if((args.Length==3||args.Length==6)&&args[0].Equals("--render-preview",StringComparison.OrdinalIgnoreCase)&&uint.TryParse(args[1],out var previewSeed))
   {
-   var previewApp=new Application();var previewProfile=args.Length==6?MapProfiles.Get(Enum.Parse<MapTemplateKind>(args[3],true),Enum.Parse<MapSizeKind>(args[4],true),args[5]!="0"):null;if(Environment.GetEnvironmentVariable("ARTWORK")=="1")IslandImages.Style=IslandImageStyle.Artwork;var window=new SeedPreviewWindow(previewSeed,previewProfile){WindowStartupLocation=WindowStartupLocation.Manual,Left=-20000,Top=-20000};
+   var previewApp=new Application();var previewProfile=args.Length==6?MapProfiles.Get(Enum.Parse<MapTemplateKind>(args[3],true),Enum.Parse<MapSizeKind>(args[4],true),args[5]!="0"):null;if(Environment.GetEnvironmentVariable("ARTWORK")=="1")IslandImages.Style=IslandImageStyle.Artwork;SeedPreviewWindow.ShowGuide=Environment.GetEnvironmentVariable("GUIDE")=="1";SeedPreviewWindow.GuideWithoutCinis=Environment.GetEnvironmentVariable("GUIDE_NO_CINIS")=="1";var window=new SeedPreviewWindow(previewSeed,previewProfile){WindowStartupLocation=WindowStartupLocation.Manual,Left=-20000,Top=-20000};
    window.Show();window.UpdateLayout();if(Environment.GetEnvironmentVariable("PREVIEW_ZOOM")?.Split(';') is [var z,var zx,var zy])window.SmokeZoom(double.Parse(z,System.Globalization.CultureInfo.InvariantCulture),double.Parse(zx,System.Globalization.CultureInfo.InvariantCulture),double.Parse(zy,System.Globalization.CultureInfo.InvariantCulture));var bitmap=new RenderTargetBitmap((int)window.ActualWidth,(int)window.ActualHeight,96,96,PixelFormats.Pbgra32);bitmap.Render(window);
    var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(bitmap));using(var stream=File.Create(args[2]))encoder.Save(stream);
    window.Close();previewApp.Shutdown();return 0;
@@ -119,6 +176,8 @@ internal static class Program
   }
   if(args.Contains("--preview-smoke-test",StringComparer.OrdinalIgnoreCase))
   {
+   // With the settling guide on, so its badges, panels and tooltip lines are built as well.
+   SeedPreviewWindow.ShowGuide=true;
    var previewApp=new Application();var window=new SeedPreviewWindow(29572){WindowStartupLocation=WindowStartupLocation.Manual,Left=-20000,Top=-20000};
    window.Show();window.UpdateLayout();window.SmokeTooltips();window.Close();previewApp.Shutdown();return 0;
   }
