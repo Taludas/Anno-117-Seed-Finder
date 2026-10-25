@@ -60,13 +60,6 @@ internal static class Program
     var advancedSearch=SeedSearcher.SearchAsync(new SearchRequest(1,2000,Math.Max(1,Environment.ProcessorCount),0,output,0,[],false,AdvancedMinimums:advancedMinimums),null,CancellationToken.None).GetAwaiter().GetResult();
     var advancedExpected=Enumerable.Range(1,2000).Select(seed=>SeedSearcher.Describe((uint)seed,MapProfiles.Default,FertilitySetting.Abundant)).Where(hit=>hit.Latium.HarbourMurexTiles>=50_000&&hit.Albion.HarbourSeaShellTiles>=17_500).Select(hit=>hit.Seed).ToArray();
     var advancedOk=advancedExpected.Length>0&&advancedExpected.Length<2000&&advancedSearch.Hits.Select(hit=>hit.Seed).SequenceEqual(advancedExpected);
-<<<<<<< Updated upstream
-    var vanillaProfile=MapProfiles.Get(MapTemplateKind.Archipelago,MapSizeKind.Large,false);var vanilla=SeedSearcher.SearchAsync(request with{MaxSeed=20,Limit=3,Profile=vanillaProfile},null,CancellationToken.None).GetAwaiter().GetResult();var vanillaOk=vanilla.Hits.Select(hit=>hit.Seed).SequenceEqual([1u,2u,3u])&&vanilla.Hits.All(hit=>hit.Fertilities.Length==0);
-    return baseOk&&limitedOk&&partialOk&&siteFilteredOk&&filteredOk&&compiledOk&&cancellationOk&&vanillaOk&&tableSearchOk&&emptyTableSearchOk&&advancedOk?0:1;
-   }
-   finally{if(File.Exists(output))File.Delete(output);}
-  }
-=======
     // Settling guide: corners_seed4428_latium.csv of ewjax's Anno 117 Island Selection (columns in that tool's fertility order, no
     // positions). With the app's weights (river 10 and mountain 5 per slot, XL 450, iron optional, tier order, fertilities not scaled by
     // slots) the best order is [W, 250, 200], 1537 points.
@@ -147,7 +140,6 @@ internal static class Program
    else foreach(var romanFirst in new[]{false,true}){var guide=SettlingGuide.Albion(csvIslands,romanFirst);lines.Add((romanFirst?"Roman first ":"Celtic first ")+(guide is null?"none":$"{Describe(guide.First)} then {Describe(guide.Second)}"));}
    File.WriteAllLines(args[3],lines);return 0;
   }
->>>>>>> Stashed changes
   if(args.Length>=2&&args[0].Equals("--render-ui",StringComparison.OrdinalIgnoreCase))
   {
    var previewApp=new Application();
@@ -174,13 +166,8 @@ internal static class Program
   }
   if((args.Length==3||args.Length==6)&&args[0].Equals("--render-preview",StringComparison.OrdinalIgnoreCase)&&uint.TryParse(args[1],out var previewSeed))
   {
-<<<<<<< Updated upstream
-   var previewApp=new Application();var previewProfile=args.Length==6?MapProfiles.Get(Enum.Parse<MapTemplateKind>(args[3],true),Enum.Parse<MapSizeKind>(args[4],true),args[5]!="0"):null;if(Environment.GetEnvironmentVariable("ARTWORK")=="1")IslandImages.Style=IslandImageStyle.Artwork;var window=new SeedPreviewWindow(previewSeed,previewProfile){WindowStartupLocation=WindowStartupLocation.Manual,Left=-20000,Top=-20000};
-   window.Show();window.UpdateLayout();if(Environment.GetEnvironmentVariable("PREVIEW_ZOOM")?.Split(';') is [var z,var zx,var zy])window.SmokeZoom(double.Parse(z,System.Globalization.CultureInfo.InvariantCulture),double.Parse(zx,System.Globalization.CultureInfo.InvariantCulture),double.Parse(zy,System.Globalization.CultureInfo.InvariantCulture));var bitmap=new RenderTargetBitmap((int)window.ActualWidth,(int)window.ActualHeight,96,96,PixelFormats.Pbgra32);bitmap.Render(window);
-=======
    var previewApp=new Application();var previewProfile=args.Length==6?MapProfiles.Get(Enum.Parse<MapTemplateKind>(args[3],true),Enum.Parse<MapSizeKind>(args[4],true),args[5]!="0"):null;if(Environment.GetEnvironmentVariable("ARTWORK")=="1")IslandImages.Style=IslandImageStyle.Artwork;SeedPreviewWindow.ShowGuide=Environment.GetEnvironmentVariable("GUIDE")=="1";SeedPreviewWindow.GuideWithoutCinis=Environment.GetEnvironmentVariable("GUIDE_NO_CINIS")=="1";var window=new SeedPreviewWindow(previewSeed,previewProfile){WindowStartupLocation=WindowStartupLocation.Manual,Left=-20000,Top=-20000};
    window.Show();window.UpdateLayout();if(Environment.GetEnvironmentVariable("ATLAS_PICKS") is {Length:>0} previewPicks){window.SmokePicks(previewPicks);window.UpdateLayout();}if(Environment.GetEnvironmentVariable("PREVIEW_ZOOM")?.Split(';') is [var z,var zx,var zy])window.SmokeZoom(double.Parse(z,System.Globalization.CultureInfo.InvariantCulture),double.Parse(zx,System.Globalization.CultureInfo.InvariantCulture),double.Parse(zy,System.Globalization.CultureInfo.InvariantCulture));var bitmap=new RenderTargetBitmap((int)window.ActualWidth,(int)window.ActualHeight,96,96,PixelFormats.Pbgra32);bitmap.Render(window);
->>>>>>> Stashed changes
    var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(bitmap));using(var stream=File.Create(args[2]))encoder.Save(stream);
    window.Close();previewApp.Shutdown();return 0;
   }
@@ -277,6 +264,8 @@ internal static class Program
   }
   if(args.Contains("--preview-smoke-test",StringComparer.OrdinalIgnoreCase))
   {
+   // With the settling guide on, so its badges, panels and tooltip lines are built as well.
+   SeedPreviewWindow.ShowGuide=true;
    var previewApp=new Application();var window=new SeedPreviewWindow(29572){WindowStartupLocation=WindowStartupLocation.Manual,Left=-20000,Top=-20000};
    window.Show();window.UpdateLayout();window.SmokeTooltips();window.Close();previewApp.Shutdown();return 0;
   }

@@ -82,8 +82,6 @@ internal sealed class Localization:INotifyPropertyChanged
   ["DlcRetroTooltip"]=("Karte ohne DLC erstellt, Prophecies of Ash erst danach im Spiel aktiviert. Alte Inseln bleiben, nur die neuen Inseln und Cinis kommen dazu. Neue Inseln: Fruchtbarkeit nur für gemessene Erweiterungsgrößen sicher.","Map created without DLC, Prophecies of Ash switched on afterwards. Old islands stay, only the new islands and Cinis are added. New islands: fertility is only reliable for measured enlargement sizes."),
   ["Dlc03Tooltip"]=("Dawn of the Delta · vorbereitet für eine spätere Generatorerweiterung","Dawn of the Delta · prepared for a future generator extension"),
   ["PreviewTileLegend"]=("Kachelkarte: sandfarben = Baufläche, oliv = Sumpf (Albion), blau = Fluss, hellblau = Hafen, braun = nicht bebaubar.","Tile map: sand = buildable, olive = marsh (Albion), blue = river, light blue = harbour, brown = not buildable."),
-<<<<<<< Updated upstream
-=======
   ["GuideToggle"]=("Siedlungsplan","Settling guide"),
   ["GuideToggleTooltip"]=("Schlägt vor, welche Inseln du in welcher Reihenfolge besiedeln solltest, um alle Fruchtbarkeiten einer Region mit wenigen, wertvollen und nah beieinander liegenden Inseln zu erreichen. Die gestrichelten Linien sind die Versorgungsrouten von der Hauptinsel; Routen nah an Piratenbasen und Inseln fern der bevorzugten Kartenränder (Latium Nordwest und Südost und Albion Südwest) kosten Punkte. Idee und Bewertungsmodell: ewjax (Anno 117 Island Selection).","Suggests which islands to settle, and in which order, to reach every fertility of a region with few, valuable islands close to each other. The dashed lines are the supply routes from the main island; routes close to raider bases and islands far from the preferred map edges (Latium north-west and south-east and Albion south-west) cost points. Idea and scoring model: ewjax (Anno 117 Island Selection)."),
   ["PlaystyleLabel"]=("Spielstil:","Playstyle fit:"),
@@ -139,7 +137,6 @@ internal sealed class Localization:INotifyPropertyChanged
   ["GuideCelts"]=("Kelten","Celts"),
   ["GuideTooltipFormat"]=("Siedlungsplan {0} · neu: {1}","Settling guide {0} · adds: {1}"),
   ["GuideNone"]=("Keine Reihenfolge erreicht alle Fruchtbarkeiten.","No order reaches every fertility."),
->>>>>>> Stashed changes
   ["PreviewStyleLabel"]=("Inseln:","Islands:"),
   ["PreviewStyleTiles"]=("Kachelkarte","Tile map"),
   ["PreviewStyleArtwork"]=("Spielgrafik","Game artwork"),
