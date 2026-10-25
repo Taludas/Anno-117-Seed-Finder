@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 
 internal sealed record SearchRequest(int FirstSeed,int MaxSeed,int Threads,int Limit,string Output,uint CinisSlot1,uint[] CinisPool,bool CinisMaxSites,IReadOnlyList<IslandCondition>? Conditions=null,MapProfile? Profile=null,int MinLatiumGoldSites=0,int MinLatiumSturgeonSites=0,int MinLatiumMountainSites=0,int MinLatiumRiverSites=0,int MinAlbionMountainSites=0,int MinLatiumBuildableTiles=0,int MinAlbionBuildableTiles=0,int MinAlbionSwampTiles=0,FertilitySetting FertilitySetting=FertilitySetting.Abundant,SlotSetting SlotSetting=SlotSetting.Abundant,int MinLatiumMineralMines=0,int MinAlbionCopperMines=0,int MinAlbionSilverMines=0,int MinLatiumMarbleSites=0,int MinLatiumGoldMines=0,int MinAlbionTinMines=0,IReadOnlyList<uint>? SeedList=null,IReadOnlyList<int>? AdvancedMinimums=null
+ ,IReadOnlyList<IslandRule>? IslandRules=null
  )
 {
  // Minimum tile counts of the advanced fertility filters, indexed by AdvancedFilter; 0 (or no list) means the filter is off.
@@ -156,8 +157,9 @@ internal static class SeedSearcher
   else if(request.SeedList.Count==0||request.SeedList.Any(seed=>seed<SeedLimits.Minimum||seed>SeedLimits.Maximum))throw new ArgumentException(Localization.Instance["NoSeedsInTable"]);
   if(request.Threads<1)throw new ArgumentException(Localization.Instance["AtLeastOneThreadRequired"]);
   if(request.CinisSlot1 is not(0 or 2206 or 2209))throw new ArgumentException(Localization.Instance["InvalidCinisSlot1Choice"]);
-  if(request.CinisPool.Length>4||request.CinisPool.Distinct().Count()!=request.CinisPool.Length||request.CinisPool.Any(x=>!Generator.Pool6.Contains(x)))
-   throw new ArgumentException(Localization.Instance["InvalidCinisPoolCount"]);
+  var cinisPoolSlots=Generator.CinisPoolSlots(request.FertilitySetting);
+  if(request.CinisPool.Length>cinisPoolSlots.Count||request.CinisPool.Distinct().Count()!=request.CinisPool.Length||request.CinisPool.Any(x=>!Generator.Pool6.Contains(x)))
+   throw new ArgumentException(Localization.Instance.Format("InvalidCinisPoolCount",cinisPoolSlots.First+1,cinisPoolSlots.First+cinisPoolSlots.Count,cinisPoolSlots.Count));
   if(string.IsNullOrWhiteSpace(request.Output))throw new ArgumentException(Localization.Instance["OutputFileRequired"]);
   if(request.MinLatiumGoldMines<0||request.MinLatiumMarbleSites<0||request.MinLatiumMineralMines<0||request.MinAlbionCopperMines<0||request.MinAlbionSilverMines<0||request.MinAlbionTinMines<0||request.MinLatiumGoldSites<0||request.MinLatiumSturgeonSites<0||request.MinLatiumMountainSites<0||request.MinLatiumRiverSites<0||request.MinAlbionMountainSites<0||request.MinLatiumBuildableTiles<0||request.MinAlbionBuildableTiles<0||request.MinAlbionSwampTiles<0||(request.AdvancedMinimums??[]).Any(value=>value<0))throw new ArgumentException(Localization.Instance["MinimumsNotNegative"]);
   foreach(var condition in request.Conditions??[])
@@ -208,6 +210,8 @@ internal static class SeedSearcher
    (Seed:856_497_867u,Profile:MapProfiles.Get(MapTemplateKind.Corners,MapSizeKind.Large,true),Count:23,Hash:"B83F5F4F434EE7500E6904950A13378046177D19EBB9A1605011D61E5DE2541C",Cinis:true),
    (Seed:856_497_867u,Profile:MapProfiles.Get(MapTemplateKind.Corners,MapSizeKind.Large,true,afterLoad:true),Count:23,Hash:"50E64285A025CFAEDC53DEEFFB789B0A42878405CF89AE0C7DBD96F1CA9BCA45",Cinis:true)};
   var failedSaveReferences=saveReferences.Where(reference=>{var generated=Generator.GenerateLatium(reference.Seed,new GeneratorScratch(),reference.Profile);return generated.Islands.Count!=reference.Count||(generated.CinisFertilities.Length!=0)!=reference.Cinis||FertilityDigest(generated.Islands)!=reference.Hash;}).Select(reference=>reference.Seed).ToArray();if(!vanillaCinisPlan.MatchesLatium(vanillaArch))failedSaveReferences=[..failedSaveReferences,6153];
+  // Cinis has fewer pool slots on Regular and Sparse: a filter for its whole pool must match without reading past the list.
+  foreach(var setting in new[]{FertilitySetting.Regular,FertilitySetting.Sparse}){var cinisMap=Generator.GenerateLatium(cornersLatiumSeed,new GeneratorScratch(),cornersProfile,fertilitySetting:setting);var (first,count)=Generator.CinisPoolSlots(setting);var pool=cinisMap.CinisFertilities.Skip(first).Take(count).Distinct().ToArray();if(cinisMap.CinisFertilities.Length!=first+count||!CompiledSearchPlan.Create(new SearchRequest(1,1,1,0,"unused.txt",0,pool,false,Profile:cornersProfile,FertilitySetting:setting)).MatchesLatium(cinisMap))failedSaveReferences=[..failedSaveReferences,cornersLatiumSeed];}
   // Reference maps for the Regular and Sparse fertility settings: the digest of each generated map's fertilities is checked.
   var fertilitySettingReferences=new[]
   {

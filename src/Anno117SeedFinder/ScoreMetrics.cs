@@ -54,7 +54,7 @@ internal static class ScoreMetrics
  public static double RawValue(ScoreMetric metric,SearchResultRow row,uint slot1Choice)
  {
   if(Advanced.TryGetValue(metric,out var filter))return row.AdvancedTiles[(int)filter];
-  if(CinisPoolFertility.TryGetValue(metric,out var fertility))return row.CinisFertilityIds.Skip(3).Contains(fertility)?1:0;
+  if(CinisPoolFertility.TryGetValue(metric,out var fertility))return row.CinisFertilityIds.Contains(fertility)?1:0;
   return metric switch
   {
    ScoreMetric.LatiumArea=>row.LatiumAreaValue,

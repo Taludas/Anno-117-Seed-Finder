@@ -84,8 +84,9 @@ def compare(truth: list, produced: list) -> tuple[int, int, int, list]:
 def run_case(case: common.Case, truth: dict, exe: Path, work: Path) -> dict:
     """Runs the app for one savegame's settings; returns {(region, category): (match, truth, produced, examples)}."""
     tag = re.sub(r"\W+", "_", case.label())
-    env = {"NODLC": "1" if case.dlc == "off" else "0", "SLOTS": case.slots}
-    layout_env = {"NODLC": "1" if case.dlc == "off" else "0", "RETRO": "1" if case.dlc == "retro" else "0"}
+    after_load = "1" if case.dlc == "afterload" else "0"
+    env = {"NODLC": "1" if case.dlc == "off" else "0", "SLOTS": case.slots, "AFTERLOAD": after_load}
+    layout_env = {"NODLC": "1" if case.dlc == "off" else "0", "RETRO": "1" if case.dlc == "retro" else "0", "AFTERLOAD": after_load}
     template, size, seed = case.template, case.size, str(case.seed)
     layout = read_layout(common.run_exe(exe, ["--dump-layout", template, size, seed], work / f"{tag}_layout.txt", env=layout_env))
     if case.dlc == "retro":
@@ -96,20 +97,26 @@ def run_case(case: common.Case, truth: dict, exe: Path, work: Path) -> dict:
     goods = {"Latium": read_goods(latium), "Albion": read_goods(albion)}
     result = {}
     for region in REGIONS:
+        # A region without any island in the savegame has not been created yet (an unmodded game creates Albion only when it
+        # is unlocked), so there is nothing to compare: it counts as 0/0.
+        present = bool(truth[region]["island"])
         for kind, category in (("island", "islands"), ("special", "third party"), ("deco", "decorations")):
-            result[(region, category)] = compare(truth[region][kind], layout[region][kind])
-        result[(region, "fertility")] = compare(truth[region]["fertility"], goods[region][0])
-        result[(region, "slots")] = compare(truth[region]["slots"], goods[region][1])
+            result[(region, category)] = compare(truth[region][kind], layout[region][kind] if present else [])
+        result[(region, "fertility")] = compare(truth[region]["fertility"], goods[region][0] if present else [])
+        result[(region, "slots")] = compare(truth[region]["slots"], goods[region][1] if present else [])
     return result
 
 
 def infer_size(case: common.Case, truth: dict, exe: Path, work: Path) -> str:
-    """The size whose generated island count equals the savegame's (Latium plus Albion) - for names without a size."""
-    wanted = len(truth["Latium"]["island"]) + len(truth["Albion"]["island"])
+    """The size whose generated island count equals the savegame's (Latium plus Albion, as far as the savegame has them) - for
+    names without a size."""
+    present = [region for region in ("Latium", "Albion") if truth[region]["island"]]
+    wanted = sum(len(truth[region]["island"]) for region in present)
     for size in ("Large", "Medium", "Small"):
         lines = common.run_exe(exe, ["--dump-layout", case.template, size, str(case.seed)], work / "size.txt",
-                               env={"NODLC": "1" if case.dlc == "off" else "0", "RETRO": "1" if case.dlc == "retro" else "0"})
-        if sum(1 for l in lines if l.split("|")[1:2] == ["island"]) == wanted:
+                               env={"NODLC": "1" if case.dlc == "off" else "0", "RETRO": "1" if case.dlc == "retro" else "0",
+                                    "AFTERLOAD": "1" if case.dlc == "afterload" else "0"})
+        if sum(1 for l in lines if l.split("|")[1:2] == ["island"] and l.split("|")[0] in present) == wanted:
             return size
     raise SystemExit(f"Cannot tell the map size of {case.label()}; put it into the file name.")
 

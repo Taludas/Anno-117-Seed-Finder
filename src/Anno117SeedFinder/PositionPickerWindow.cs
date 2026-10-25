@@ -13,7 +13,8 @@ internal sealed class PositionPickerWindow:Window
 
  public int[] SelectedSlots=>buttons.Where(pair=>pair.Key.IsChecked==true).Select(pair=>pair.Value.SlotIndex).Order().ToArray();
 
- public PositionPickerWindow(RegionKind region,FertilitySetKind set,IEnumerable<int> selected,int maximum,MapProfile? profile=null)
+ // allowed/hint: the island filter limits the choice to the slots that can hold its island and explains that in the header.
+ public PositionPickerWindow(RegionKind region,FertilitySetKind set,IEnumerable<int> selected,int maximum,MapProfile? profile=null,IReadOnlySet<int>? allowed=null,string? hint=null)
  {
   profile??=MapProfiles.Default;
   this.maximum=maximum;
@@ -25,13 +26,13 @@ internal sealed class PositionPickerWindow:Window
   DockPanel.SetDock(selectedText,Dock.Bottom);root.Children.Add(selectedText);
   var header=new StackPanel();DockPanel.SetDock(header,Dock.Top);root.Children.Add(header);
   header.Children.Add(new TextBlock{Text=region==RegionKind.Latium?$"{profile.Template} / {profile.Size} · {(profile.Dlc01?Localization.Instance["PoAActive"]:Localization.Instance["WithoutPoA"])}":$"{profile.Template} / {profile.Size}",FontWeight=FontWeights.SemiBold,FontSize=16});
-  header.Children.Add(new TextBlock{Text=set==FertilitySetKind.AnyCombination?Localization.Instance["PickerHintAnyCombination"]:Localization.Instance["PickerHintRole"],Foreground=new SolidColorBrush(Color.FromRgb(102,112,133)),Margin=new Thickness(0,3,0,1)});
+  header.Children.Add(new TextBlock{Text=hint??(set==FertilitySetKind.AnyCombination?Localization.Instance["PickerHintAnyCombination"]:Localization.Instance["PickerHintRole"]),TextWrapping=TextWrapping.Wrap,Foreground=new SolidColorBrush(Color.FromRgb(102,112,133)),Margin=new Thickness(0,3,0,1)});
   if(region==RegionKind.Latium&&profile.Dlc01)header.Children.Add(new TextBlock{Text=Localization.Instance["PickerHintCinisDlc"],Foreground=new SolidColorBrush(Color.FromRgb(102,112,133)),Margin=new Thickness(0,0,0,8)});
   else if(region==RegionKind.Latium)header.Children.Add(new TextBlock{Text=Localization.Instance["PickerHintNoDlc"],Foreground=new SolidColorBrush(Color.FromRgb(102,112,133)),Margin=new Thickness(0,0,0,8)});
   else header.Children.Add(new TextBlock{Text=Localization.Instance["PickerHintAlbion"],Foreground=new SolidColorBrush(Color.FromRgb(102,112,133)),Margin=new Thickness(0,0,0,8)});
   var viewport=new ScrollViewer{HorizontalScrollBarVisibility=ScrollBarVisibility.Auto,VerticalScrollBarVisibility=ScrollBarVisibility.Auto};root.Children.Add(viewport);
   var canvas=MapSchematic.CreateCanvas(region,profile);viewport.Content=canvas;
-  var selectablePositions=MapLayoutPositions.For(profile,region,set);
+  var selectablePositions=MapLayoutPositions.For(profile,region,set).Where(position=>allowed is null||allowed.Contains(position.SlotIndex)).ToArray();
   var selectableSlots=selectablePositions.Select(position=>position.SlotIndex).ToHashSet();
   foreach(var position in MapLayoutPositions.ForPreview(profile,region))
   {

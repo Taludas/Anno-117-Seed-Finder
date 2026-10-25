@@ -22,7 +22,8 @@ class Case:
     template: str
     size: str | None
     seed: int
-    dlc: str = "on"            # "on", "off" (created without Prophecies of Ash) or "retro" (activated afterwards)
+    dlc: str = "on"            # "on", "off" (created without Prophecies of Ash), "retro" (activated afterwards) or "afterload"
+                               # (on, but the game was started after loading a savegame: 10 instead of 14 Latium decorations)
     fertility: str = "abundant"
     slots: str = "abundant"
 
@@ -40,7 +41,7 @@ class Case:
 def parse_case(name: str) -> Case | None:
     """Reads the settings from a file or folder name.
 
-    <Template>_<Size>_<Seed>[_nodlc | _retro][_regular | _sparse][_slots_<abundant|regular|sparse>]
+    <Template>_<Size>_<Seed>[_nodlc | _retro | _afterload][_regular | _sparse][_slots_<abundant|regular|sparse>]
     e.g. Archipelago_Large_1204, Corners_Small_15_nodlc_sparse, Atoll_Large_1_retro. Separators may be anything that is not a
     letter or digit, case does not matter. The size may be left out (it is then found by comparing island counts).
     Returns None when the name has no template or no seed."""
@@ -58,6 +59,8 @@ def parse_case(name: str) -> Case | None:
             dlc = "off"
         elif token in ("retro", "retroactive"):
             dlc = "retro"
+        elif token in ("afterload", "deco10"):
+            dlc = "afterload"
         elif token == "slots" and index + 1 < len(tokens) and tokens[index + 1] in LEVELS:
             slots = tokens[index + 1]
             index += 1

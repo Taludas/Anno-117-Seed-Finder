@@ -26,6 +26,7 @@ internal sealed class CompiledSearchPlan
  readonly AdvancedFilter[] advancedAlbionFilters;
  readonly CompiledIslandCondition[] latium;
  readonly CompiledIslandCondition[] albion;
+ readonly IslandRule[] latiumRules,albionRules;
 
  CompiledSearchPlan(SearchRequest request)
  {
@@ -38,9 +39,10 @@ internal sealed class CompiledSearchPlan
   advancedLatium=[..advancedLatiumFilters.Select(request.AdvancedMinimum)];advancedAlbion=[..advancedAlbionFilters.Select(request.AdvancedMinimum)];
   latium=(request.Conditions??[]).Where(x=>x.Region==RegionKind.Latium).Select(x=>new CompiledIslandCondition(x)).ToArray();
   albion=(request.Conditions??[]).Where(x=>x.Region==RegionKind.Albion).Select(x=>new CompiledIslandCondition(x)).ToArray();
+  latiumRules=[..(request.IslandRules??[]).Where(x=>x.Region==RegionKind.Latium)];albionRules=[..(request.IslandRules??[]).Where(x=>x.Region==RegionKind.Albion)];
  }
 
- public bool NeedsAlbion=>albion.Length!=0||minAlbionMountainSites>0||minAlbionBuildableTiles>0||minAlbionSwampTiles>0||minAlbionCopperMines>0||minAlbionSilverMines>0||minAlbionTinMines>0||advancedAlbionFilters.Length!=0;
+ public bool NeedsAlbion=>albion.Length!=0||albionRules.Length!=0||minAlbionMountainSites>0||minAlbionBuildableTiles>0||minAlbionSwampTiles>0||minAlbionCopperMines>0||minAlbionSilverMines>0||minAlbionTinMines>0||advancedAlbionFilters.Length!=0;
  public static CompiledSearchPlan Create(SearchRequest request)=>new(request);
 
 
@@ -49,16 +51,14 @@ internal sealed class CompiledSearchPlan
   if(hasCinis)
   {
    var cinis=region.CinisFertilities;
-   if(cinisSlot1!=0&&cinis[0]!=cinisSlot1)return false;
-   foreach(var required in cinisPool)
-   {
-    var found=false;for(var slot=3;slot<=6;slot++)if(cinis[slot]==required){found=true;break;}
-    if(!found)return false;
-   }
+   // Pool fertilities only ever fill Cinis's pool slots, whose positions depend on the fertility setting.
+   if(cinisSlot1!=0&&(cinis.Length==0||cinis[0]!=cinisSlot1))return false;
+   foreach(var required in cinisPool)if(Array.IndexOf(cinis,required)<0)return false;
    if(requireMaxSites&&region.CinisSites is not {Mountain:19,River:23})return false;
   }
   if(region.Metrics.GoldSites<minGoldSites||region.Metrics.SturgeonSites<minSturgeonSites||region.Metrics.Sites.Mountain<minLatiumMountainSites||region.Metrics.Sites.River<minLatiumRiverSites||region.Metrics.BuildableTiles<minLatiumBuildableTiles||region.Metrics.MineralMineSites<minLatiumMineralMines||region.Metrics.MarbleSites<minLatiumMarbleSites||region.Metrics.GoldMineSites<minLatiumGoldMines)return false;
   for(var index=0;index<advancedLatiumFilters.Length;index++)if(region.Metrics.Tiles(advancedLatiumFilters[index])<advancedLatium[index])return false;
+  foreach(var rule in latiumRules)if(!rule.Passes(region.Islands))return false;
   foreach(var condition in latium)if(!condition.Matches(region.Islands))return false;
   return true;
  }
@@ -69,6 +69,7 @@ internal sealed class CompiledSearchPlan
   metrics=RegionMetrics.Calculate(region);
   if(metrics.Sites.Mountain<minAlbionMountainSites||metrics.BuildableTiles<minAlbionBuildableTiles||metrics.SwampTiles<minAlbionSwampTiles||metrics.CopperMineSites<minAlbionCopperMines||metrics.SilverMineSites<minAlbionSilverMines||metrics.TinMineSites<minAlbionTinMines)return false;
   for(var index=0;index<advancedAlbionFilters.Length;index++)if(metrics.Tiles(advancedAlbionFilters[index])<advancedAlbion[index])return false;
+  foreach(var rule in albionRules)if(!rule.Passes(region))return false;
   foreach(var condition in albion)if(!condition.Matches(region))return false;
   return true;
  }

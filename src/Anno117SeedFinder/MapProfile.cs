@@ -51,7 +51,9 @@ internal static class MapProfiles
    // the six slots that exist only in the DLC template come on top (they are the last six non-starter slots of the
    // DLC template) and Cinis is added. See GenerateLatiumRetro.
    var off=MapProfileData.All[(template,size,false)];var on=MapProfileData.All[(template,size,true)];
-   var extra=on.LatiumSlots.Where(slot=>slot.Type!=1).TakeLast(RetroSlotCount).Select((slot,index)=>new MapSlot(off.LatiumSlots.Count+index,slot.X,slot.Y,slot.Size,slot.Type));
+   // The extra slots are numbered after the highest slot of the no-DLC map (its slot numbers have gaps, e.g. the XL starters 18-21).
+   var first=off.LatiumSlots.Max(slot=>slot.Index)+1;
+   var extra=on.LatiumSlots.Where(slot=>slot.Type!=1).TakeLast(RetroSlotCount).Select((slot,index)=>new MapSlot(first+index,slot.X,slot.Y,slot.Size,slot.Type));
    return RetroProfiles[(template,size)]=new MapProfile(template,size,true,on.LatiumTemplateSize,[..off.LatiumSlots,..extra],off.AlbionSlots,off.LatiumSpecials,off.AlbionSpecials,true);
   }
  }

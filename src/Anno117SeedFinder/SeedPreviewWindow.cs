@@ -6,7 +6,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Runtime.InteropServices;
 
-internal sealed class SeedPreviewWindow:Window
+internal sealed partial class SeedPreviewWindow:Window
 {
  double DesiredWidth=1540;
  const double DesiredHeight=1160;
@@ -50,6 +50,22 @@ internal sealed class SeedPreviewWindow:Window
   toolbar.Children.Add(zoomLabel);
   var fit=new Button{Content=Localization.Instance["PreviewZoomFit"],Padding=new Thickness(10,2,10,2),Margin=new Thickness(6,0,0,0)};fit.Click+=(_,_)=>SetZoom(1,null);toolbar.Children.Add(fit);
   toolbar.Children.Add(new TextBlock{Text=Localization.Instance["PreviewZoomHint"],Foreground=Muted,FontSize=11,VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(14,0,0,0)});
+<<<<<<< Updated upstream
+=======
+  var guide=new CheckBox{Content=Localization.Instance["GuideToggle"],IsChecked=ShowGuide,VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(24,0,0,0),FontWeight=FontWeights.SemiBold,ToolTip=Localization.Instance["GuideToggleTooltip"]};
+  guide.Checked+=(_,_)=>{ShowGuide=true;BuildMaps();};guide.Unchecked+=(_,_)=>{ShowGuide=false;BuildMaps();};toolbar.Children.Add(guide);
+  if(this.profile.Dlc01)
+  {
+   var withoutCinis=new CheckBox{Content=Localization.Instance["GuideWithoutCinis"],IsChecked=GuideWithoutCinis,IsEnabled=ShowGuide,VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(14,0,0,0),ToolTip=Localization.Instance["GuideWithoutCinisTooltip"]};
+   withoutCinis.Checked+=(_,_)=>{GuideWithoutCinis=true;BuildMaps();};withoutCinis.Unchecked+=(_,_)=>{GuideWithoutCinis=false;BuildMaps();};toolbar.Children.Add(withoutCinis);
+   guide.Checked+=(_,_)=>withoutCinis.IsEnabled=true;guide.Unchecked+=(_,_)=>withoutCinis.IsEnabled=false;
+  }
+  // Seed Atlas: annotated map images and the description for anno-companion.com (SeedPreviewWindow.Export.cs).
+  var pickMode=new CheckBox{Content=Localization.Instance["AtlasPickMode"],VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(24,0,0,0),ToolTip=Localization.Instance["AtlasPickModeTooltip"]};
+  pickMode.Checked+=(_,_)=>PickMode=true;pickMode.Unchecked+=(_,_)=>PickMode=false;toolbar.Children.Add(pickMode);
+  var atlas=new Button{Content=Localization.Instance["AtlasExport"],Padding=new Thickness(10,2,10,2),Margin=new Thickness(10,0,0,0),ToolTip=Localization.Instance["AtlasExportTooltip"]};atlas.Click+=(_,_)=>ExportAtlas();toolbar.Children.Add(atlas);
+  header.Children.Add(playstyles);
+>>>>>>> Stashed changes
   header.Children.Add(legend);
 
   maps.LayoutTransform=scale;scroll.Content=maps;root.Children.Add(scroll);
@@ -68,15 +84,24 @@ internal sealed class SeedPreviewWindow:Window
 
  // (Re)builds the map cards, e.g. after the island style changed. The layouts are the real placement of the map (island positions,
  // rotations, decorations and third-party islands).
- void BuildMaps()
+ // reanalyze false: the seed's analysis stays (e.g. after a change of the Seed Atlas selection).
+ void BuildMaps(bool reanalyze=true)
  {
   maps.Children.Clear();maps.ColumnDefinitions.Clear();tooltipTargets.Clear();
-  var latiumLayout=new MapLayout();var albionLayout=new MapLayout();
-  var latium=Generator.GenerateLatium(seed,new GeneratorScratch(),profile,fertilitySetting:fertilitySetting,slotSetting:slotSetting,layout:latiumLayout);
-  var albion=AlbionGenerator.Generate(seed,profile,fertilitySetting:fertilitySetting,slotSetting:slotSetting,layout:albionLayout);
+  // One analysis per build: the maps, the settling guides, the playstyle ratings and the Seed Atlas export all read it.
+  if(reanalyze||analysis is null)analysis=new SeedAnalysis(seed,profile,fertilitySetting,slotSetting,true,startMode,GuideWithoutCinis);
+  ApplyPicks();
+  var latiumLayout=analysis.LatiumLayout!;var albionLayout=analysis.AlbionLayout!;var latium=analysis.Latium;var albion=analysis.Albion;
   for(var column=0;column<2;column++)maps.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});
+<<<<<<< Updated upstream
   maps.Children.Add(BuildMap(profile.Dlc01?"Latium · Prophecies of Ash":"Latium",RegionKind.Latium,latium.Islands,latiumLayout));
   var albionMap=BuildMap("Albion",RegionKind.Albion,albion,albionLayout);Grid.SetColumn(albionMap,1);maps.Children.Add(albionMap);
+=======
+  var latiumGuide=RegionMarks(PickLatium,LatiumGuide);var albionGuide=RegionMarks(PickAlbion,AlbionGuide);
+  maps.Children.Add(BuildMap(profile.Dlc01?"Latium · Prophecies of Ash":"Latium",RegionKind.Latium,latium.Islands,latiumLayout,latiumGuide));
+  var albionMap=BuildMap("Albion",RegionKind.Albion,albion,albionLayout,albionGuide);Grid.SetColumn(albionMap,1);maps.Children.Add(albionMap);
+  UpdatePlaystyles();
+>>>>>>> Stashed changes
   legend.Text=IslandImages.Style==IslandImageStyle.Tiles?Localization.Instance["PreviewTileLegend"]:"";
   legend.Visibility=legend.Text.Length==0?Visibility.Collapsed:Visibility.Visible;
  }
@@ -109,6 +134,113 @@ internal sealed class SeedPreviewWindow:Window
  internal void SmokeZoom(double zoom,double fx,double fy){UpdateLayout();ApplyZoom();UpdateLayout();SetZoom(zoom,new Point(scroll.ViewportWidth*fx,scroll.ViewportHeight*fy));UpdateLayout();}
 
 
+<<<<<<< Updated upstream
+=======
+ // ---- Settling guide ---------------------------------------------------------------------------------------------------------
+ // What the guide adds to one map: badges per island slot, a tooltip line per island slot and the panel under the map.
+ sealed record GuideMarks(Dictionary<int,List<(string Text,Brush Color)>> Badges,Dictionary<int,string> Tooltips,FrameworkElement Panel){public List<(int From,int To,Brush Color)> Routes{get;}=[];}
+ static readonly Brush LatiumGuideColor=new SolidColorBrush(Color.FromRgb(194,65,12)),RomanGuideColor=new SolidColorBrush(Color.FromRgb(185,28,28)),CelticGuideColor=new SolidColorBrush(Color.FromRgb(21,128,61));
+
+ // The raider islands, the map area and the preferred edges of a region, from its layout (Latium: north-west and south-east,
+ // Albion: south-west).
+ internal static GuideMap GuideMapOf(MapLayout layout,RegionKind region)
+ {
+  var raiders=layout.Items.Where(x=>x.Kind==MapLayout.Special&&x.Name.Contains("pirate")).Select(x=>{var asset=IslandMasks.Asset(x.Name);var min=asset.Min(x.Rotation);var size=asset.Size(x.Rotation);return(x.X+min.X,x.Y+min.Y,x.X+min.X+size.X,x.Y+min.Y+size.Y);}).Distinct().ToList();
+  var area=(layout.FullX,layout.FullY,layout.FullX+layout.FullSize,layout.FullY+layout.FullSize);
+  return new(raiders,area,region==RegionKind.Latium?[MapEdge.NorthWest,MapEdge.SouthEast]:[MapEdge.SouthWest]);
+ }
+
+ internal static List<GuideIsland> GuideIslands(IReadOnlyList<GeneratedIsland> islands,MapLayout layout,RegionKind region)
+ {
+  var items=layout.Items.Where(x=>x.Kind==MapLayout.Island).GroupBy(x=>x.Slot).ToDictionary(x=>x.Key,x=>x.First());var result=new List<GuideIsland>();
+  foreach(var island in islands)
+  {
+   if(!items.TryGetValue(island.SlotIndex,out var item))continue;
+   var asset=IslandMasks.Asset(item.Name);var min=asset.Min(item.Rotation);var size=asset.Size(item.Rotation);var sizeClass=MapSchematic.SizeClass(item.Name);
+   result.Add(new(island.SlotIndex,island.SlotIndex<0?"Cinis":$"{sizeClass} #{island.SlotIndex}",sizeClass,island.Fertilities,island.Sites.Mountain,island.Sites.River,island.Sites.Marsh,
+    region==RegionKind.Latium&&island.FertilitySet==31312,(item.X+min.X,item.Y+min.Y,item.X+min.X+size.X,item.Y+min.Y+size.Y)));
+  }
+  return result;
+ }
+
+ static string FertilityName(RegionKind region,uint guid){try{return FertilityDefinitions.Choice(region,guid).Name;}catch(InvalidOperationException){return guid.ToString();}}
+
+ GuideMarks LatiumGuide()
+ {
+  var withoutCinis=analysis!.WithoutCinis;var plan=analysis.LatiumPlan;
+  var marks=new GuideMarks([],[],GuidePanelFrame(out var content));
+  content.Children.Add(new TextBlock{Text=Localization.Instance[plan is null?"GuideNone":"GuideLatiumHint"],Foreground=Muted,FontSize=11,TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,0,0,4)});
+  if(startMode==StartModeKind.StartIsland)content.Children.Add(new TextBlock{Text=Localization.Instance["GuideStartIslandHint"],Foreground=Muted,FontSize=11,TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,0,0,4)});
+  if(withoutCinis)content.Children.Add(new TextBlock{Text=Localization.Instance["GuideWithoutCinisHint"],Foreground=Muted,FontSize=11,TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,0,0,4)});
+  if(plan is not null)AddPlan(marks,content,plan,"",null,LatiumGuideColor,fertility=>FertilityName(RegionKind.Latium,fertility));
+  return marks;
+ }
+
+ GuideMarks AlbionGuide()
+ {
+  return PopulationMarks(analysis!.RomansFirst,analysis.CeltsFirst,"GuideAlbionHint",
+   ("GuideRomanLetter","GuideRomans","GuideRomansFirstFormat",RomanGuideColor),("GuideCelticLetter","GuideCelts","GuideCeltsFirstFormat",CelticGuideColor),
+   albionRomanFirstOnMap,choice=>albionRomanFirstOnMap=choice,fertility=>FertilityName(RegionKind.Albion,fertility));
+ }
+
+ // Both orders of a two-population region, each with its score; the chosen one (or the better one) is drawn on the map.
+ // Population A/B: (badge letter key, name key, "A first" format key, colour).
+ GuideMarks PopulationMarks(PopulationGuide? aFirst,PopulationGuide? bFirst,string hintKey,(string Letter,string Name,string FirstFormat,Brush Color) a,(string Letter,string Name,string FirstFormat,Brush Color) b,bool? chosen,Action<bool> choose,Func<uint,string> fertilityName)
+ {
+  var marks=new GuideMarks([],[],GuidePanelFrame(out var content));
+  if(aFirst is null&&bFirst is null){content.Children.Add(new TextBlock{Text=Localization.Instance["GuideNone"],Foreground=Muted,FontSize=11});return marks;}
+  content.Children.Add(new TextBlock{Text=Localization.Instance[hintKey],Foreground=Muted,FontSize=11,TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,0,0,4)});
+  var onMap=chosen??(bFirst is null||aFirst is not null&&aFirst.Score>=bFirst.Score);
+  var group=hintKey;
+  foreach(var guide in new[]{aFirst,bFirst})
+  {
+   if(guide is null)continue;
+   var selected=guide.PopulationAFirst==onMap;var(first,second)=guide.PopulationAFirst?(a,b):(b,a);
+   var choice=new RadioButton{Content=Localization.Instance.Format(first.FirstFormat,guide.Score.ToString("N0")),IsChecked=selected,GroupName=group,FontWeight=FontWeights.SemiBold,Margin=new Thickness(0,6,0,2),ToolTip=Localization.Instance["GuideShowOnMap"]};
+   var value=guide.PopulationAFirst;choice.Checked+=(_,_)=>{if(onMap==value)return;choose(value);BuildMaps();};
+   content.Children.Add(choice);
+   var sub=new StackPanel{Margin=new Thickness(20,0,0,0)};content.Children.Add(sub);
+   AddPlan(selected?marks:null,sub,guide.First,Localization.Instance[first.Letter],Localization.Instance[first.Name],first.Color,fertilityName);
+   AddPlan(selected?marks:null,sub,guide.Second,Localization.Instance[second.Letter],Localization.Instance[second.Name],second.Color,fertilityName);
+  }
+  return marks;
+ }
+
+ static Border GuidePanelFrame(out StackPanel content)
+ {
+  content=new StackPanel();
+  var outer=new StackPanel();outer.Children.Add(new TextBlock{Text=Localization.Instance["GuideHeader"],FontWeight=FontWeights.SemiBold,FontSize=13,Foreground=Ink,Margin=new Thickness(0,0,0,4)});outer.Children.Add(content);
+  return new Border{Child=outer,Background=new SolidColorBrush(Color.FromRgb(248,244,238)),BorderBrush=new SolidColorBrush(Color.FromRgb(230,217,199)),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(8),Padding=new Thickness(10,8,10,8),Margin=new Thickness(0,10,0,0),MaxWidth=MapSchematic.Width};
+ }
+
+ // One plan as a row of steps (badge, island, icons of the fertilities it adds); with marks, also the map badges and tooltip lines.
+ static void AddPlan(GuideMarks? marks,Panel panel,GuidePlan plan,string prefix,string? population,Brush color,Func<uint,string> fertilityName)
+ {
+  var row=new WrapPanel{Margin=new Thickness(0,2,0,2)};panel.Children.Add(row);
+  if(population is not null)row.Children.Add(new TextBlock{Text=population+":",Foreground=Ink,FontSize=12,MinWidth=58,Margin=new Thickness(0,0,6,0),VerticalAlignment=VerticalAlignment.Center});
+  for(var index=0;index<plan.Steps.Count;index++)
+  {
+   var step=plan.Steps[index];var text=$"{prefix}{index+1}";
+   var item=new StackPanel{Orientation=Orientation.Horizontal,Margin=new Thickness(0,2,12,2)};item.Children.Add(Badge(text,color,11));
+   item.Children.Add(new TextBlock{Text=step.Island.Label,Foreground=Ink,FontSize=12,FontWeight=FontWeights.SemiBold,VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(4,0,4,0)});
+   foreach(var fertility in step.NewFertilities)item.Children.Add(new Image{Source=FertilityIcons.Get(fertility),Width=20,Height=20,Margin=new Thickness(0,0,1,0),ToolTip=fertilityName(fertility)});
+   row.Children.Add(item);
+   if(marks is null)continue;
+   if(!marks.Badges.TryGetValue(step.Island.Slot,out var badges))marks.Badges[step.Island.Slot]=badges=[];badges.Add((text,color));
+   if(index>0)marks.Routes.Add((plan.Steps[0].Island.Slot,step.Island.Slot,color));
+   var line=Localization.Instance.Format("GuideTooltipFormat",text,string.Join(", ",step.NewFertilities.Select(fertilityName)));
+   marks.Tooltips[step.Island.Slot]=marks.Tooltips.TryGetValue(step.Island.Slot,out var earlier)?earlier+"\n"+line:line;
+  }
+ }
+
+ static Border Badge(string text,Brush color,double fontSize)=>new()
+ {
+  Background=color,BorderBrush=Brushes.White,BorderThickness=new Thickness(1.5),CornerRadius=new CornerRadius(10),MinWidth=fontSize+9,Padding=new Thickness(5,0,5,0),Margin=new Thickness(1,0,1,0),
+  Effect=new DropShadowEffect{Color=Colors.Black,BlurRadius=4,ShadowDepth=0,Opacity=.6},
+  Child=new TextBlock{Text=text,Foreground=Brushes.White,FontWeight=FontWeights.Bold,FontSize=fontSize,HorizontalAlignment=HorizontalAlignment.Center}
+ };
+
+>>>>>>> Stashed changes
  void FitToMonitor()
  {
   var ownHandle=new WindowInteropHelper(this).Handle;var ownerHandle=Owner is null?IntPtr.Zero:new WindowInteropHelper(Owner).Handle;var reference=ownerHandle!=IntPtr.Zero?ownerHandle:ownHandle;
@@ -123,6 +255,14 @@ internal sealed class SeedPreviewWindow:Window
   var body=new StackPanel();card.Child=body;
   body.Children.Add(new TextBlock{Text=title,FontSize=17,FontWeight=FontWeights.SemiBold,Foreground=Ink,Margin=new Thickness(3,0,0,8)});
   var canvas=MapSchematic.CreateCanvas(region,profile,layout);body.Children.Add(canvas);
+  DrawRegion(canvas,region,islands,layout,guide);
+  if(guide is not null)body.Children.Add(guide.Panel);
+  return card;
+ }
+
+ // The islands, third parties and decorations of Latium or Albion on a canvas (and the guide's badges); returns the island centres by slot.
+ Dictionary<int,Point> DrawRegion(Canvas canvas,RegionKind region,IReadOnlyList<GeneratedIsland> islands,MapLayout layout,GuideMarks? guide)
+ {
   var bySlot=islands.ToDictionary(island=>island.SlotIndex);
   // Decorations and third-party islands first (underneath), then the islands with their tooltips.
   foreach(var item in layout.Items.Where(x=>x.Kind!=MapLayout.Island))AddBackdropTile(canvas,item);
@@ -131,7 +271,12 @@ internal sealed class SeedPreviewWindow:Window
    if(!bySlot.TryGetValue(item.Slot,out var island))continue;
    AddIslandTile(canvas,item,island,region);
   }
+<<<<<<< Updated upstream
   return card;
+=======
+  if(guide is not null)DrawBadges(canvas,guide,centres);
+  return centres;
+>>>>>>> Stashed changes
  }
 
  static void AddBackdropTile(Canvas canvas,LayoutItem item)
@@ -168,6 +313,7 @@ internal sealed class SeedPreviewWindow:Window
   tooltipTargets.Add((diamond,tooltip));
   diamond.MouseEnter+=(_,_)=>{diamond.Stroke=roleColor;diamond.StrokeThickness=4;};
   diamond.MouseLeave+=(_,_)=>{diamond.Stroke=stroke;diamond.StrokeThickness=2;};
+  diamond.MouseLeftButtonUp+=(_,e)=>{if(!PickMode)return;e.Handled=true;TogglePick(region==RegionKind.Latium?PickLatium:PickAlbion,item.Slot);};
   // Over an image the label is small and one line; on a plain plate (no image) it is the large two-line label.
   var hasImage=IslandImages.Get(item.Name) is not null;
   var caption=item.Slot<0?"CINIS":hasImage?$"{sizeClass} #{item.Slot}":$"{sizeClass}\n#{item.Slot}";
@@ -178,7 +324,9 @@ internal sealed class SeedPreviewWindow:Window
  {
   var panel=new StackPanel{Margin=new Thickness(5),MinWidth=220};
   panel.Children.Add(new TextBlock{Text=$"{position.Label} · {Role(island.FertilitySet)}",FontWeight=FontWeights.SemiBold,FontSize=14,Foreground=Brushes.White});
-  panel.Children.Add(new TextBlock{Text=island.Name,Foreground=new SolidColorBrush(Color.FromRgb(203,213,225)),FontSize=11,Margin=new Thickness(0,2,0,8)});
+  // Short name and rotation as the island filter uses them (IslandRules.cs); the Cinis never turns.
+  var turn=island.SlotIndex<0?"":" · "+Localization.Instance.Format("IslandRotationFormat",IslandCatalog.RotationLabel(island.Rotation));
+  panel.Children.Add(new TextBlock{Text=$"{(island.SlotIndex<0?"":IslandCatalog.Label(island.Name)+" · ")}{island.Name}{turn}",Foreground=new SolidColorBrush(Color.FromRgb(203,213,225)),FontSize=11,Margin=new Thickness(0,2,0,8)});
   var fertilityRow=new WrapPanel();panel.Children.Add(fertilityRow);
   foreach(var fertility in island.Fertilities)
   {

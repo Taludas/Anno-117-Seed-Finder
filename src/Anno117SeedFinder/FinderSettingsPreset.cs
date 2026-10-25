@@ -60,6 +60,8 @@ internal sealed class FinderSettingsPreset
  public uint[] CinisFertilities { get; set; }=[];
  public bool CinisMaximumSites { get; set; }
  public List<ConditionPreset> Conditions { get; set; }=[];
+ // Island filter rules (IslandRules.cs).
+ public List<IslandRulePreset> IslandRules { get; set; }=[];
 }
 
 internal sealed class ConditionPreset

@@ -31,13 +31,14 @@ internal static class MapSchematic
  internal const double Height=920;
  internal const int BaseWorldSize=2048;
 
- internal static Canvas CreateCanvas(RegionKind region,MapProfile profile,MapLayout? layout=null)
+ // width, height: the canvas size; tight: fitted to the map's own rectangle only (the export's larger maps).
+ internal static Canvas CreateCanvas(RegionKind region,MapProfile profile,MapLayout? layout=null,double width=Width,double height=Height,bool tight=false)
  {
-  var canvas=new Canvas{Width=Width,Height=Height,ClipToBounds=true,HorizontalAlignment=HorizontalAlignment.Center};
+  var canvas=new Canvas{Width=width,Height=height,ClipToBounds=true,HorizontalAlignment=HorizontalAlignment.Center};
   // A map with the DLC01 area (or DLC01 activated later) is zoomed out so that its whole enlarged rectangle fits the window.
-  var view=layout is not null&&layout.BaseSize>0?MapView.Fit([(layout.FullX,layout.FullY,layout.FullSize),(0,0,layout.Width)],Width,Height,14):MapView.Default;
+  var view=layout is not null&&(layout.BaseSize>0||tight)?MapView.Fit(tight?[(layout.FullX,layout.FullY,layout.FullSize)]:[(layout.FullX,layout.FullY,layout.FullSize),(0,0,layout.Width)],width,height,14):MapView.Default;
   canvas.Tag=view;
-  canvas.Children.Add(new Rectangle{Width=Width,Height=Height,Fill=new SolidColorBrush(Color.FromRgb(24,62,77)),IsHitTestVisible=false});
+  canvas.Children.Add(new Rectangle{Width=width,Height=height,Fill=new SolidColorBrush(Color.FromRgb(24,62,77)),IsHitTestVisible=false});
   // The DLC01 area and the regular map are real rectangles in map coordinates (seen from the isometric side they are
   // diamonds). Without a layout (position picker) they are the template's: regular map 2048 units, DLC01 area 2688, both
   // anchored at the near corner (0,0). With a layout they are the generated map's own rectangles.

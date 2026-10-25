@@ -35,6 +35,7 @@ public partial class MainWindow:Window
   scoreRows=[..Enum.GetValues<ScoreMetric>().Select(metric=>new ScoreWeightRow(metric,(Slider)FindName("Wgt"+metric),(TextBlock)FindName("LblWgt"+metric),ScoreApplicability(metric)))];
   CmbMapTemplate.ItemsSource=templateChoices;CmbMapSize.ItemsSource=sizeChoices;
   CmbMapTemplate.SelectedItem=templateChoices.Single(choice=>choice.Value==MapTemplateKind.Corners);CmbMapSize.SelectedItem=sizeChoices.Single(choice=>choice.Value==MapSizeKind.Large);
+  LoadDlcSettings(out var dlc03);activeProfile=MapProfiles.Get(MapTemplateKind.Corners,MapSizeKind.Large,ChkDlc01.IsChecked==true);
   profileControlsReady=true;RefreshDlcPresentation();RefreshProfileLabels();
   TxtThreads.Text=Math.Max(1,Environment.ProcessorCount).ToString();
   TxtOutput.Text=Path.Combine(AppContext.BaseDirectory,"treffer.txt");
@@ -81,7 +82,8 @@ public partial class MainWindow:Window
     ShowAdvancedFilters=ChkAdvanced.IsChecked==true,AdvancedMinimums=advancedRows.ToDictionary(row=>row.Filter.ToString(),row=>(int)row.Slider.Value*AdvancedStep),AdvancedEnabled=advancedRows.ToDictionary(row=>row.Filter.ToString(),row=>row.Enabled.IsChecked==true),
     EnableScoring=ChkScoring.IsChecked==true,ExtendScoringOutliers=ChkScoreOutliers.IsChecked==true,ScoreWeights=scoreRows.ToDictionary(row=>row.Metric.ToString(),row=>(int)row.Slider.Value),
     CinisSlot1=(CmbSlot1.SelectedItem as FertilityChoice)?.Guid??0u,CinisFertilities=[..cinisChecks.Where(box=>box.IsChecked==true).Select(box=>uint.Parse(box.Tag.ToString()!))],CinisMaximumSites=ChkMaxSites.IsChecked==true,
-    Conditions=[..LatiumConditions.Children.OfType<ConditionRowControl>().Concat(AlbionConditions.Children.OfType<ConditionRowControl>()).Select(row=>row.ExportPreset())]
+    Conditions=[..LatiumConditions.Children.OfType<ConditionRowControl>().Concat(AlbionConditions.Children.OfType<ConditionRowControl>()).Select(row=>row.ExportPreset())],
+    IslandRules=[..LatiumConditions.Children.OfType<IslandRuleRowControl>().Concat(AlbionConditions.Children.OfType<IslandRuleRowControl>()).Select(row=>row.ExportPreset())]
    };
    FinderSettingsStorage.Save(dialog.FileName,preset);LblProgress.Text=Localization.Instance.Format("PresetSavedFormat",Path.GetFileName(dialog.FileName));
   }
@@ -130,6 +132,7 @@ public partial class MainWindow:Window
    var target=condition.Region==RegionKind.Latium?LatiumConditions:AlbionConditions;
    var row=AddCondition(condition.Region,condition.Set,target);row.ApplyPreset(condition);
   }
+  foreach(var rule in preset.IslandRules)AddIslandRule(rule.Region,rule.Region==RegionKind.Latium?LatiumConditions:AlbionConditions).ApplyPreset(rule);
   profileControlsReady=true;RefreshDlcPresentation();RefreshProfileLabels();UpdateConditionAddButtons();
  }
 
@@ -155,6 +158,8 @@ public partial class MainWindow:Window
    SetRunning(true);GridResults.ItemsSource=null;SearchProgress.Value=0;LblProgress.Text=Localization.Instance["SearchStarting"];
    cancellation=new CancellationTokenSource();
    var reporter=new Progress<SearchProgress>(x=>{SearchProgress.Value=Math.Min(100,(long)x.Processed*100/x.Total);LblProgress.Text=Localization.Instance.Format("ProgressFormat",x.Processed.ToString("N0"),x.Total.ToString("N0"),x.Hits.ToString("N0"));});
+   // Island filter rules (IslandRules.cs) of both regions.
+   request=request with{IslandRules=[..LatiumConditions.Children.OfType<IslandRuleRowControl>().Concat(AlbionConditions.Children.OfType<IslandRuleRowControl>()).Select(row=>row.BuildRule())]};
    var summary=await SeedSearcher.SearchAsync(request,reporter,cancellation.Token);
    ShowResults(summary.Hits);
    lastOutput=summary.Output;BtnOpen.IsEnabled=true;
@@ -539,9 +544,32 @@ public partial class MainWindow:Window
   RefreshProfileLabels();UpdateConditionAddButtons();
  }
 
+ // DLC01 and DLC03 are on by default; a switch turned off stays off at the next start (dlc.txt next to the exe, like language.txt).
+ // Only the app itself remembers them (RememberDlc, set at the start): test windows always start with the defaults.
+ internal static bool RememberDlc;
+ static readonly string DlcSettingsPath=Path.Combine(AppContext.BaseDirectory,"dlc.txt");
+ void LoadDlcSettings(out bool dlc03)
+ {
+  dlc03=true;if(!RememberDlc)return;
+  try
+  {
+   foreach(var line in File.ReadAllLines(DlcSettingsPath))
+   {
+    var parts=line.Split('=');if(parts.Length!=2||!bool.TryParse(parts[1],out var on))continue;
+    if(parts[0]=="Dlc01")ChkDlc01.IsChecked=on;else if(parts[0]=="Dlc03")dlc03=on;
+   }
+  }
+  catch{}
+ }
+ void SaveDlcSettings()
+ {
+  if(!RememberDlc||!profileControlsReady)return;
+  string[] lines=[$"Dlc01={ChkDlc01.IsChecked==true}"];
+  try{File.WriteAllLines(DlcSettingsPath,lines);}catch{}
+ }
  void DlcProfileChanged(object sender,RoutedEventArgs e)
  {
-  if(!profileControlsReady)return;RefreshDlcPresentation();
+  if(!profileControlsReady)return;RefreshDlcPresentation();SaveDlcSettings();
   if(CmbMapTemplate.SelectedItem is ProfileChoice<MapTemplateKind> template&&CmbMapSize.SelectedItem is ProfileChoice<MapSizeKind> size)
   {
    activeProfile=MapProfiles.Get(template.Value,size.Value,ChkDlc01.IsChecked==true,ChkDlc01.IsChecked==true&&ChkDlcRetro.IsChecked==true,ChkDlcAfterLoad.IsChecked==true);LatiumConditions.Children.Clear();AlbionConditions.Children.Clear();GridResults.ItemsSource=null;RefreshProfileLabels();UpdateConditionAddButtons();
@@ -556,8 +584,23 @@ public partial class MainWindow:Window
   RefreshScoreVisibility();RecomputeScores();
  }
 
+ // Cinis's pool slots depend on the fertility setting, the Latium/Albion ranges do not.
+ void FertilitySettingChanged(object sender,SelectionChangedEventArgs e)
+ {
+  if(!profileControlsReady)return;
+  RefreshCinisPool();
+ }
+ // Cinis has fewer pool slots outside Abundant: label them and uncheck the fertilities that no longer fit, last first.
+ void RefreshCinisPool()
+ {
+  var (first,count)=Generator.CinisPoolSlots(CurrentFertilitySetting());
+  TxtCinisSlots.Text=Localization.Instance.Format("CinisSlotsHeader",first+1,first+count,count);
+  TxtCinisWarning.Text=Localization.Instance.Format("CinisWarning",first+1,first+count,count);
+  foreach(var box in cinisChecks.Where(box=>box.IsChecked==true).Skip(count).ToArray())box.IsChecked=false;
+ }
  void RefreshProfileLabels()
  {
+  RefreshCinisPool();
   LblLatiumProfile.Text=ProfileLabel(RegionKind.Latium);
   LblAlbionProfile.Text=ProfileLabel(RegionKind.Albion);
   var ranges=AggregateSiteRanges.For(activeProfile);
@@ -654,7 +697,7 @@ public partial class MainWindow:Window
 
  void CinisFertilityChecked(object sender,RoutedEventArgs e)
  {
-  if(cinisChecks.Count(x=>x.IsChecked==true)<=4)return;
+  if(cinisChecks.Count(x=>x.IsChecked==true)<=Generator.CinisPoolSlots(CurrentFertilitySetting()).Count)return;
   if(sender is CheckBox box)box.IsChecked=false;
   TxtCinisWarning.Visibility=Visibility.Visible;cinisWarningTimer.Stop();cinisWarningTimer.Start();
  }
@@ -662,6 +705,12 @@ public partial class MainWindow:Window
  void AddLatiumCondition(object sender,RoutedEventArgs e)=>AddCondition(RegionKind.Latium,SetFromButton(sender),LatiumConditions);
  void AddAlbionCondition(object sender,RoutedEventArgs e)=>AddCondition(RegionKind.Albion,SetFromButton(sender),AlbionConditions);
  static FertilitySetKind SetFromButton(object sender)=>Enum.Parse<FertilitySetKind>(((Button)sender).Tag.ToString()!);
+ void AddLatiumIslandRule(object sender,RoutedEventArgs e)=>AddIslandRule(RegionKind.Latium,LatiumConditions);
+ void AddAlbionIslandRule(object sender,RoutedEventArgs e)=>AddIslandRule(RegionKind.Albion,AlbionConditions);
+ IslandRuleRowControl AddIslandRule(RegionKind region,Panel target)
+ {
+  var row=new IslandRuleRowControl(region,activeProfile);row.RemoveRequested+=(_,_)=>target.Children.Remove(row);target.Children.Add(row);return row;
+ }
  ConditionRowControl AddCondition(RegionKind region,FertilitySetKind set,Panel target)
  {
   var maximum=activeProfile.Capacity(region,set);var row=new ConditionRowControl(FertilityDefinitions.Get(region,set),activeProfile,maximum);row.RemoveRequested+=(_,_)=>{target.Children.Remove(row);UpdateConditionAddButtons();};row.MinimumChanged+=(_,_)=>UpdateConditionAddButtons();target.Children.Add(row);UpdateConditionAddButtons();return row;
@@ -745,7 +794,7 @@ public partial class MainWindow:Window
   SeedScoring.Apply(rows,activeProfile,slot1Choice,CurrentScoreWeights());
   GridResults.Items.Refresh();
  }
- internal void AddPreviewConditions(){AddCondition(RegionKind.Latium,FertilitySetKind.Tertiary,LatiumConditions);AddCondition(RegionKind.Latium,FertilitySetKind.AnyCombination,LatiumConditions);AddCondition(RegionKind.Albion,FertilitySetKind.Secondary,AlbionConditions);AddCondition(RegionKind.Albion,FertilitySetKind.AnyCombination,AlbionConditions);CmbSlot1.SelectedIndex=1;}
+ internal void AddPreviewConditions(){AddCondition(RegionKind.Latium,FertilitySetKind.Tertiary,LatiumConditions);AddCondition(RegionKind.Latium,FertilitySetKind.AnyCombination,LatiumConditions);AddCondition(RegionKind.Albion,FertilitySetKind.Secondary,AlbionConditions);AddCondition(RegionKind.Albion,FertilitySetKind.AnyCombination,AlbionConditions);AddIslandRule(RegionKind.Latium,LatiumConditions);AddIslandRule(RegionKind.Albion,AlbionConditions);CmbSlot1.SelectedIndex=1;}
 }
 
 internal sealed record SearchResultRow(uint Seed,int MarbleSites,int GoldMines,int GoldRiverSites,int SturgeonRiverSites,int MineralMines,int CopperMines,int SilverMines,int TinMines,int LatiumAreaValue,int AlbionAreaValue,int AlbionSwampValue,int LatiumMountain,int LatiumRiver,int AlbionMountain,int[] AdvancedTiles,uint[] CinisFertilityIds,SiteCounts CinisSiteCounts,ImageSource[] CinisFertilities)

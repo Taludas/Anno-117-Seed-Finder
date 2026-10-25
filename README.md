@@ -21,6 +21,7 @@ It is reverse engineered from real savegames and from the game's own data files,
 - [What a seed is](#what-a-seed-is)
 - [Installing and starting](#installing-and-starting)
 - [Using the app](#using-the-app)
+- [Settling guide and playstyle ratings](#settling-guide-and-playstyle-ratings)
 - [How Anno 117 builds a map](#how-anno-117-builds-a-map)
 - [How exact is this?](#how-exact-is-this)
 - [Known limits](#known-limits)
@@ -65,7 +66,7 @@ These settings must match what you will later choose in the game's "New Game" sc
 |---|---|
 | **Map template** | The shape of the world: Archipelago, Atoll, Corners, Island Chains or Rift. Each one places the islands in a completely different and distinct pattern. |
 | **Map size** | Small, Medium or Large. Larger maps have more islands and more space between them. |
-| **DLC01 – PoA** | Whether *Prophecies of Ash* DLC is active. With it, Latium is expanded by the continental island Cinis, and gains several extra islands in the Northern corner of the map. |
+| **DLC01 – PoA** | Whether *Prophecies of Ash* DLC is active. With it, Latium is expanded by the continental island Cinis, and gains several extra islands in the Northern corner of the map. On by default; the app remembers it when you switch it off (in `dlc.txt` next to the app). |
 | **activated later (experimental)** | For maps that were **created without** the DLC01 and had it switched on afterwards. See [Switching the DLC on later](#switching-the-dlc-on-later). |
 | **after loading a save** | For games that were started **after a savegame had been loaded** (load a save, *Quit to Title*, then *New Game*). The game then places only 10 instead of 14 small decoration islands in Latium, and every island's slots and fertilities come out different. A game started right after launching Anno is the normal case. Count the small decoration islands in Latium: 10 means tick this box. |
 | **DLC03 – DotD** | Greyed out. DLC03 *Dawn of the Delta* is prepared for, but not active yet. |
@@ -131,6 +132,12 @@ So a million seeds take about 11 seconds on all cores, and the whole range the g
 The table lists every matching seed with its key numbers: buildable tiles per region, marsh area, slot counts and the fertility distribution on Cinis. By default the table stays compact: the areas and the total mountain and river slots of each region. Headers marked ▦ are tile counts. Ticking **Show advanced fertility filters** adds every fertility-specific column (gold and sturgeon river slots, the single mines, the advanced filter columns) together with the matching filter rows. Numbers follow the window language: German groups thousands as 1.234, English as 1,234. When all columns do not fit the window, the table scrolls sideways. Hover any of these numbers for a small gauge: where this seed's value falls between the 100k-seed population's minimum and maximum, with the median marked, so a bare number like "145" gets context without opening the corresponding filter.
 
 - **Preview** – type a seed and press Preview to see both regions drawn as a map: every island exactly where the game puts it and turned the way the game turns it, with its top-down image, plus the decoration islands and the third-party islands (traders and the raider). Hover an island for its fertilities and slot counts; the outline colour on hover shows its role. The border of the regular map and of the Prophecies of Ash area are drawn as the real rectangles. This works for any seed, whether it came from a search or not. **Random** puts a random valid seed into the box. The islands can be drawn as a **tile map** (the default: every tile coloured by type - buildable, marsh, river, harbour, not buildable) or with the game's **artwork**. Zoom with the slider, the + and − buttons or Ctrl + mouse wheel (around the cursor), drag with the left mouse button to move around, and **Fit** shows everything again; in the tile map every pixel is one tile. The island tooltips also show the tile breakdown: buildable land, marsh (Albion) and harbour.
+<<<<<<< Updated upstream
+=======
+- **Islands on the map** – **+ Island** (next to the condition buttons of each region) adds a rule for one specific island, named as in the game files (XL01, L06, M03, PoA M01 …): it **must appear** or **must not appear** on the map, either anywhere or only in the positions you pick (the position picker offers only the slots that can hold that island), and optionally only with a certain **rotation** (0°, 90°, 180°, 270°). Example: "M03 must not appear" drops every seed with Latium M03; "L02 must appear at #5 with 90°" keeps only seeds with exactly that. The preview's island tooltip shows each island's short name and rotation. Starting islands always turn to face the map centre, so their rotation follows from their position.
+- **Settling guide** – tick **Settling guide** in the preview to see which islands to settle, and in which order, to reach every fertility of a region with few, valuable islands close to each other. How it works and how it scores: [Settling guide and playstyle ratings](#settling-guide-and-playstyle-ratings).
+- **Playstyle fit and Seed Atlas export** – with the settling guide ticked, the preview rates the seed above the maps for three playstyles (Casual players, Full supply, Record builders), and **Seed Atlas export …** writes annotated map images and the seed description for the Seed Atlas on anno-companion.com; see [Settling guide and playstyle ratings](#settling-guide-and-playstyle-ratings).
+>>>>>>> Stashed changes
 - **Add seed** – put a single specific seed into the table without searching.
 - **Load seed list** – read a list of seeds from a file and evaluate them all in the results table. A plain text file with one seed per line (like the output file, `treffer.txt`) and a CSV exported by the app both work; other columns are ignored. The seeds carry no map profile: set the profile they were found with before you load them.
 - **Export CSV** – write the results table to a spreadsheet file. The suggested file name is stamped with the current moment the same way, so clicking Save without renaming still keeps every export.
@@ -151,6 +158,98 @@ If no seed passes the new filters, the table goes back to the list it had before
 
 **Save preset** and **Load preset** store everything - profile, options, all conditions, the search range and the
 language - in a small file, so you can come back to a search later or share it with someone.
+
+---
+
+## Settling guide and playstyle ratings
+
+### The settling guide
+
+Tick **Settling guide** in the seed preview to see which islands to settle, and in which order, to reach every fertility of a region with few, valuable islands close to each other. Numbered badges mark the islands on the map (Latium 1, 2, 3 …; Albion R1 … for the Romans and C1 … for the Celts), the supply routes from the main island are drawn as dashed lines, and a panel under each map lists every step with the fertilities it adds. Albion needs their own islands for each population, so both orders are listed (for example Romans first, Celts first) with their scores; pick the one to draw on the map and to use in the export. With the start mode "starting island" the first Latium island is a starting island. Tick **Cinis off** to leave Cinis out of the Latium plan.
+
+**What a plan is.** The first island is the population's main island: its hub, which supplies every later island. Each further island must add at least one fertility that is still missing, until every fertility of the region is covered; an island whose fertilities the others of the plan bring anyway is never part of it. After the main island the plan follows the population tiers: the next island always adds a fertility of the lowest tier still missing (an island counts at the lowest tier it adds). Iron is optional: it counts when an island brings it, but no island is settled for iron alone. The app tries every possible order and shows the best one, so a map always gets the same guide.
+
+**How a plan is scored.** Every step earns points for the island, multiplied by 0.9 per step (the main island counts fully, the second island 0.9 times, the third 0.81 times …), and the plan loses points for its length and its distances:
+
+| | Latium | Albion |
+|---|---|---|
+| Each fertility the island adds | see the weights below | see the weights below |
+| Slots | +10 per river slot, +5 per mountain slot | +10 per mountain slot, +5 per marsh slot |
+| Island size | Cinis 500, XL 450, L 150, M 75, S 30 | L 200, M 100, S 10 |
+| 2nd, 3rd, 4th … island | −200, −400, −600 … | −150, −300, −450 … |
+| Open water to the main island | −0.2 per map unit | −0.2 per map unit |
+
+On top of that:
+
+- **Raiders:** a supply route from the main island that passes closer than 500 map units to a raider base costs 1 point per unit it comes closer (a route touching the raider: −500).
+- **Map edges:** every island costs 0.05 points per map unit of distance from the preferred edges (Latium north-west and south-east, Albion south-west).
+- **Main island size:** a medium main island costs 150 points, since players rarely start on one when a large island fits nearly as well. A small island is never a main island (only when no plan works without one; it then costs 300). In Latium a large main island costs 100 points while an XL island or Cinis could start the plan instead. Without it the guide would often start on a central large island, because an island's size bonus counts wherever it comes in the order.
+
+**Fertility weights.** A fertility is worth points by the production chains that need it: about +70 per tier-2 chain, +50 per tier-3 chain and +30 per tier-4 chain, building materials counting half. A fertility counts the same whatever slots the island has: the slots count on their own, through the slot points in the table above.
+
+- **Latium:** Mackerel, Lavender, Resin, Olives 70 · Grapes 50 · Flax, Murex 80 · Sandarac 140 · Minerals 125 · Marble 145 · Oysters 30 · Sturgeon 30 · Gold 90 · Iron 50.
+- **Albion:** Barley 70 · Dye Plants, Copper 190 · Tin 140 · Saltwort 100 · Beavers, Ponies 50 · Herbs 70 · Silver, Resin 120 · Small Birds, Flax, Sea Shells, Iron 50 · Granite 75.
+
+**Population tiers** (the order after the main island):
+
+- **Latium:** tier 2 Resin, Olives, Iron; then Mackerel and Lavender (optional at tier 2, so they come after Resin and Olives); tier 3 Grapes, Flax, Murex, Sandarac, Minerals, Marble; tier 4 Oysters, Sturgeon, Gold.
+- **Albion:** tier 2 Barley, Dye Plants, Copper, Tin, Iron, Herbs, Silver, Resin; tier 3 Saltwort, Beavers, Ponies, Granite, Small Birds, Flax, Sea Shells.
+
+**Two populations (Albion).** Romans and Celts are planned one after the other: first the population you start with, then the second one, which may not use the first one's main island and has a main island of its own. The second population gets a bonus for every island it shares with the first plan: +500 per new fertility after the Romans, +200 after the Celts. A plan uses at most four islands per population (more only when no such plan covers every fertility). Two bonuses make an island a good main island or a good Celtic island:
+
+- **Tier-3 goods on the main island:** every Albion tier-3 good worth having from the start (Ponies, Small Birds, Sea Shells) on a population's main island earns +1,000.
+- **Tin and copper on one island** (Albion): most useful together for bronze, so the island earns +100 more.
+
+In Albion both bonuses scale with the island's building space, because they pay off only with room to produce the goods: a large island earns the full bonus, a medium island (about half the building space of a large one) half of it, a small island 15 %.
+
+The idea and the scoring model come from **ewjax** (see [Credits](#credits)).
+
+### Playstyle ratings
+
+With the settling guide ticked, the preview rates the seed above the maps for three playstyles from 0 to 100; hover a chip for the details. Each rated property gets a rating between 0 (the lowest value seen on this kind of map) and 1 (the highest); the score is the weighted mean of the ratings. "This kind of map" means the same template, size and difficulty: the ranges come from 100,000 seeds per template and size, and for the Regular and Sparse fertility and resource slot settings from 20,000 seeds per setting, as those maps have far fewer mines and fertile coasts. Properties of Cinis count only with DLC01 on. A ✓ means the seed meets every minimum of the playstyle; only Record builders have one.
+
+**Casual players** – good fertility spread and an easy settling order on large islands close to each other.
+
+| Property | Weight |
+|---|---|
+| Ideal Minerva starting island (Flax, Murex, Sturgeon, Oysters on XL or Cinis) or Neptune island (Mackerel, Murex, Oysters, Sturgeon on XL, Cinis or L) | 10 |
+| Ideal Ceres island (Lavender, Olives, Grapes, Marble on L or XL) | 8 |
+| Ideal third island (Flax, Gold, Sandarac, Minerals on L or XL) | 6 |
+| Gold and Sturgeon river slots | 5 |
+| Cinis: Sturgeon, Oysters, Lavender, Gold and the most slots | 5 |
+| Ideal Roman starting island (Herbs, Resin, Silver, Flax, Small Birds; Sea Shells on another island) | 8 |
+| Ideal Celtic starting island | 8 |
+| Settling guide, Latium: main island (Cinis, XL01 or XL04 best), number of islands (3 or fewer ideal), their sizes, open water, distance to the raiders | 4, 8, 6, 6, 3 |
+| Settling guide, Albion: number of islands (5 or fewer ideal), their sizes, open water | 7, 5, 5 |
+
+**Full supply** – lots of building space and river slots, good coasts and marshes and enough mines to fully supply every residence. No minimums: some templates simply do not suit this playstyle, which shows in their scores.
+
+| Property | Weight |
+|---|---|
+| Latium building space | 10 |
+| Latium river slots | 10 |
+| Harbour tiles of the Murex islands / Oyster islands | 6 / 4 |
+| Marble slots | 6 |
+| Albion building space | 10 |
+| Harbour tiles of the Saltwort islands / marsh of the Small Bird islands | 4 / 8 |
+| Marsh of the Beaver islands / harbour tiles of the Sea Shell islands | 3 / 6 |
+| Silver mines | 8 |
+| Mineral mines / gold mines (Latium) | 6 / 6 |
+| Copper mines / tin mines (Albion) | 6 / 6 |
+
+**Record builders** – the most building space and river slots, plus marble and tin. Minimum: Latium and Albion building space each rated at least 95 %, i.e. close to the most the map allows.
+
+| Property | Weight |
+|---|---|
+| Latium building space / Albion building space | 10 / 10 |
+| Latium river slots | 10 |
+| Harbour tiles of the Murex islands / Oyster islands | 4 / 2 |
+| Marble slots / tin mines (Albion) | 6 / 6 |
+| Albion islands with Resin (L/M) | 6 |
+| Harbour tiles of the Saltwort islands | 2 |
+| Murex on Cinis / Oysters on Cinis | 2 / 2 |
+
+**Seed Atlas export …** writes one annotated map image per region (the tile map with the settling guide and, for every island of the plan, a card with its fertilities and slots) and the seed description as an Elementor template in English and German for the Seed Atlas on anno-companion.com. The text follows the orders chosen in the guide panels. Tick **Pick islands** to choose the islands yourself: each click on an island adds it (in click order; in Albion each further click switches between Romans, Celts, both and none). Your selection then replaces the settling guide on that map and in the export, e.g. to point out a perfect Ceres island the guide passes over.
 
 ---
 
