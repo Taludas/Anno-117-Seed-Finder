@@ -3,13 +3,16 @@
     python check_savegame.py <savegame.a8s | dump folder | folder of them> ... [--exe PATH] [--jobs N] [--verbose]
 
 For every savegame it extracts the map (savegame_map_dump.py, needs RDAExplorer and FileDBReader; see README.md), runs the app's
-dump switches for the same settings and compares, per region (Latium, Albion):
+dump switches for the same settings and compares, per region (Latium, Albion, and Aegyptus when the savegame has the DLC03
+session):
 
     islands      type, rotation and position of every island (Cinis included)
     third party  the traders and the raider
     decorations  every decoration island with rotation and position
     fertility    the goods of every island (as a set per island, order does not matter)
     slots        the goods plus the number of active mine and river/marsh slots per island
+For Aegyptus "slots" compares the active mine slots per island, and "islands" also checks which islands use their "_layer01" variant, "fertility" compares the goods in the order they
+were drawn, and slots are not modelled (reported as 0/0).
 
 A savegame passes when every count matches. The exit status is 0 only if all savegames pass.
 
@@ -29,7 +32,8 @@ from pathlib import Path
 
 import common
 
-REGIONS = ("Latium", "Albion")
+REGIONS = ("Latium", "Albion", "Aegyptus")
+ALIASES = {"Unknown(149679)": "Aegyptus"}
 CATEGORIES = ("islands", "third party", "decorations", "fertility", "slots")
 SHORT = {"islands": "isl", "third party": "3rd", "decorations": "deco", "fertility": "fert", "slots": "slot"}
 
@@ -40,9 +44,17 @@ def read_truth(dump: Path) -> dict:
     truth = {r: {"island": [], "special": [], "deco": [], "fertility": [], "slots": []} for r in REGIONS}
     for line in (dump / "map_dump.txt").read_text(encoding="utf-8").splitlines():
         p = line.split("|")
-        if len(p) < 6 or p[0] not in REGIONS:
+        region = ALIASES.get(p[0], p[0]) if p else ""
+        if len(p) < 6 or region not in REGIONS:
             continue
-        region, name = p[0], p[1]
+        name = p[1]
+        if region == "Aegyptus":
+            truth[region]["island"].append((name, int(p[4]), int(p[2]), int(p[3])))
+            if p[5]:
+                flags = p[11].split(",")[1::2] if len(p) > 11 else []
+                truth[region]["fertility"].append((name, p[5]))
+                truth[region]["slots"].append((name, p[5], sum(1 for f in flags if f == "01")))
+            continue
         kind = "deco" if "island_deco_" in name else "special" if "3rdparty" in name else "island"
         truth[region][kind].append((name, int(p[4]), int(p[2]), int(p[3])))
         if kind == "island" and p[5]:
@@ -96,6 +108,15 @@ def run_case(case: common.Case, truth: dict, exe: Path, work: Path) -> dict:
     albion = common.run_exe(exe, ["--dump-albion-sites", template, size, seed], work / f"{tag}_a.txt", (case.fertility,), env)
     goods = {"Latium": read_goods(latium), "Albion": read_goods(albion)}
     result = {}
+    if truth["Aegyptus"]["island"]:
+        egypt = common.run_exe(exe, ["--dump-egypt", size, seed], work / f"{tag}_e.txt", (case.fertility,), env)
+        layout["Aegyptus"] = {"island": [(p[1], 0, int(p[2]), int(p[3])) for p in (l.split("|") for l in egypt) if p[0] == "island"],
+                              "special": [], "deco": []}
+        rows = [p for p in (l.split("|") for l in egypt) if p[0] == "goods"]
+        goods["Aegyptus"] = ([(p[1], p[3]) for p in rows], [(p[1], p[3], int(p[4])) for p in rows])
+    else:
+        layout["Aegyptus"] = {"island": [], "special": [], "deco": []}
+        goods["Aegyptus"] = ([], [])
     for region in REGIONS:
         # A region without any island in the savegame has not been created yet (an unmodded game creates Albion only when it
         # is unlocked), so there is nothing to compare: it counts as 0/0.

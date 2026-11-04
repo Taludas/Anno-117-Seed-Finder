@@ -1,4 +1,4 @@
-# Anno 117 – Seed Finder
+﻿# Anno 117 – Seed Finder
 
 ![Anno 117 Seed Searcher Thumbnail](thumbnail_de.jpg)
 
@@ -9,6 +9,8 @@ Wenn du in Anno 117: Pax Romana ein neues Spiel beginnst, gibst du eine Seed-Zah
 Diese App baut diesen „World Generator" nach, **ohne das Spiel zu nutzen**. Es kann in wenigen Minuten Millionen von Seeds durchgehen und dir sagen, welche davon die Karte ergeben, die du suchst - „eine Startinsel mit Trauben und Gold-Flussbauplatz", „so viele bebaubare Kacheln wie möglich", „mindestens hundert Bergbauplätze in Albion" und so weiter.
 
 Der "World Generator" ist aus echten Spielständen und aus den Dateien des Spiels rekonstruiert und gegen 90 Spielstände geprüft, die jede Kombination von Einstellungen abdecken. In diesen Karten gibt es **jede Insel, jede Position, jede Drehung, jede Fruchtbarkeit, jeden Bauplatz und jede Dekoinsel exakt** wieder - 11.844 Einzelprüfungen ohne eine einzige Abweichung.
+
+Für Spielversion 3.0 und die DLC03-Session Aegyptus bestätigt ein zweiter Satz von 52 Spielständen das erneut: 11.734 weitere Prüfungen, wieder ohne Abweichung.
 
 ---
 
@@ -39,7 +41,8 @@ Ein Seed ist einfach eine Zahl. Das Spiel startet damit eine lange Kette von „
 **Was du brauchst**
 
 - Windows
-- [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) (die „Desktop"-Variante, nicht nur die Konsolenversion)
+- [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) (die „Desktop"-Variante, nicht nur die
+  Konsolenversion)
 
 **Starten**
 
@@ -61,10 +64,10 @@ Diese Einstellungen müssen zu dem passen, was du später im Menü „Neues Spie
 |---|---|
 | **Kartentemplate** | Die Form der Welt: Archipel, Atoll, Ecken, Inselketten oder Graben. Jede verteilt die Inseln nach einem völlig anderen, eigenständigen Muster. |
 | **Kartengröße** | Klein, mittel oder groß. Größere Karten haben mehr Inseln und mehr Platz dazwischen. |
-| **DLC01 – PoA** | Ob das DLC *Verheißung des Vulkans* aktiv ist. Damit wird Latium um die Kontinentalinsel Cinis erweitert und bekommt mehrere zusätzliche Inseln in der nördlichen Ecke der Karte. Standardmäßig an; schaltest du es aus, merkt sich die App das (in `dlc.txt` neben der App). |
+| **DLC01 – PoA** | Ob das DLC *Verheißung des Vulkans* aktiv ist. Damit wird Latium um die Kontinentalinsel Cinis erweitert und bekommt mehrere zusätzliche Inseln in der nördlichen Ecke der Karte. Standardmäßig an; schaltest du es aus, merkt sich die App das, für DLC01 wie DLC03 (in `dlc.txt` neben der App). |
 | **nachträglich aktiviert (experimentell)** | Für Karten, die **ohne** DLC01 erstellt und bei denen es danach eingeschaltet wurde. Siehe [DLC nachträglich einschalten](#dlc-nachträglich-einschalten). |
 | **nach Laden** | Für Spiele, die **nach dem Laden eines Spielstands** gestartet wurden (Spielstand laden, *Zurück zum Hauptmenü*, dann *Neues Spiel*). Das Spiel setzt dann in Latium nur 10 statt 14 kleine Dekorationsinseln, und Bauplätze und Fruchtbarkeiten aller Inseln fallen anders aus. Ein direkt nach dem Start von Anno angelegtes Spiel ist der Normalfall. Kleine Dekorationsinseln in Latium zählen: 10 heißt, diesen Haken setzen. |
-| **DLC03 – DotD** | Ausgegraut. DLC03 *Erwachen des Deltas* ist vorbereitet, aber noch nicht aktiv. |
+| **DLC03 – DotD** | Ob *Erwachen des Deltas* aktiv ist. Blendet die Aegyptus-Filter und ihre Ergebnisspalten ein (siehe [Aegyptus-Filter](#3-wonach-gesucht-wird---die-bedingungen)). Aegyptus ist eine feste Karte: nur Kartengröße, Fruchtbarkeit und Rohstoffvorkommen verändern sie, nicht die Kartenvorlage und nicht DLC01. |
 | **Startart** | Flaggschiff oder Startinsel. Das ist die Wahl des Spiels, wie du ankommst; sie ändert die erzeugte Karte **nicht**. Geprüft mit eingeschalteter Startinsel-Option, mit erzwungener kontinentaler Insel als Start und mit DLC01 an und aus (Archipel und Ecken, groß): alle sechs Spielstände sind mit den normalen identisch. |
 
 ### 2. Weitere Kartenoptionen
@@ -85,7 +88,8 @@ Alles in der Fenstermitte ist freiwillig. Lässt du es leer, passt jeder Seed.
 **Inselbedingungen.** Für jede Region (Latium und Albion) kannst du bestimmte Eigenschaften auf bestimmten Inselarten verlangen:
 
 - **Startinsel** – die Insel, auf der du tatsächlich beginnst
-- **Sekundär** und **Tertiär** – die beiden Gruppen, in die die übrigen Inseln aufgeteilt werden (erklärt [weiter unten](#schritt-9-welche-fruchtbarkeiten-wo-entstehen))
+- **Sekundär** und **Tertiär** – die beiden Gruppen, in die die übrigen Inseln aufgeteilt werden (erklärt
+  [weiter unten](#schritt-9-welche-fruchtbarkeiten-wo-entstehen))
 - **Beliebige Kombination** – die Fruchtbarkeit muss in der Region einfach irgendwo vorkommen
 
 Mit den „Hinzufügen"-Schaltflächen legst du eine Bedingungszeile an und wählst dann die Fruchtbarkeitsverteilung für die Insel. Du kannst beliebig viele Zeilen anlegen; ein Seed muss alle erfüllen. Über die Positionsauswahl neben einer Zeile kannst du die Insel auf einem **bestimmten Inselplatz** der Karte verlangen, wenn dir die Lage wichtig ist.
@@ -94,9 +98,20 @@ Mit den „Hinzufügen"-Schaltflächen legst du eine Bedingungszeile an und wäh
 
 **Mindestgrößen.** Drei Regler verlangen eine Mindestmenge nutzbarer Kacheln: bebaubare Fläche in Latium, in Albion und Sumpffläche in Albion. Die Schaltfläche „Median" daneben trägt den typischen Wert für das aktuelle Kartenprofil ein - so fragst du schnell nach „besser als Durchschnitt" (aus 100.000 Seeds ermittelt).
 
-**Mindestzahl an Bauplätzen.** Eine Reihe von Feldern verlangt eine Mindestzahl an Bergbauplätzen, Flussbauplätzen, Goldflussbauplätzen, Störflussbauplätzen, Goldminen, Rohmarmor-Steinbrüchen und Mineralienminen in Latium sowie Silber-, Zinn- und Kupferminen in Albion. Auch hier gibt es je eine Median-Schaltfläche. Berg- und Flussbauplätze gesamt sind immer sichtbar; die fruchtbarkeitsbezogenen (Gold- und Störfluss, die einzelnen Minen) erscheinen mit **Erweiterte Fruchtbarkeitsfilter anzeigen** und wirken nur, solange der Haken gesetzt ist.
+**Mindestzahl an Bauplätzen.** Eine Reihe von Feldern verlangt eine Mindestzahl an Bergbauplätzen, Flussbauplätzen, Goldflussbauplätzen, Störflussbauplätzen, Goldminen, Rohmarmor-Steinbrüchen und Mineralienminen in Latium sowie Silber-, Zinn- und Kupferminen in Albion. Auch hier gibt es je eine Median-Schaltfläche.
 
 **Erweiterte Fruchtbarkeitsfilter.** Das Kästchen **Erweiterte Fruchtbarkeitsfilter anzeigen** über der Ergebnistabelle blendet sechs weitere Regler ein und fügt der Tabelle ihre Spalten hinzu. Jeder Regler addiert die Hafen- oder Sumpfkacheln aller Inseln der Region, die eine bestimmte Fruchtbarkeit tragen: Hafenkacheln der Inseln mit Purpurschnecken und mit Austern in Latium; Hafenkacheln der Inseln mit Salzkraut und mit Kammmuscheln in Albion; Sumpfkacheln der Inseln mit Kleinen Vögeln und mit Bibern in Albion. Die Regler springen in Schritten zu 500 Kacheln und haben wie die anderen eine Median-Schaltfläche. Die Filter wirken nur, solange das Kästchen angehakt ist; das Kästchen wird in den Presets mitgespeichert.
+
+**Aegyptus-Filter (mit DLC03).** Mit dem Haken bei **DLC03 – DotD** erscheinen zwölf Regler für die Ägypten-Session, und die Tabelle bekommt ihre Spalten:
+
+- **Baufläche**, **Uferkacheln** und **Minenbauplätze** (gesamt) aller Aegyptus-Inseln.
+- **Ufer · Flusspferde**: die Uferkacheln der Inseln mit Flusspferden. Flusspferde werden auf Uferkacheln gejagt.
+- **Fruchtbarer Boden (Datteln)**: der natürlich fruchtbare Boden aller Inseln. Bäume wie Dattelpalmen wachsen nur dort, nicht auf bewässertem Land (zumindest ohne Forschung).
+- **Baufläche · Lavendel / Weintrauben / Oliven**: die ganze Baufläche der Inseln mit dieser Fruchtbarkeit. Diese Pflanzen wachsen auf jeder Kachel, sobald sie bewässert ist.
+- **Kupfer- / Zinn- / Mineralien-Minen**: die aktiven Minenbauplätze der Inseln mit dieser Fruchtbarkeit. Diese drei brauchen einen Minenbauplatz.
+- **Inseln mit Gold** und **Gold-Minen**: wie viele Inseln Gold tragen, und die aktiven Minenbauplätze dieser Inseln. Ägyptisches Gold gibt es als Küstenproduktion (nur direkt an der Küstenlinie) und als Mine auf Bergbauplätzen.
+
+Jeder Regler hat eine Median-Schaltfläche und die Statistik über 100.000 Seeds für die aktuelle Kartengröße, Fruchtbarkeit und das Rohstoffvorkommen. Aegyptus ist eine feste Karte, Kartenvorlage und DLC01 ändern daran nichts. Die Filter, ihre Gewichte für die Seed-Bewertung und das DLC03-Kästchen werden in den Presets gespeichert und im CSV exportiert.
 
 **Seed-Bewertung.** Der Minimum-Filter kennt nur Alles-oder-nichts; die Seed-Bewertung hingegen lässt dich die durchgekommenen Seeds danach ordnen, wie gut sie zu dem passen, was dir wirklich wichtig ist, statt einen Seed zu verwerfen, der 2.000 Kacheln unter einem Grenzwert liegt, aber sonst hervorragend ist. Hake **Seed-Bewertung aktivieren** an (neben „Nur die Seeds der Ergebnistabelle durchsuchen"), um neben jedem Flächen-, Bauplatz-, Minen- und erweiterten Fruchtbarkeitsfilter, neben den sechs Cinis-Pool-Fruchtbarkeiten, neben der Cinis-Slot-1-Wahl und neben „Nur maximale Bauplätze" je einen Bewertungssregler (0-10) einzublenden - unabhängig davon, ob dasselbe auch als Minimum-Filter aktiv ist. Jeder Seed bekommt dann eine Bewertung aus 10 in einer eigenen Spalte (sortierbar, auch bei Mehrfachsortierung); ein Strich bedeutet, dass keine Bewertung vergeben ist. Die Bewertungen werden gegen dieselbe 100.000-Seed-Statistik normiert wie die Filter, sodass eine 10 auf „meist volle Bandbreite" und eine 10 auf „schmale Bandbreite" gleich zählen. **Bewertungsbereich bei Ausreißern erweitern** (neben „Erweiterte Fruchtbarkeitsfilter anzeigen") dehnt den Bereich einer Kennzahl auf einen ungewöhnlich extremen Treffer *dieser* Suche aus, statt ihn einfach bei 1,0 zu kappen - nützlich bei Kennzahlen mit schmaler 100.000-Seed-Spanne wie Zinnminen. Mauszeiger über eine Bewertung zeigt die Aufschlüsselung je Kennzahl. Bewertungen und beide Schalter werden mit den Presets gespeichert und in die CSV exportiert.
 
@@ -112,27 +127,29 @@ Mit den „Hinzufügen"-Schaltflächen legst du eine Bedingungszeile an und wäh
 
 **Start** führt die Suche aus, **Abbrechen** hält sie vorzeitig an. Treffer erscheinen laufend in der Tabelle.
 
-**Wie schnell ist das Ganze?** Gemessen mit dem eingebauten Schalter `--benchmark` auf einem Ryzen 9 9950X3D (16 Kerne, 32 Threads), Corners Large mit DLC01:
+**Wie schnell ist das?** Gemessen mit dem eingebauten Schalter `--benchmark` auf einem Ryzen 9 9950X3D (16 Kerne, 32 Threads), Corners Large mit DLC01:
 
-| Aufgabe pro Seed | 1 Thread | 32 Threads |
+| Arbeit pro Seed | 1 Thread | 32 Threads |
 |---|---|---|
-| Eine Suche mit Latium-Filtern (der Normalfall) | etwa 5.700 Seeds/s | etwa 93.000 Seeds/s |
-| Nur Latium erzeugen | etwa 5.700 Seeds/s | etwa 90.000 Seeds/s |
-| Nur Albion erzeugen | etwa 10.300 Seeds/s | etwa 173.000 Seeds/s |
+| Eine Suche mit Latium-Filtern (der Normalfall) | etwa 5.700 Seeds/s | etwa 90.000 Seeds/s |
+| Nur Latium erzeugen | etwa 5.700 Seeds/s | etwa 88.000 Seeds/s |
+| Nur Albion erzeugen | etwa 10.400 Seeds/s | etwa 172.000 Seeds/s |
+| Nur Aegyptus erzeugen | etwa 16.600 Seeds/s | etwa 319.000 Seeds/s |
 
-Eine Million Seeds dauert also auf allen Kernen etwa 11 Sekunden, der ganze Bereich, den das Spiel annimmt (fast eine Milliarde Seeds), etwa drei Stunden. Albion wird nur für Seeds erzeugt, die Latium schon bestanden haben (oder zuerst, wenn seine Filter die strengeren sind). Ein langsamerer Rechner skaliert ungefähr mit der Kernzahl seiner CPU.
+Eine Million Seeds dauert also auf allen Kernen etwa 11 Sekunden, der ganze Bereich, den das Spiel annimmt (fast eine Milliarde Seeds), etwa drei Stunden. Albion wird nur für Seeds erzeugt, die Latium schon bestanden haben (oder zuerst, wenn seine Filter die strengeren sind), und Aegyptus wird zuerst geprüft, wenn es eigene Filter hat, weil es die günstigste Region ist. Ein langsamerer Rechner skaliert ungefähr mit seiner Kernzahl.
 
 ### 5. Ergebnisse
 
-Die Tabelle listet jeden passenden Seed mit seinen Kennzahlen: bebaubare Kacheln je Region, Sumpffläche, Zahl der Bauplätze und die Fruchtbarkeitsverteilung auf Cinis. Standardmäßig bleibt die Tabelle kompakt: die Flächen und die Berg- und Flussbauplätze gesamt je Region. Spaltenköpfe mit ▦ sind Kachelzahlen. Der Haken bei **Erweiterte Fruchtbarkeitsfilter anzeigen** blendet alle fruchtbarkeitsbezogenen Spalten ein (Gold- und Störfluss-Bauplätze, die einzelnen Minen, die Spalten der erweiterten Filter), zusammen mit den passenden Filterzeilen. Zahlen folgen der Fenstersprache: Deutsch trennt Tausender mit 1.234, Englisch mit 1,234. Passen nicht alle Spalten ins Fenster, lässt sich die Tabelle seitlich scrollen. Der Mauszeiger über einer dieser Zahlen zeigt eine kleine Anzeige: wo der Wert dieses Seeds zwischen dem Minimum und Maximum der 100.000-Seed-Statistik liegt, mit markiertem Median - so bekommt eine nackte Zahl wie „145" Einordnung, ohne den zugehörigen Filter zu öffnen.
+Die Tabelle listet jeden passenden Seed mit seinen Kennzahlen: bebaubare Kacheln je Region, Sumpffläche, Zahl der Bauplätze und die Fruchtbarkeitsverteilung auf Cinis. Standardmäßig bleibt die Tabelle kompakt: die Flächen und die Berg- und Flussbauplätze gesamt je Region (mit DLC03 auch Fläche, Ufer und Minenbauplätze gesamt von Aegyptus). Spaltenköpfe mit ▦ sind Kachelzahlen. Der Haken bei **Erweiterte Fruchtbarkeitsfilter anzeigen** blendet alle fruchtbarkeitsbezogenen Spalten ein: Gold- und Störfluss-Bauplätze, die einzelnen Minen, die Spalten der erweiterten Filter und die Fruchtbarkeits- und Minenspalten von Aegyptus, zusammen mit den passenden Filterzeilen in der Mitte des Fensters. Diese Filter wirken nur, solange der Haken gesetzt ist; ein Preset, das einen davon nutzt, setzt ihn automatisch. Zahlen folgen der Fenstersprache: Deutsch trennt Tausender mit 1.234, Englisch mit 1,234. Passen nicht alle Spalten ins Fenster, lässt sich die Tabelle seitlich scrollen. Der Mauszeiger über einer dieser Zahlen zeigt eine kleine Anzeige: wo der Wert dieses Seeds zwischen dem Minimum und Maximum der 100.000-Seed-Statistik liegt, mit markiertem Median - so bekommt eine nackte Zahl wie „145" Einordnung, ohne den zugehörigen Filter zu öffnen.
 
-- **Vorschau** – Seed eintippen und Vorschau drücken, um beide Regionen als Karte zu sehen: jede Insel genau dort, wo das Spiel sie hinsetzt, und so gedreht, wie das Spiel sie dreht, mit ihrem Draufsicht-Bild, dazu die Dekorationsinseln und die Drittanbieter-Inseln (Händler und Räuber). Beim Darüberfahren erscheinen Fruchtbarkeiten und Bauplätze; die Rahmenfarbe zeigt die Rolle. Der Rand der normalen Karte und der des Prophecies-of-Ash-Bereichs sind als echte Rechtecke eingezeichnet. Das geht für jeden Seed, auch ohne Suche. **Zufall** setzt einen zufälligen gültigen Seed in das Feld. Die Inseln lassen sich als **Kachelkarte** zeichnen (Voreinstellung: jede Kachel nach Typ eingefärbt - Baufläche, Sumpf, Fluss, Hafen, nicht bebaubar) oder mit den **Grafiken des Spiels**. Gezoomt wird mit dem Regler, den Schaltflächen + und − oder Strg + Mausrad (um den Mauszeiger), Ziehen mit der linken Maustaste verschiebt, **Einpassen** zeigt wieder alles; in der Kachelkarte ist jedes Pixel eine Kachel. Die Insel-Tooltips zeigen auch die Kachelaufteilung: Baufläche, Sumpf (Albion) und Hafen.
+- **Vorschau** – Seed eintippen und Vorschau drücken, um beide Regionen als Karte zu sehen: jede Insel genau dort, wo das Spiel sie hinsetzt, und so gedreht, wie das Spiel sie dreht, mit ihrem Draufsicht-Bild, dazu die Dekorationsinseln und die Drittanbieter-Inseln (Händler und Räuber). Beim Darüberfahren erscheinen Fruchtbarkeiten und Bauplätze; die Rahmenfarbe zeigt die Rolle. Der Rand der normalen Karte und der des Prophecies-of-Ash-Bereichs sind als echte Rechtecke eingezeichnet. Das geht für jeden Seed, auch ohne Suche. **Zufall** setzt einen zufälligen gültigen Seed in das Feld.
 - **Inseln auf der Karte** – **+ Insel** (neben den Bedingungs-Schaltflächen jeder Region) fügt eine Regel für eine bestimmte Insel hinzu, benannt wie in den Spieldateien (XL01, L06, M03, PoA M01 …): Sie **muss vorkommen** oder **darf nicht vorkommen**, entweder überall oder nur an den gewählten Positionen (die Positionsauswahl bietet nur Plätze an, auf die diese Insel passt), und wahlweise nur mit einer bestimmten **Drehung** (0°, 90°, 180°, 270°). Beispiel: „M03 darf nicht vorkommen“ verwirft jeden Seed mit der Latium-M03; „L02 muss vorkommen an #5 mit 90°“ behält nur Seeds mit genau dieser Lage. Der Insel-Tooltip der Vorschau zeigt Kurzname und Drehung jeder Insel. Startinseln drehen sich immer zur Kartenmitte, ihre Drehung folgt also aus ihrer Position.
 - **Siedlungsplan** – in der Vorschau **Siedlungsplan** anhaken, um zu sehen, welche Inseln du in welcher Reihenfolge besiedeln solltest, um alle Fruchtbarkeiten einer Region mit wenigen, wertvollen und nah beieinander liegenden Inseln zu erreichen. Wie er funktioniert und bewertet: [Siedlungsplan und Spielstil-Bewertung](#siedlungsplan-und-spielstil-bewertung).
 - **Spielstil und Seed-Atlas-Export** – mit angehaktem Siedlungsplan bewertet die Vorschau den Seed über den Karten für drei Spielstile (Casual-Spieler, Vollversorger, Rekordbauer), und **Seed-Atlas-Export …** schreibt beschriftete Kartenbilder und die Seed-Beschreibung für den Seed Atlas auf anno-companion.com; siehe [Siedlungsplan und Spielstil-Bewertung](#siedlungsplan-und-spielstil-bewertung).
 - **Seed hinzufügen** – einen einzelnen, bestimmten Seed ohne Suche in die Tabelle aufnehmen.
 - **Seed-Liste laden** – eine Liste von Seeds aus einer Datei einlesen und alle in der Ergebnistabelle auswerten. Eine Textdatei mit einem Seed pro Zeile (wie die Ausgabedatei `treffer.txt`) und eine von der App exportierte CSV-Datei funktionieren beide; weitere Spalten werden ignoriert. Die Seeds tragen kein Kartenprofil: stelle das Profil ein, mit dem sie gefunden wurden, bevor du sie lädst.
-- **CSV exportieren** – die Ergebnistabelle als Tabellendatei schreiben. Der vorgeschlagene Dateiname trägt denselben Zeitstempel, sodass ein Klick auf Speichern ohne Umbenennen trotzdem jede Exportdatei behält.
+- **CSV exportieren** – die Ergebnistabelle als Tabellendatei schreiben. Der vorgeschlagene Dateiname trägt denselben
+  Zeitstempel, sodass ein Klick auf Speichern ohne Umbenennen trotzdem jede Exportdatei behält.
 - **Tabellenwerkzeuge** (die Zeile über der Tabelle, das meiste auch per Rechtsklick): **Seed finden** springt zu einer Seed-Nummer in der Tabelle (auch mit Enter; Trennzeichen werden ignoriert). **Sortierung aufheben** entfernt alle Spaltensortierungen und stellt die ursprüngliche Reihenfolge wieder her. **Tabelle leeren** leert die Tabelle (die Ausgabedatei der Suche bleibt erhalten).
 - **Seeds vergleichen** – eine Zeile wählen und **Als Referenz** klicken (★, gelb), dann die zu vergleichenden Seeds mit Strg+Klick oder Umschalt+Klick markieren und **Auswahl vergleichen** klicken. Die Tabelle zeigt dann nur noch die Referenz und diese Seeds, und jede Zahl ist grün, wo ein Seed die Referenz übertrifft, und rot, wo er darunter liegt (in jeder Spalte gilt: mehr ist besser, auch beim Score). Ein während des Vergleichs mit **Seed hinzufügen** hinzugefügter Seed kommt mit in den Vergleich; **Vergleich beenden** zeigt wieder alle Zeilen.
 
@@ -156,19 +173,19 @@ Besteht kein Seed die neuen Filter, zeigt die Tabelle wieder die vorherige Liste
 
 ### Der Siedlungsplan
 
-In der Seed-Vorschau **Siedlungsplan** anhaken, um zu sehen, welche Inseln du in welcher Reihenfolge besiedeln solltest, um alle Fruchtbarkeiten einer Region mit wenigen, wertvollen und nah beieinander liegenden Inseln zu erreichen. Nummerierte Marken zeigen die Inseln auf der Karte (Latium 1, 2, 3 …; Albion R1 … für die Römer und K1 … für die Kelten), die Versorgungsrouten der Hauptinsel sind gestrichelt eingezeichnet, und eine Liste unter jeder Karte nennt jeden Schritt mit den Fruchtbarkeiten, die er neu bringt. Albion braucht für jede Bevölkerung eigene Inseln, deshalb stehen beide Reihenfolgen da (etwa Römer zuerst, Kelten zuerst) mit ihrer Wertung; die gewählte wird auf der Karte eingezeichnet und im Export verwendet. Im Startmodus „Startinsel“ ist die erste Latium-Insel eine Startinsel. Mit **Ohne Cinis** lässt der Latium-Plan die Cinis weg.
+In der Seed-Vorschau **Siedlungsplan** anhaken, um zu sehen, welche Inseln du in welcher Reihenfolge besiedeln solltest, um alle Fruchtbarkeiten einer Region mit wenigen, wertvollen und nah beieinander liegenden Inseln zu erreichen. Nummerierte Marken zeigen die Inseln auf der Karte (Latium 1, 2, 3 …; Albion R1 … für die Römer und K1 … für die Kelten; Aegyptus K1 … für die kumatische und G1 … für die griechisch-römische Bevölkerung), die Versorgungsrouten der Hauptinsel sind gestrichelt eingezeichnet, und eine Liste unter jeder Karte nennt jeden Schritt mit den Fruchtbarkeiten, die er neu bringt. Albion und Aegyptus brauchen für jede Bevölkerung eigene Inseln, deshalb stehen beide Reihenfolgen da (etwa Römer zuerst, Kelten zuerst) mit ihrer Wertung; die gewählte wird auf der Karte eingezeichnet und im Export verwendet. Im Startmodus „Startinsel“ ist die erste Latium-Insel eine Startinsel. Mit **Ohne Cinis** lässt der Latium-Plan die Cinis weg.
 
-**Was ein Plan ist.** Die erste Insel ist die Hauptinsel der Bevölkerung: ihr Zentrum, das jede spätere Insel versorgt. Jede weitere Insel muss mindestens eine noch fehlende Fruchtbarkeit bringen, bis alle Fruchtbarkeiten der Region abgedeckt sind; eine Insel, deren Fruchtbarkeiten die anderen Inseln des Plans ohnehin liefern, gehört nie dazu. Nach der Hauptinsel folgt der Plan den Bevölkerungsstufen: Die nächste Insel bringt immer eine Fruchtbarkeit der niedrigsten noch fehlenden Stufe (eine Insel zählt zur niedrigsten Stufe, die sie neu bringt). Eisen ist optional: Es zählt, wenn eine Insel es mitbringt, aber keine Insel wird nur für Eisen besiedelt. Die App probiert jede mögliche Reihenfolge und zeigt die beste, sodass eine Karte immer denselben Plan bekommt.
+**Was ein Plan ist.** Die erste Insel ist die Hauptinsel der Bevölkerung: ihr Zentrum, das jede spätere Insel versorgt bzw. von diesen versorgt wird. Jede weitere Insel muss mindestens eine noch fehlende Fruchtbarkeit bringen, bis alle Fruchtbarkeiten der Region abgedeckt sind; eine Insel, deren Fruchtbarkeiten die anderen Inseln des Plans ohnehin liefern, gehört nie dazu. Nach der Hauptinsel folgt der Plan den Bevölkerungsstufen: Die nächste Insel bringt immer eine Fruchtbarkeit der niedrigsten noch fehlenden Stufe (eine Insel zählt zur niedrigsten Stufe, die sie neu bringt). Eisen ist optional: Es zählt, wenn eine Insel es mitbringt, aber keine Insel wird nur für Eisen besiedelt. Die App probiert jede mögliche Reihenfolge und zeigt die beste, sodass eine Karte immer denselben Plan bekommt.
 
 **Wie ein Plan bewertet wird.** Jeder Schritt bringt Punkte für die Insel, mal 0,9 je Schritt (die Hauptinsel zählt voll, die zweite Insel 0,9-fach, die dritte 0,81-fach …), und der Plan verliert Punkte für seine Länge und seine Wege:
 
-| | Latium | Albion |
-|---|---|---|
-| Jede neue Fruchtbarkeit der Insel | siehe Gewichte unten | siehe Gewichte unten |
-| Bauplätze | +10 je Flussbauplatz, +5 je Bergbauplatz | +10 je Bergbauplatz, +5 je Sumpfbauplatz |
-| Inselgröße | Cinis 500, XL 450, L 150, M 75, S 30 | L 200, M 100, S 10 |
-| 2., 3., 4. … Insel | −200, −400, −600 … | −150, −300, −450 … |
-| Offenes Wasser zur Hauptinsel | −0,2 je Karteneinheit | −0,2 je Karteneinheit |
+| | Latium | Albion | Aegyptus |
+|---|---|---|---|
+| Jede neue Fruchtbarkeit der Insel | siehe Gewichte unten | siehe Gewichte unten | siehe Gewichte unten |
+| Bauplätze | +10 je Flussbauplatz, +5 je Bergbauplatz | +10 je Bergbauplatz, +5 je Sumpfbauplatz | +10 je Minenbauplatz, +1 je 50 Kacheln fruchtbarer Boden und Ufer |
+| Inselgröße | Cinis 500, XL 450, L 150, M 75, S 30 | L 200, M 100, S 10 | L 250, M 100, S 50 |
+| 2., 3., 4. … Insel | −200, −400, −600 … | −150, −300, −450 … | −200, −400, −600 … |
+| Offenes Wasser zur Hauptinsel | −0,2 je Karteneinheit | −0,2 je Karteneinheit | −0,2 je Karteneinheit des Wasserwegs |
 
 Dazu kommen:
 
@@ -180,15 +197,17 @@ Dazu kommen:
 
 - **Latium:** Makrelen, Lavendel, Harz, Oliven 70 · Trauben 50 · Flachs, Murex 80 · Sandarak 140 · Mineralien 125 · Marmor 145 · Austern 30 · Stör 30 · Gold 90 · Eisen 50.
 - **Albion:** Gerste 70 · Färberpflanzen, Kupfer 190 · Zinn 140 · Salzkraut 100 · Biber, Ponys 50 · Kräuter 70 · Silber, Harz 120 · Singvögel, Flachs, Kammmuscheln, Eisen 50 · Granit 75.
+- **Aegyptus:** Gerste 70 · Flachs 120 · Kupfer 170 · Zinn 50 · Sesam 120 · Blauer Lotus 100 · Lavendel 70 · Mineralien 120, dazu 45 als Baumaterial · Oliven 70 · Trauben 50 · Flusspferde, Granatäpfel, Gold 100 · Eisen 70 · Granit 75.
 
 **Bevölkerungsstufen** (die Reihenfolge nach der Hauptinsel):
 
 - **Latium:** Stufe 2 Harz, Oliven, Eisen; danach Makrelen und Lavendel (auf Stufe 2 optional, daher nach Harz und Oliven); Stufe 3 Trauben, Flachs, Murex, Sandarak, Mineralien, Marmor; Stufe 4 Austern, Stör, Gold.
 - **Albion:** Stufe 2 Gerste, Färberpflanzen, Kupfer, Zinn, Eisen, Kräuter, Silber, Harz; Stufe 3 Salzkraut, Biber, Ponys, Granit, Singvögel, Flachs, Kammmuscheln.
+- **Aegyptus:** Stufe 2 Gerste, Flachs, Kupfer, Sesam, Eisen, Oliven; danach Zinn, Lavendel und Mineralien (für Stufe 3 nicht nötig); Stufe 3 Blauer Lotus, Granit, Trauben, Flusspferde, Granatäpfel, Gold.
 
-**Zwei Bevölkerungen (Albion).** Römer und Kelten werden nacheinander geplant: zuerst die Bevölkerung, mit der du beginnst, dann die zweite, die die Hauptinsel der ersten nicht nutzen darf und eine eigene Hauptinsel hat. Die zweite Bevölkerung bekommt einen Bonus für jede Insel, die sie mit dem ersten Plan teilt: +500 je neuer Fruchtbarkeit nach den Römern, +200 nach den Kelten. Ein Plan nutzt höchstens vier Inseln je Bevölkerung (mehr nur, wenn kein solcher Plan alle Fruchtbarkeiten abdeckt). Zwei Boni machen eine Insel zu einer guten Hauptinsel oder keltischen Insel:
+**Zwei Bevölkerungen (Albion und Aegyptus).** Römer und Kelten (Griechisch-Römer und Kumater) werden nacheinander geplant: zuerst die Bevölkerung, mit der du beginnst, dann die zweite, die die Hauptinsel der ersten nicht nutzen darf und eine eigene Hauptinsel hat. Die zweite Bevölkerung bekommt einen Bonus für jede Insel, die sie mit dem ersten Plan teilt: +500 je neuer Fruchtbarkeit nach den Römern oder Griechisch-Römern, +200 nach den Kelten oder Kumatern. Ein Plan nutzt höchstens vier Inseln je Bevölkerung (mehr nur, wenn kein solcher Plan alle Fruchtbarkeiten abdeckt). Zwei Boni machen eine Insel zu einer guten Hauptinsel oder keltischen Insel:
 
-- **Stufe-3-Waren auf der Hauptinsel:** Jede Stufe-3-Ware aus Albion, die man von Anfang an haben will (Ponys, Singvögel, Kammmuscheln), bringt auf der Hauptinsel einer Bevölkerung +1.000.
+- **Stufe-3-Waren auf der Hauptinsel:** Jede Stufe-3-Ware aus Albion, die man von Anfang an haben will (Ponys, Singvögel, Kammmuscheln), bringt auf der Hauptinsel einer Bevölkerung +1.000; in Aegyptus Blauer Lotus und Flusspferde.
 - **Zinn und Kupfer auf einer Insel** (Albion): zusammen am nützlichsten für Bronze, daher +100 für die Insel.
 
 In Albion wachsen beide Boni mit der Baufläche der Insel, weil sie sich erst mit Platz für die Produktion lohnen: Eine große Insel bekommt den vollen Bonus, eine mittlere Insel (etwa halb so viel Baufläche) die Hälfte, eine kleine Insel 15 %.
@@ -197,7 +216,7 @@ Idee und Bewertungsmodell stammen von **ewjax** (siehe [Credits](#credits)).
 
 ### Spielstil-Bewertung
 
-Mit angehaktem Siedlungsplan bewertet die Vorschau den Seed über den Karten für drei Spielstile von 0 bis 100; mit der Maus über ein Feld fahren zeigt die Details. Jede bewertete Eigenschaft bekommt eine Note zwischen 0 (der niedrigste Wert auf dieser Art Karte) und 1 (der höchste); die Wertung ist der gewichtete Mittelwert der Noten. „Diese Art Karte“ heißt: dieselbe Vorlage, Größe und Schwierigkeit. Die Spannen stammen aus 100.000 Seeds je Vorlage und Größe, für die Fruchtbarkeits- und Rohstoff-Einstellungen „Normal“ und „Spärlich“ aus 20.000 Seeds je Einstellung, da diese Karten weit weniger Minen und fruchtbare Küsten haben. Eigenschaften der Cinis zählen nur mit DLC01. Ein ✓ heißt: alle Mindestwerte des Spielstils erfüllt; nur die Rekordbauer haben einen.
+Mit angehaktem Siedlungsplan bewertet die Vorschau den Seed über den Karten für drei Spielstile von 0 bis 100; mit der Maus über ein Feld fahren zeigt die Details. Jede bewertete Eigenschaft bekommt eine Note zwischen 0 (der niedrigste Wert auf dieser Art Karte) und 1 (der höchste); die Wertung ist der gewichtete Mittelwert der Noten. „Diese Art Karte“ heißt: dieselbe Vorlage, Größe und Schwierigkeit. Die Spannen stammen aus 100.000 Seeds je Vorlage und Größe, für die Fruchtbarkeits- und Rohstoff-Einstellungen „Normal“ und „Spärlich“ aus 20.000 Seeds je Einstellung, da diese Karten weit weniger Minen und fruchtbare Küsten haben. Eigenschaften der Cinis zählen nur mit DLC01, Eigenschaften von Aegyptus nur mit angehaktem DLC03. Ein ✓ heißt: alle Mindestwerte des Spielstils erfüllt; nur die Rekordbauer haben einen.
 
 **Casual-Spieler** – gute Fruchtbarkeitsverteilung und ein einfacher Siedlungsplan auf großen, nah beieinander liegenden Inseln.
 
@@ -210,8 +229,10 @@ Mit angehaktem Siedlungsplan bewertet die Vorschau den Seed über den Karten fü
 | Cinis: Stör, Austern, Lavendel, Gold und die meisten Bauplätze | 5 |
 | Ideale römische Startinsel (Kräuter, Harz, Silber, Flachs, Singvögel; Kammmuscheln auf einer anderen Insel) | 8 |
 | Ideale keltische Startinsel | 8 |
+| Aegyptus-Inseln mit Oliven, Lavendel, Trauben (L/M) | 3 |
 | Siedlungsplan Latium: Hauptinsel (Cinis, XL01 oder XL04 am besten), Zahl der Inseln (3 oder weniger ideal), ihre Größen, offenes Wasser, Abstand zu den Piraten | 4, 8, 6, 6, 3 |
 | Siedlungsplan Albion: Zahl der Inseln (5 oder weniger ideal), ihre Größen, offenes Wasser | 7, 5, 5 |
+| Siedlungsplan Aegyptus: Zahl der Inseln, ihre Größen, Wasserweg | 4, 3, 3 |
 
 **Vollversorger** – viel Baufläche und viele Flussbauplätze, gute Küsten und Sümpfe und genug Minen, um jede Residenz voll zu versorgen. Keine Mindestwerte: Manche Vorlagen passen einfach nicht zu diesem Spielstil, das zeigt ihre Wertung.
 
@@ -225,22 +246,27 @@ Mit angehaktem Siedlungsplan bewertet die Vorschau den Seed über den Karten fü
 | Hafenkacheln der Salzkraut-Inseln / Sumpf der Singvogel-Inseln | 4 / 8 |
 | Sumpf der Biber-Inseln / Hafenkacheln der Kammmuschel-Inseln | 3 / 6 |
 | Silberminen | 8 |
-| Mineralienminen / Goldminen (Latium) | 6 / 6 |
-| Kupferminen / Zinnminen (Albion) | 6 / 6 |
+| Mineralienminen / Goldminen (Latium + Aegyptus) | 6 / 6 |
+| Kupferminen / Zinnminen (Albion + Aegyptus) | 6 / 6 |
+| Aegyptus-Baufläche / Uferkacheln / Flusspferd-Uferkacheln | 10 / 10 / 6 |
+| Aegyptus-L/M-Inseln mit Oliven / Lavendel / Trauben | 8 / 8 / 6 |
 
-**Rekordbauer** – die meiste Baufläche und die meisten Flussbauplätze, dazu Marmor und Zinn. Mindestwert: Baufläche in Latium und Albion jeweils mit mindestens 95 % bewertet, also nahe am Höchstwert der Karte.
+**Rekordbauer** – die meiste Baufläche und die meisten Flussbauplätze. Mindestwert: Baufläche in Latium und Albion jeweils mit mindestens 95 % bewertet, also nahe am Höchstwert der Karte.
 
 | Eigenschaft | Gewicht |
 |---|---|
 | Latium-Baufläche / Albion-Baufläche | 10 / 10 |
 | Latium-Flussbauplätze | 10 |
 | Hafenkacheln der Murex-Inseln / Austern-Inseln | 4 / 2 |
-| Marmor-Bauplätze / Zinnminen (Albion) | 6 / 6 |
+| Marmor-Bauplätze / Zinnminen (Albion + Aegyptus) | 6 / 6 |
 | Albion-Inseln mit Harz (L/M) | 6 |
 | Hafenkacheln der Salzkraut-Inseln | 2 |
 | Murex auf der Cinis / Austern auf der Cinis | 2 / 2 |
+| Aegyptus-Baufläche / Uferkacheln | 10 / 10 |
+| Aegyptus-Kupferminen / Mineralienminen | 6 / 4 |
+| Aegyptus-L/M-Inseln mit Oliven / Lavendel | 8 / 8 |
 
-**Seed-Atlas-Export …** schreibt je Region ein beschriftetes Kartenbild (die Kachelkarte mit dem Siedlungsplan und für jede Insel des Plans eine Karte mit ihren Fruchtbarkeiten und Bauplätzen) und die Seed-Beschreibung als Elementor-Vorlage auf Englisch und Deutsch für den Seed Atlas auf anno-companion.com. Der Text folgt den in den Siedlungsplänen gewählten Reihenfolgen. Mit **Inseln wählen** stellst du die Inseln selbst zusammen: Jeder Klick auf eine Insel fügt sie hinzu (in Klick-Reihenfolge; in Albion wechselt jeder weitere Klick zwischen Römern, Kelten, beiden und keiner). Deine Auswahl ersetzt dann auf dieser Karte und im Export den Siedlungsplan, etwa um eine perfekte Ceres-Insel zu zeigen, die der Plan übergeht.
+**Seed-Atlas-Export …** schreibt je Region ein beschriftetes Kartenbild (die Kachelkarte mit dem Siedlungsplan und für jede Insel des Plans eine Karte mit ihren Fruchtbarkeiten und Bauplätzen) und die Seed-Beschreibung als Elementor-Vorlage auf Englisch und Deutsch für den Seed Atlas auf anno-companion.com. Der Text folgt den in den Siedlungsplänen gewählten Reihenfolgen. Mit **Inseln wählen** stellst du die Inseln selbst zusammen: Jeder Klick auf eine Insel fügt sie hinzu (in Klick-Reihenfolge; in den Regionen mit zwei Bevölkerungen wechselt jeder weitere Klick zwischen erster Bevölkerung, zweiter, beiden und keiner). Deine Auswahl ersetzt dann auf dieser Karte und im Export den Siedlungsplan, etwa um eine perfekte Ceres-Insel zu zeigen, die der Plan übergeht.
 
 ---
 
@@ -336,6 +362,51 @@ Das Spiel erlaubt es, *Verheißung des Vulkans* auf einer ohne DLC erstellten Ka
 
 Die App unterstützt das mit dem Kästchen **„nachträglich aktiviert (experimentell)"**. Das „experimentell" hat einen Grund - siehe Grenzen weiter unten.
 
+### Aegyptus (DLC03)
+
+*Erwachen des Deltas* bringt eine dritte Session, Aegyptus. Sie entsteht ganz anders als Latium und Albion:
+
+- **Die Karte ist fest.** Eine einzige Ägypten-Vorlage gilt für alle Kartenformen und -größen. Jede Insel liegt immer am selben Platz mit derselben Drehung, die Schritte 2 bis 7 oben gibt es hier also nicht.
+- **Sie hat ihren eigenen Würfelstrom**, frisch aus demselben Seed gestartet. Aegyptus verschiebt nie Latium oder Albion, und die beiden verschieben nie Aegyptus.
+- **Die Kartengröße wählt kleinere Inselversionen.** Zwölf Inseln gibt es in einer vollen und einer kleineren „layer01“-Version. Das Spiel mischt sie und tauscht die ersten gegen ihre kleinere Version: zwei Inseln auf einer großen Karte, sechs auf einer mittleren, zehn auf einer kleinen. Das ist das Einzige, was die Kartengröße ändert.
+- **Danach verbraucht das Spiel eine lange, feste Strecke von Würfen** (etwa 25.600) für Arbeit, die für jeden Seed gleich ist, vermutlich ein Durchgang über die riesige 2560 × 2560-Karte. Die App überspringt sie einfach.
+- **Minenbauplätze** werden danach genau wie in Schritt 8 freigeschaltet, Insel für Insel, aus der ägyptischen Zeile der Rohstoff-Option. Aegyptus hat nur Minenbauplätze, keine Flussbauplätze. Eine Ausnahme: Eine Insel, die gegen ihre kleinere „layer01“-Version getauscht wurde, würfelt zwar die Bauplätze ihrer vollen Version aus, hat auf der Karte aber einfach alle Minenbauplätze der kleineren Version, unabhängig von der Einstellung (zum Beispiel 9 auf Groß 10 und 11 auf Groß 07).
+- **Fruchtbarkeiten** folgen Schritt 9 mit ägyptischen Fruchtbarkeits-Sets. Die Vorlage legt fest, welche Inseln Startinseln sind und welche „schwer“ (ohne Gold) oder „normal“ (mit Gold). Die Würfel entscheiden, welche der übrigen Inseln das zweite und welche das dritte Set bekommt, und dann die Fruchtbarkeiten selbst.
+
+Die Kacheln der Inseln stammen aus den Ägypten-Inseldateien: Baufläche, natürlich fruchtbarer Boden, Ufer (die Nilufer) und Hafenbereich.
+
+Mit DLC03 zeigt die Seed-Vorschau Aegyptus als dritte Karte neben Latium und Albion. Die Session ist eine zusammenhängende Deltalandschaft aus vielen Stücken, deshalb werden die Stücke ohne Unterlage gezeichnet, eingefärbt nach Kacheltyp aus den Inseldateien: trockene Baufläche, fruchtbarer Boden, Ufer, Fluss, Hafen und nicht bebaubares Land. Der Tooltip einer Insel zeigt Rolle, Fruchtbarkeiten, Minenbauplätze und Kacheln (der Umriss markiert dabei ihre Baufläche); auf mittleren und kleinen Karten zeigen die kleineren Inselversionen ihre verringerte Baufläche.
+
+Die Vorschau kann alle drei Sessions so zeichnen (**Inseln: Kachelkarte**, die Voreinstellung) oder mit den Inselgrafiken des Spiels (**Spielgrafik**); für Aegyptus ist das das Kartenbild jedes Deltastücks aus dem Spiel, zu einer durchgehenden Landschaft zusammengesetzt. Bei drei Karten nebeneinander hilft der Zoom: der Regler, die Schaltflächen + und − oder Strg + Mausrad (zoomt um den Mauszeiger), Ziehen mit der linken Maustaste verschiebt, **Einpassen** zeigt wieder alles. In der Kachelkarte ist jedes Pixel eine Kachel, beim Hineinzoomen siehst du also einzelne Kacheln. Auch die Insel-Tooltips von Latium und Albion zeigen jetzt die Kachelaufteilung: Baufläche, Sumpf (Albion) und Hafen.
+
+### Was Spielupdate 3.0 geändert hat
+
+Update 3.0 (das mit *Erwachen des Deltas* erschien) hat die Kartenerzeugung für **alle** geändert, mit und ohne DLC:
+
+- **Drei Latium-Inseln bekamen zufällige Flussbauplätze.** Ihre Flussbauplätze waren vorher fest. Jetzt werden sie wie alle zufälligen Bauplätze ausgewürfelt, und jeder zufällige Bauplatz kostet in Schritt 8 einen Wurf. Jede Karte mit einer dieser Inseln verbraucht vor Schritt 9 also 12 oder 13 Würfe mehr. Weil die Reihenfolge alles ist, **ändern sich alle Fruchtbarkeiten einer solchen Karte**, obwohl die Inseln selbst an ihrem Platz bleiben. Auch ihre Fluss-, Goldfluss- und Störfluss-Bauplätze ändern sich.
+- **Eine Latium-Insel bekam eine neue Startrichtung.** Ist sie Startinsel, wird sie etwas anders gedreht. Das ändert das Layout der Karten, auf denen sie startet.
+- **Archipel Groß verschob zwei Albion-Plätze.** Zwei Inselplätze in der Albion-Vorlage bekamen neue Koordinaten, also liegen die Inseln dort jetzt woanders.
+
+Die App erzeugt Karten so wie 3.0. Ein Seed, der mit einer älteren Version der App gefunden wurde, kann in 3.0 ein anderes Latium ergeben.
+
+### Warum Spielupdates die Fruchtbarkeiten durcheinanderbringen können
+
+Die Fruchtbarkeiten sind der empfindlichste Teil des ganzen Generators. Sie werden zuletzt ausgewürfelt, am Ende einer langen Kette von Würfen. Alles, was ein Spielupdate weiter vorne in dieser Kette ändert, verschiebt jeden späteren Wurf und damit alle Fruchtbarkeiten der Region:
+
+- ein Bauplatz mehr oder weniger in einer Inseldatei (wie in 3.0),
+- ein verschobener Inselplatz in einer Vorlage, der das Zusammenschieben oder die Dekoinseln verändern kann,
+- eine neue oder entfernte Insel, Dekoinsel oder neutrale Partei,
+- eine geänderte Größe der Karte oder ihres spielbaren Bereichs,
+- ein geändertes Fruchtbarkeits-Set oder ein geänderter Pool.
+
+Nichts davon muss nach einer Änderung am Kartengenerator aussehen. 3.0 hat eine Liste von Bauplätzen geändert, und das allein hat die Fruchtbarkeiten vieler Latium-Karten neu gemischt. Anno 117 bekommt immer wieder Fixes, deshalb kann ein Seed-Finder für eine Version bei der nächsten völlig danebenliegen.
+
+Was das für dich bedeutet:
+
+- **Bereits begonnene Spiele sind sicher.** Das Spiel erzeugt eine Karte einmal, beim Erstellen. Updates ändern bestehende Spielstände nicht.
+- **Ein Seed verspricht eine Karte nur für eine Spielversion.** Prüfe einen Seed nach einem Update im Spiel, bevor du eine lange Partie darauf beginnst.
+- **Dieses Projekt prüft jede neue Spielversion** mit frischen Spielständen und seinem Spielstand-Prüfer (`tools/check_savegame.py`). Eine Abweichung zeigt genau, welche Region und welcher Schritt sich verschoben hat. Bitte melde Abweichungen mit Seed und allen Einstellungen.
+
 ---
 
 ## Wie genau ist das alles?
@@ -349,14 +420,33 @@ Jede Regel wurde aus echten Spielständen und aus den Insel- und Vorlagendateien
 | Zahl der Bauplätze | 1863 / 1863 | 1440 / 1440 |
 | Dekorationsinseln | 1080 / 1080 | 900 / 900 |
 
-**11.844 Prüfungen, keine Abweichung.** Zusätzlich dient ein größeres Archiv mehrerer hundert älterer Spielstände nach jeder Änderung als Regressionstest, und die drei Bauplatz-Stufen sowie das nachträgliche DLC wurden jeweils gegen eigene Spielstände geprüft.
+**11.844 Prüfungen, keine Abweichung.** Zusätzlich dient ein größeres Archiv mehrerer hundert älterer Spielstände nach
+jeder Änderung als Regressionstest, und die drei Bauplatz-Stufen sowie das nachträgliche DLC wurden jeweils gegen eigene
+Spielstände geprüft.
+
+Die Tabelle oben entstand mit Spielversion 2.1. Für **Spielversion 3.0 und DLC03** wurde ein zweiter Satz von **52 Spielständen** erstellt: 12 Seeds, alle fünf Vorlagen, alle drei Größen, alle drei Fruchtbarkeits- und Rohstoffeinstellungen, in jedem Spielstand alle drei Sessions, auch Spielstände nach dem Hotfix vom 25.09.2026.
+
+| Was verglichen wurde | Latium | Albion | Aegyptus |
+|---|---|---|---|
+| Inseltyp, Position und Drehung | 1262 / 1262 | 832 / 832 | 2028 / 2028 |
+| Neutrale Parteien | 156 / 156 | 156 / 156 | – |
+| Dekorationsinseln | 720 / 720 | 520 / 520 | – |
+| Fruchtbarkeit (Aegyptus: in Ziehungsreihenfolge) | 1262 / 1262 | 832 / 832 | 936 / 936 |
+| Anzahl der Bauplätze | 1262 / 1262 | 832 / 832 | 936 / 936 |
+
+**11.734 Prüfungen, keine Abweichung.**
 
 ---
 
 ## Bekannte Grenzen
 
-- **„DLC nachträglich aktiviert" ist experimentell.** Die zusätzlichen Würfe, die das Spiel vor dem Setzen der neuen Inseln macht, sind nur für die Kartengrößen bekannt, die in unseren Spielständen vorkommen. Bei einer ungetesteten Größe greift eine Formel, die für die meisten Werte stimmt, für manche aber nicht - dann können die **Fruchtbarkeiten auf den neu hinzugekommenen Inseln** falsch sein. Der alte Teil der Karte stimmt immer. Mit den Stufen normal und spärlich wurde es außerdem noch nicht geprüft.
-- **DLC03** ist vorbereitet, aber noch nicht aktiv; das Kästchen ist inaktiv.
+- **„DLC nachträglich aktiviert" ist experimentell.** Die zusätzlichen Würfe, die das Spiel vor dem Setzen der neuen
+  Inseln macht, sind nur für die Kartengrößen bekannt, die in unseren Spielständen vorkommen. Bei einer ungetesteten
+  Größe greift eine Formel, die für die meisten Werte stimmt, für manche aber nicht - dann können die
+  **Fruchtbarkeiten auf den neu hinzugekommenen Inseln** falsch sein. Der alte Teil der Karte stimmt immer. Mit den
+  Stufen normal und spärlich wurde es außerdem noch nicht geprüft.
+- **Spielversion 3.0.** Die App erzeugt Karten so wie Spielversion 3.0. Update 3.0 hat die Flussbauplätze von drei Latium-Inseln geändert; ein Seed, der mit einer älteren Version der App gefunden wurde, kann in 3.0 andere Zahlen bei Fluss-, Goldfluss- und Störfluss-Bauplätzen haben.
+- **Aegyptus** wurde gegen 52 Spielstände geprüft (12 Seeds, alle Vorlagen, Größen, Fruchtbarkeits- und Rohstoffeinstellungen). Bei den Fruchtbarkeitseinstellungen „Normal“ und „Spärlich“ stützen sich einige Details auf weniger Spielstände als bei „Reichlich“. Die Aegyptus-Vorschau zeichnet die Inseln aus ihren Kachelrastern, nicht mit den Grafiken des Spiels.
 
 ---
 
@@ -369,7 +459,8 @@ Die App ist ein einzelnes C#-Projekt. Mit installiertem
 dotnet build src/Anno117SeedFinder/Anno117SeedFinder.csproj -c Debug
 ```
 
-Die ausführbare Datei liegt danach in `src/Anno117SeedFinder/bin/Debug/net10.0-windows/`. Für ein Paket, das du weitergeben kannst:
+Die ausführbare Datei liegt danach in `src/Anno117SeedFinder/bin/Debug/net10.0-windows/`. Für ein Paket, das du weitergeben
+kannst:
 
 ```
 dotnet publish src/Anno117SeedFinder/Anno117SeedFinder.csproj -c Release --self-contained false -o publish
@@ -394,8 +485,8 @@ Der Ordner `tools` enthält die Skripte, die den Generator mit deinen eigenen Sp
 
 ## Credits
 
-Diese App begann ursprünglich als Projekt von **Drullo321**. Er hat rekonstruiert, wie der World Generator von Anno 117 tatsächlich arbeitet - die Zufallskette hinter den Inselplätzen, Drehungen, Fruchtbarkeiten und Bauplätzen, die in diesem Dokument beschrieben sind, und die erste funktionierende Version davon gebaut: die anfängliche Nutzeroberfläche sowie den ersten Generator für das Kartentemplate Ecken und, darauf aufbauend, für die Templates Archipel und Inselkette. Dieses Reverse Engineering ist das Fundament, auf dem alles andere hier aufgebaut ist.
+Diese App begann ursprünglich als Projekt von **Drullo321**. Er hat rekonstruiert, wie der World Generator von Anno 117 tatsächlich arbeitet - die Zufallskette hinter den Inselplätzen, Drehungen, Fruchtbarkeiten und Bauplätzen, die in diesem Dokument beschrieben sind, und außerdem die erste funktionierende Version der App gebaut: die anfängliche Nutzeroberfläche sowie den ersten Generator für das Kartentemplate Ecken und, darauf aufbauend, für die Templates Archipel und Inselkette. Dieses Reverse Engineering ist das Fundament, auf dem alles andere hier aufgebaut ist.
 
-Danach hat er das Projekt wegen diverser Gründe zur Fertigstellung an mich übergeben. Seitdem wurde es erweitert, um es gegen jedes Kartentemplate, jede Größe und jede Spieleinstellung zu validieren, nicht nur die oben genannten Templates; wurde auf die 2.1-Kartentemplates aktualisiert; wurde erweitert, um DLC01 korrekt zu behandeln, sowohl wenn es von Anfang an deaktiviert ist als auch wenn es nachträglich mitten im Spiel aktiviert wird; und um die danach hinzugekommenen Funktionen ergänzt - die erweiterten Fruchtbarkeitsfilter, die Seed-Bewertungsfunktion und die Nutzerbberflächen rund um die beiden.
+Danach hat er das Projekt wegen diverser Gründe zur Fertigstellung an mich übergeben. Seitdem wurde es erweitert, um es gegen jedes Kartentemplate, jede Größe und jede Spieleinstellung zu validieren, nicht nur die oben genannten Templates; wurde auf die 2.1-Kartentemplates aktualisiert; wurde erweitert, um DLC01 korrekt zu behandeln, sowohl wenn es von Anfang an deaktiviert ist als auch wenn es nachträglich mitten im Spiel aktiviert wird; und um die danach hinzugekommenen Funktionen ergänzt - die erweiterten Fruchtbarkeitsfilter, die Seed-Bewertungsfunktion und die Nutzeroberflächen rund um die beiden sowie die Unterstützung für DLC03.
 
 Der **Siedlungsplan** in der Seed-Vorschau war die Idee von **ewjax**, einschließlich des Bewertungsmodells dahinter. Sein Projekt [Anno 117 Island Selection](https://github.com/ewjax/Anno-117-IslandSelection) bewertet Siedlungsreihenfolgen nach den Produktionsketten, die jede Fruchtbarkeit versorgt, und sucht sie per Simulated Annealing; die App nutzt dasselbe Modell, berücksichtigt zusätzlich die Entfernung zwischen den Inseln und probiert jede Reihenfolge exakt durch.

@@ -28,18 +28,35 @@ internal sealed class SeedAnalysis
  public GuideMap? LatiumMap{get;}public GuideMap? AlbionMap{get;}
  public GuidePlan? LatiumPlan{get;}public PopulationGuide? RomansFirst{get;}public PopulationGuide? CeltsFirst{get;}
  public bool Full=>LatiumLayout is not null;
+#if !GAME21
+ public EgyptGeneration? Egypt{get;}public MapLayout? EgyptLayout{get;}public List<GuideIsland>? EgyptIslands{get;}public GuideMap? EgyptMap{get;}
+ public PopulationGuide? KumaticFirst{get;}public PopulationGuide? GrecoRomanFirst{get;}
+#endif
 
+#if GAME21
  public SeedAnalysis(uint seed,MapProfile profile,FertilitySetting fertility,SlotSetting slots,bool full,StartModeKind startMode=StartModeKind.Flagship,bool withoutCinis=false)
+#else
+ // withEgypt: DLC03 on (Aegyptus is rated too). The Aegyptus guide reads the tile images, which needs a WPF Application.
+ public SeedAnalysis(uint seed,MapProfile profile,FertilitySetting fertility,SlotSetting slots,bool full,StartModeKind startMode=StartModeKind.Flagship,bool withoutCinis=false,bool withEgypt=false)
+#endif
  {
   Seed=seed;Profile=profile;Fertility=fertility;Slots=slots;StartMode=startMode;WithoutCinis=withoutCinis&&profile.Dlc01;
   LatiumLayout=full?new():null;AlbionLayout=full?new():null;
   Latium=Generator.GenerateLatium(seed,new GeneratorScratch(),profile,fertilitySetting:fertility,slotSetting:slots,layout:LatiumLayout);
   Albion=AlbionGenerator.Generate(seed,profile,fertilitySetting:fertility,slotSetting:slots,layout:AlbionLayout);AlbionMetrics=RegionMetrics.Calculate(Albion);
+#if !GAME21
+  if(withEgypt)Egypt=EgyptGenerator.Generate(seed,profile.Size,fertility,slots);
+#endif
   if(!full)return;
   LatiumIslands=SeedPreviewWindow.GuideIslands(Latium.Islands,LatiumLayout!,RegionKind.Latium);LatiumMap=SeedPreviewWindow.GuideMapOf(LatiumLayout!,RegionKind.Latium);
   AlbionIslands=SeedPreviewWindow.GuideIslands(Albion,AlbionLayout!,RegionKind.Albion);AlbionMap=SeedPreviewWindow.GuideMapOf(AlbionLayout!,RegionKind.Albion);
   LatiumPlan=SettlingGuide.Latium(LatiumIslands,startMode==StartModeKind.StartIsland,LatiumMap,WithoutCinis);
   RomansFirst=SettlingGuide.Albion(AlbionIslands,true,AlbionMap);CeltsFirst=SettlingGuide.Albion(AlbionIslands,false,AlbionMap);
+#if !GAME21
+  if(Egypt is null)return;
+  EgyptLayout=EgyptGenerator.Layout(Egypt);(EgyptIslands,EgyptMap)=SeedPreviewWindow.EgyptGuideInput(Egypt,EgyptLayout);
+  KumaticFirst=SettlingGuide.Egypt(EgyptIslands,true,EgyptMap);GrecoRomanFirst=SettlingGuide.Egypt(EgyptIslands,false,EgyptMap);
+#endif
  }
 
  // The author's own choice of islands per region (Seed Atlas export); when set, descriptions and export images show it instead of
@@ -47,8 +64,15 @@ internal sealed class SeedAnalysis
  public GuidePlan? LatiumChoice{get;set;}public PopulationGuide? AlbionChoice{get;set;}
  public GuidePlan? ShownLatium=>LatiumChoice??LatiumPlan;
  public PopulationGuide? ShownAlbion(bool? romanFirst=null)=>AlbionChoice??AlbionGuide(romanFirst);
+#if !GAME21
+ public PopulationGuide? EgyptChoice{get;set;}
+ public PopulationGuide? ShownEgypt(bool? kumaticFirst=null)=>EgyptChoice??EgyptGuide(kumaticFirst);
+#endif
  // The order a description and the map show: the chosen one, else the better one.
  public PopulationGuide? AlbionGuide(bool? romanFirst=null)=>romanFirst switch{true=>RomansFirst??CeltsFirst,false=>CeltsFirst??RomansFirst,_=>Better(RomansFirst,CeltsFirst)};
+#if !GAME21
+ public PopulationGuide? EgyptGuide(bool? kumaticFirst=null)=>kumaticFirst switch{true=>KumaticFirst??GrecoRomanFirst,false=>GrecoRomanFirst??KumaticFirst,_=>Better(KumaticFirst,GrecoRomanFirst)};
+#endif
  static PopulationGuide? Better(PopulationGuide? a,PopulationGuide? b)=>b is null||a is not null&&a.Score>=b.Score?a:b;
 }
 
@@ -67,11 +91,17 @@ internal static class SeedRecommendation
   (Barley,"Barley","Gerste"),(Herbs,"Herbs","Kräuter"),(DyePlants,"Dye Plants","Färberpflanzen"),(Silver,"Silver","Silber"),(Copper,"Copper","Kupfer"),(Tin,"Tin","Zinn"),
   (SmallBirds,"Small Birds","Singvögel"),(SeaShells,"Sea Shells","Kammmuscheln"),(Saltwort,"Saltwort","Salzkraut"),(Beaver,"Beavers","Biber"),(Ponies,"Ponies","Ponys"),
   (Granite,"Granite","Granit"),
+#if !GAME21
+  (149818,"Sesame","Sesam"),(149819,"Blue Lotus","Blauer Lotus"),(149820,"Hippos","Flusspferde"),(150477,"Pomegranates","Granatäpfel"),(150506,"Gold","Gold"),
+#endif
   (Iron,"Iron","Eisen"),
  ];
  static readonly Dictionary<uint,int> NameOrder=Names.Select((name,index)=>(name.Guid,index)).ToDictionary(x=>x.Guid,x=>x.index);
  // German after "mit" (dative plural) where it differs.
  static readonly Dictionary<uint,string> Dative=new(){[Herbs]="Kräutern",[SmallBirds]="Singvögeln",[Beaver]="Bibern",
+#if !GAME21
+  [149820]="Flusspferden",[150477]="Granatäpfeln",
+#endif
  };
  internal static string FertilityName(uint guid,bool german)=>Names.FirstOrDefault(name=>name.Guid==guid) is var name&&name.En is not null?(german?name.De:name.En):guid.ToString();
 
@@ -99,13 +129,29 @@ internal static class SeedRecommendation
  static double Norm(double value,double min,double max)=>max<=min?1:Math.Clamp((value-min)/(max-min),0,1);
  // Ranges of the map's own fertility and resource slot settings where they differ from Abundant (PlaystyleRanges).
  static ScoreRange Range(SeedAnalysis a,ScoreMetric metric)=>PlaystyleRanges.For(a.Profile,a.Fertility,a.Slots,metric)??
+#if GAME21
   ScoreMetrics.PopulationRange(metric,a.Profile)!.Value;
+#else
+  ScoreMetrics.PopulationRange(metric,a.Profile,a.Fertility,a.Slots)!.Value;
+#endif
  static ScorePart Metric(SeedAnalysis a,string key,ScoreMetric metric,double value,double weight){var range=Range(a,metric);return new(key,value,range.Normalize(value),weight,false,range.Median);}
  public static PlaystyleScore Score(SeedAnalysis a,Playstyle style)
  {
   var parts=new List<ScorePart>();var failed=new List<string>();
   var latium=a.Latium.Metrics;var albion=a.AlbionMetrics;
+#if !GAME21
+  var egypt=a.Egypt?.Metrics;
+  ScorePart EgyptPart(string key,EgyptFilter filter,double weight){var range=EgyptRanges.For(a.Profile.Size,a.Fertility,a.Slots,filter);var value=EgyptFilters.Get(filter).Value(egypt!.Value);return new(key,value,Norm(value,range.Min,range.Max),weight,false,range.Median);}
+  // Mines of one kind in Latium or Albion plus Aegyptus, rated against the sum of both ranges.
+  ScorePart Combined(string key,ScoreMetric metric,int regionValue,EgyptFilter filter,double weight)
+  {
+   var range=Range(a,metric);if(egypt is null)return new(key,regionValue,range.Normalize(regionValue),weight,false,range.Median);
+   var egyptRange=EgyptRanges.For(a.Profile.Size,a.Fertility,a.Slots,filter);var value=regionValue+EgyptFilters.Get(filter).Value(egypt.Value);
+   return new(key,value,Norm(value,range.Min+egyptRange.Min,range.Max+egyptRange.Max),weight,false,range.Median+egyptRange.Median);
+  }
+#else
   ScorePart Combined(string key,ScoreMetric metric,int regionValue,double weight)=>Metric(a,key,metric,regionValue,weight);
+#endif
   switch(style)
   {
    case Playstyle.Casual:
@@ -122,10 +168,26 @@ internal static class SeedRecommendation
     parts.Add(Metric(a,"MarshBeaver",ScoreMetric.AdvAlbionMarshBeaver,albion.MarshBeaverTiles,3));
     parts.Add(Metric(a,"HarbourSeaShells",ScoreMetric.AdvAlbionHarbourSeaShells,albion.HarbourSeaShellTiles,6));
     parts.Add(Metric(a,"Silver",ScoreMetric.SilverMines,albion.SilverMineSites,8));
+#if GAME21
     parts.Add(Combined("Minerals",ScoreMetric.MineralMines,latium.MineralMineSites,6));
     parts.Add(Combined("GoldMines",ScoreMetric.GoldMines,latium.GoldMineSites,6));
     parts.Add(Combined("Copper",ScoreMetric.CopperMines,albion.CopperMineSites,6));
     parts.Add(Combined("Tin",ScoreMetric.TinMines,albion.TinMineSites,6));
+#else
+    parts.Add(Combined("Minerals",ScoreMetric.MineralMines,latium.MineralMineSites,EgyptFilter.MineralMines,6));
+    parts.Add(Combined("GoldMines",ScoreMetric.GoldMines,latium.GoldMineSites,EgyptFilter.GoldMines,6));
+    parts.Add(Combined("Copper",ScoreMetric.CopperMines,albion.CopperMineSites,EgyptFilter.CopperMines,6));
+    parts.Add(Combined("Tin",ScoreMetric.TinMines,albion.TinMineSites,EgyptFilter.TinMines,6));
+    if(egypt is not null)
+    {
+     parts.Add(EgyptPart("AegyptusArea",EgyptFilter.Buildable,10));
+     parts.Add(EgyptPart("AegyptusRiverbank",EgyptFilter.Riverbank,10));
+     parts.Add(EgyptPart("AegyptusHippos",EgyptFilter.HippoRiverbank,6));
+     parts.Add(EgyptIslandsPart(a,"AegyptusOlives",EgyptGenerator.Olives,8));
+     parts.Add(EgyptIslandsPart(a,"AegyptusLavender",EgyptGenerator.Lavender,8));
+     parts.Add(EgyptIslandsPart(a,"AegyptusGrapes",EgyptGenerator.Grapes,6));
+    }
+#endif
     break;
    case Playstyle.RecordBuilder:
     parts.Add(Metric(a,"LatiumArea",ScoreMetric.LatiumArea,latium.BuildableTiles,10));
@@ -143,7 +205,20 @@ internal static class SeedRecommendation
     // Resin spread over several islands (large and medium ones).
     var resinIslands=a.Albion.Count(island=>island.Fertilities.Contains(Resin)&&SizeOf(island) is "L" or "M");
     parts.Add(new("ResinSpread",resinIslands,Norm(resinIslands,1,4),6));
+#if GAME21
     parts.Add(Combined("Tin",ScoreMetric.TinMines,albion.TinMineSites,6));
+#else
+    parts.Add(Combined("Tin",ScoreMetric.TinMines,albion.TinMineSites,EgyptFilter.TinMines,6));
+    if(egypt is not null)
+    {
+     parts.Add(EgyptPart("AegyptusArea",EgyptFilter.Buildable,10));
+     parts.Add(EgyptPart("AegyptusRiverbank",EgyptFilter.Riverbank,10));
+     parts.Add(EgyptPart("AegyptusCopper",EgyptFilter.CopperMines,6));
+     parts.Add(EgyptPart("AegyptusMinerals",EgyptFilter.MineralMines,4));
+     parts.Add(EgyptIslandsPart(a,"AegyptusOlives",EgyptGenerator.Olives,8));
+     parts.Add(EgyptIslandsPart(a,"AegyptusLavender",EgyptGenerator.Lavender,8));
+    }
+#endif
     // Building space near the top of the map's range in both regions: at least RecordAreaMinimum of the way from the fewest to the
     // most tiles (the rating of the building space).
     foreach(var(key,metric,value) in new[]{("LatiumArea",ScoreMetric.LatiumArea,latium.BuildableTiles),("AlbionArea",ScoreMetric.AlbionArea,albion.BuildableTiles)})
@@ -154,6 +229,20 @@ internal static class SeedRecommendation
   return new(style,total<=0?0:Math.Round(100*parts.Sum(part=>part.Weight*part.Normalized)/total,1),parts,failed);
  }
  internal static double RecordAreaMinimum=.95;
+#if !GAME21
+ // Aegyptus Ceres islands: olives, lavender and grapes (two or more of them) on a large or medium island.
+ static ScorePart EgyptCeres(SeedAnalysis a,double weight)
+ {
+  var count=a.Egypt!.Islands.Count(island=>MapSchematic.SizeClass(EgyptGenerator.FileName(island.Variant)) is "L" or "M"&&Fit(island.Fertilities,[Olives,Lavender,Grapes])>=.66);
+  return new("AegyptusCeres",count,Norm(count,0,2),weight);
+ }
+ // Large and medium Aegyptus islands with one fertility, rated against the map size's range.
+ static ScorePart EgyptIslandsPart(SeedAnalysis a,string key,uint fertility,double weight)
+ {
+  var count=PlaystyleRanges.LargeMediumIslands(a.Egypt!,fertility);var range=PlaystyleRanges.EgyptIslands(a.Profile.Size,a.Fertility,a.Slots,fertility);
+  return new(key,count,Norm(count,range.Min,range.Max),weight,false,range.Median);
+ }
+#endif
 
  // Casual players: the ideal islands of the sheet (fast) and, with the guides, how short and compact the settling order is.
  static void CasualParts(SeedAnalysis a,List<ScorePart> parts)
@@ -179,6 +268,9 @@ internal static class SeedRecommendation
   parts.Add(new("RomanStarter",roman,roman,8,true));
   var celtic=a.Albion.Where(island=>SizeOf(island) is "L" or "XL").Select(island=>CelticFit(island.Fertilities)).DefaultIfEmpty().Max();
   parts.Add(new("CelticStarter",celtic,celtic,8,true));
+#if !GAME21
+  if(a.Egypt is not null)parts.Add(EgyptCeres(a,3));
+#endif
   if(!a.Full)return;
   // The settling guide: main island (Cinis, XL01 or XL04 best), number of islands, their sizes, open water to the main island
   // and the distance from the main island to the nearest raider.
@@ -194,6 +286,13 @@ internal static class SeedRecommendation
   else parts.Add(new("LatiumIslands",0,0,8));
   if(a.AlbionGuide() is {} albion)AddPlanParts(parts,"Albion",[albion.First,albion.Second],7,5,5,500,null);
   else parts.Add(new("AlbionIslands",0,0,7));
+#if !GAME21
+  if(a.Egypt is not null)
+  {
+   if(a.EgyptGuide() is {} egypt)AddPlanParts(parts,"Aegyptus",[egypt.First,egypt.Second],4,3,3,800,a.EgyptMap!.RouteLength);
+   else parts.Add(new("AegyptusIslands",0,0,4));
+  }
+#endif
  }
  // Islands of the plans (Latium: 3 or fewer is ideal, two populations: 5 or fewer), their sizes and the open water to the main island.
  static void AddPlanParts(List<ScorePart> parts,string region,GuidePlan[] plans,double countWeight,double sizeWeight,double waterWeight,double farWater,Func<int,int,double>? route)
@@ -226,7 +325,19 @@ internal static class SeedRecommendation
   ["LatiumRiver"]=("Latium river slots","Latium Flussbauplätze"),["Marble"]=("Marble slots","Marmor-Bauplätze"),["Silver"]=("Silver mines","Silberminen"),
   ["CinisMurex"]=("Murex on Cinis","Murex auf der Cinis"),["CinisOysters"]=("Oysters on Cinis","Austern auf der Cinis"),
   ["ResinSpread"]=("Albion islands with Resin","Albion-Inseln mit Harz"),
+#if GAME21
   ["Minerals"]=("Mineral mines","Mineralienminen"),["GoldMines"]=("Gold mines","Goldminen"),["Copper"]=("Copper mines","Kupferminen"),["Tin"]=("Tin mines","Zinnminen"),
+#else
+  ["Minerals"]=("Mineral mines (Latium + Aegyptus)","Mineralienminen (Latium + Aegyptus)"),["GoldMines"]=("Gold mines (Latium + Aegyptus)","Goldminen (Latium + Aegyptus)"),
+  ["Copper"]=("Copper mines (Albion + Aegyptus)","Kupferminen (Albion + Aegyptus)"),["Tin"]=("Tin mines (Albion + Aegyptus)","Zinnminen (Albion + Aegyptus)"),
+  ["AegyptusIslands"]=("Aegyptus: islands in the settling order","Aegyptus: Inseln im Siedlungsplan"),["AegyptusSizes"]=("Aegyptus: island sizes in the order","Aegyptus: Inselgrößen im Plan"),
+  ["AegyptusWater"]=("Aegyptus: water route to the main islands","Aegyptus: Wasserweg zu den Hauptinseln"),["AegyptusArea"]=("Aegyptus building space (tiles)","Aegyptus Baufläche (Kacheln)"),
+  ["AegyptusHippos"]=("Aegyptus Hippo riverbank tiles","Aegyptus Flusspferd-Uferkacheln"),["AegyptusCopper"]=("Aegyptus copper mines","Aegyptus Kupferminen"),
+  ["AegyptusMinerals"]=("Aegyptus mineral mines","Aegyptus Mineralienminen"),["AegyptusCeres"]=("Aegyptus islands with Olives, Lavender, Grapes (L/M)","Aegyptus-Inseln mit Oliven, Lavendel, Trauben (L/M)"),
+  ["AegyptusRiverbank"]=("Aegyptus riverbank tiles","Aegyptus Uferkacheln"),
+  ["AegyptusOlives"]=("Aegyptus L/M islands with Olives","Aegyptus-L/M-Inseln mit Oliven"),["AegyptusLavender"]=("Aegyptus L/M islands with Lavender","Aegyptus-L/M-Inseln mit Lavendel"),
+  ["AegyptusGrapes"]=("Aegyptus L/M islands with Grapes","Aegyptus-L/M-Inseln mit Trauben"),
+#endif
  };
  internal static string PartName(string key,bool german)=>PartNames.TryGetValue(key,out var name)?(german?name.De:name.En):key;
  internal static string PartValue(ScorePart part,bool german)=>part.Fraction?$"{part.Value*100:F0} %":part.Value.ToString(part.Value%1==0?"N0":"N1",Culture(german));
@@ -342,6 +453,11 @@ internal static class SeedRecommendation
    if(Has(f,Herbs,Silver,Resin,SmallBirds,Flax,SeaShells))note+=T(de," – T3 is possible with only this island!"," – T3 ist allein mit dieser Insel möglich!");
    return note;
   });
+#if !GAME21
+ static readonly uint[] KumaticStarter=[Barley,Flax,Copper,149818,Tin],GrecoRomanStarter=[Olives,Lavender,Minerals,Grapes];
+ internal static List<string> EgyptBullets(SeedAnalysis a,bool de,bool? kumaticFirst=null)=>PopulationBullets(a.ShownEgypt(kumaticFirst),de,SettlingGuide.Kumatic,SettlingGuide.GrecoRoman,("Kumatic","kumatischen","Kumatischer"),("Greco-Roman","griechisch-römischen","Griechisch-römischer"),
+  (f,_)=>Fit(f,KumaticStarter),(f,_)=>Fit(f,GrecoRomanStarter),(f,kumatic,de)=>kumatic&&Has(f,Copper,Tin)?T(de," – ideal for Bronze production"," – ideal für die Bronzeherstellung"):"");
+#endif
 
  // Strong points of the seed for a playstyle: its best-rated properties (rating 0.7 or more) as short phrases.
  internal static List<string> Highlights(PlaystyleScore score,bool de,IReadOnlySet<string>? ownChoice=null,int count=5)=>
@@ -349,7 +465,11 @@ internal static class SeedRecommendation
    .OrderBy(part=>Order(score,part)).Select(part=>Highlight(part,de))];
  // The region of a property that comes from the settling guide (null for the others).
  static string? GuidePart(string key)=>key is "LatiumMain" or "LatiumRaiders"?"Latium":key.EndsWith("Islands")||key.EndsWith("Sizes")||key.EndsWith("Water")?RegionOf(key):null;
+#if GAME21
  static string RegionOf(string key)=>key.StartsWith("Latium")?"Latium":"Albion";
+#else
+ static string RegionOf(string key)=>key.StartsWith("Latium")?"Latium":key.StartsWith("Albion")?"Albion":"Aegyptus";
+#endif
  // Highlights keep the order of the rated properties, so Latium comes before Albion.
  static int Order(PlaystyleScore score,ScorePart part)=>score.Parts.ToList().IndexOf(part);
  // Islands of the ideal kinds (their fit as adjective), the settling order, and the slot and tile counts with the median for comparison.
@@ -363,8 +483,16 @@ internal static class SeedRecommendation
  static string Highlight(ScorePart part,bool de)
  {
   if(IdealNames.TryGetValue(part.Key,out var ideal))return $"{Adjective(part.Value,de)} {(de?ideal.De:ideal.En)}";
+#if GAME21
   if(part.Key is "LatiumArea" or "AlbionArea")return $"{PartName(part.Key,de)}: {PartValue(part,de)} ({part.Normalized*100:F0} %)";
+#else
+  if(part.Key is "LatiumArea" or "AlbionArea" or "AegyptusArea")return $"{PartName(part.Key,de)}: {PartValue(part,de)} ({part.Normalized*100:F0} %)";
+#endif
+#if GAME21
   var region=part.Key.StartsWith("Latium")?"Latium":"Albion";
+#else
+  var region=part.Key.StartsWith("Latium")?"Latium":part.Key.StartsWith("Albion")?"Albion":"Aegyptus";
+#endif
   if(part.Key.EndsWith("Islands"))return T(de,$"{region}: every fertility on only {part.Value:F0} islands",$"{region}: alle Fruchtbarkeiten auf nur {part.Value:F0} Inseln");
   if(part.Key.EndsWith("Sizes"))return T(de,$"{region}: large islands in the settling order",$"{region}: große Inseln im Siedlungsplan");
   if(part.Key.EndsWith("Water"))return T(de,$"{region}: short routes to the main island",$"{region}: kurze Wege zur Hauptinsel");
@@ -374,6 +502,9 @@ internal static class SeedRecommendation
    "LatiumRaiders"=>T(de,"Main island far from the raiders","Hauptinsel weit weg von den Piraten"),
    "CinisMurex"=>T(de,"Murex on Cinis","Murex auf der Cinis"),"CinisOysters"=>T(de,"Oysters on Cinis","Austern auf der Cinis"),
    "ResinSpread"=>T(de,$"Resin on {part.Value:F0} Albion islands",$"Harz auf {part.Value:F0} Albion-Inseln"),
+#if !GAME21
+   "AegyptusCeres"=>T(de,$"{part.Value:F0} Aegyptus islands with Olives, Lavender and Grapes",$"{part.Value:F0} Aegyptus-Inseln mit Oliven, Lavendel und Trauben"),
+#endif
    _=>part.Median>0?$"{PartName(part.Key,de)}: {PartValue(part,de)} ({T(de,"median","Median")} {new ScorePart(part.Key,part.Median,0,0).Value.ToString("N0",Culture(de))})":$"{PartName(part.Key,de)}: {PartValue(part,de)}"
   };
  }
@@ -392,6 +523,14 @@ internal static class SeedRecommendation
  static IEnumerable<string> MineCounts(SeedAnalysis a,bool de)
  {
   var copper=a.AlbionMetrics.CopperMineSites;var minerals=a.Latium.Metrics.MineralMineSites;
+#if !GAME21
+  if(a.Egypt is not null)
+  {
+   yield return T(de,$"Copper mines (Albion + Aegyptus): {copper+a.Egypt.Metrics.CopperMines}",$"Kupferminen (Albion + Aegyptus): {copper+a.Egypt.Metrics.CopperMines}");
+   yield return T(de,$"Mineral mines (Latium + Aegyptus): {minerals+a.Egypt.Metrics.MineralMines}",$"Mineralienminen (Latium + Aegyptus): {minerals+a.Egypt.Metrics.MineralMines}");
+   yield break;
+  }
+#endif
   yield return T(de,$"Copper mines (Albion): {copper}",$"Kupferminen (Albion): {copper}");
   yield return T(de,$"Mineral mines (Latium): {minerals}",$"Mineralienminen (Latium): {minerals}");
  }
@@ -406,7 +545,11 @@ internal static class SeedRecommendation
  static string Html(string text)=>text.Replace("&","&amp;").Replace("<","&lt;").Replace(">","&gt;");
 
  // The description cell: optional playstyle block, one underlined section per region with its bullets, and the author line.
+#if GAME21
  internal static string DescriptionHtml(SeedAnalysis a,bool de,Playstyle? style,string author,bool? romanFirst=null)
+#else
+ internal static string DescriptionHtml(SeedAnalysis a,bool de,Playstyle? style,string author,bool? romanFirst=null,bool? kumaticFirst=null)
+#endif
  {
   var html=new StringBuilder();
   html.Append($"<p style=\"text-align: center;\"><strong>{T(de,"Description","Beschreibung")}</strong></p>\n");
@@ -416,6 +559,9 @@ internal static class SeedRecommendation
    html.Append($"<p><strong>{T(de,"Recommended for","Empfohlen für")}: {StyleName(playstyle,de)}</strong> – {Html(StyleSummary(playstyle,de))}</p>\n");
    // The guide's claims (islands, sizes, water, main island) don't describe an own choice of islands, so they go for such a region.
    var own=new HashSet<string>();if(a.LatiumChoice is not null)own.Add("Latium");if(a.AlbionChoice is not null)own.Add("Albion");
+#if !GAME21
+   if(a.EgyptChoice is not null)own.Add("Aegyptus");
+#endif
    var highlights=Highlights(score,de,own);
    if(playstyle==Playstyle.Casual)highlights.InsertRange(0,GodIslands(a,de));
    if(playstyle==Playstyle.RecordBuilder)highlights.AddRange(MineCounts(a,de));
@@ -428,13 +574,20 @@ internal static class SeedRecommendation
    html.Append("</ul>\n");
   }
   Section("Latium",LatiumBullets(a,de));Section("Albion",AlbionBullets(a,de,romanFirst));
+#if !GAME21
+  if(a.Egypt is not null)Section("Aegyptus",EgyptBullets(a,de,kumaticFirst));
+#endif
   html.Append("<p style=\"text-align: center;\"></p>\n");
   if(author.Trim().Length>0)html.Append($"<p style=\"text-align: center;\">{T(de,"Recommended by","Empfohlen von")}: <strong>{Html(author.Trim())}</strong></p>");
   return html.ToString();
  }
 
  // The Elementor template (the Seed Atlas v1.3 layout): the map images on the left, the settings table with the description on the right.
+#if GAME21
  internal static string ElementorJson(SeedAnalysis a,bool de,Playstyle? style,string author,string version,IReadOnlyList<string> imageUrls,bool? romanFirst=null)
+#else
+ internal static string ElementorJson(SeedAnalysis a,bool de,Playstyle? style,string author,string version,IReadOnlyList<string> imageUrls,bool? romanFirst=null,bool? kumaticFirst=null)
+#endif
  {
   var random=new Random(unchecked((int)a.Seed*31+(de?1:0)));string Id()=>random.Next(0x1000000,int.MaxValue).ToString("x8")[..8];
   JsonObject Heading(string id,string text,bool label,bool first=false)
@@ -462,7 +615,11 @@ internal static class SeedRecommendation
    Row("4f0bc0b"),Heading("893cdcb",T(de,"Fertilities and Lodes","Fruchtbarkeiten und Vorkommen"),true),Heading("ac5a344",SettingName(a.Fertility,de),false),
   };
   ((JsonObject)headings[^2]!)["cell_align_head_indi"]="flex-start";
+#if GAME21
   var description=DescriptionHtml(a,de,style,author,romanFirst);
+#else
+  var description=DescriptionHtml(a,de,style,author,romanFirst,kumaticFirst);
+#endif
   var table=new JsonObject
   {
    ["id"]=Id(),

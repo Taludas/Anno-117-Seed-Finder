@@ -18,6 +18,12 @@ public partial class MainWindow:Window
  const int AdvancedStep=500;
  sealed record AdvancedRow(AdvancedFilter Filter,CheckBox Enabled,Slider Slider,TextBlock Value,TextBlock Range,Button Median);
  AdvancedRow[] advancedRows=[];
+#if !GAME21
+ // The Aegyptus (DLC03) filters: one row per EgyptFilter, shown while DLC03 is on; each slider counts in its definition's Step.
+ sealed record EgyptRow(EgyptFilterDefinition Definition,CheckBox Enabled,Slider Slider,TextBlock Value,TextBlock Range,Button Median);
+ EgyptRow[] egyptRows=[];
+ readonly HashSet<EgyptFilter> configuredEgypt=[];
+#endif
  readonly HashSet<AdvancedFilter> configuredAdvanced=[];
  // Seed scoring: one weight control per ScoreMetric, found by name ("Wgt"+metric); see ScoreMetrics.cs/SCORING-PLAN.md.
  sealed record ScoreWeightRow(ScoreMetric Metric,Slider Slider,TextBlock Value,Func<bool> Applicable);
@@ -32,6 +38,9 @@ public partial class MainWindow:Window
  {
   AppCulture.Apply(this);InitializeComponent();
   advancedRows=[..AdvancedFilters.All.Select(definition=>{var name=definition.Filter.ToString();return new AdvancedRow(definition.Filter,(CheckBox)FindName("ChkAdv"+name),(Slider)FindName("SldAdv"+name),(TextBlock)FindName("LblAdv"+name),(TextBlock)FindName("LblAdv"+name+"Range"),(Button)FindName("BtnAdv"+name+"Median"));})];
+#if !GAME21
+  egyptRows=[..EgyptFilters.All.Select(definition=>{var name=definition.Filter.ToString();return new EgyptRow(definition,(CheckBox)FindName("ChkEgy"+name),(Slider)FindName("SldEgy"+name),(TextBlock)FindName("LblEgy"+name),(TextBlock)FindName("LblEgy"+name+"Range"),(Button)FindName("BtnEgy"+name+"Median"));})];
+#endif
   scoreRows=[..Enum.GetValues<ScoreMetric>().Select(metric=>new ScoreWeightRow(metric,(Slider)FindName("Wgt"+metric),(TextBlock)FindName("LblWgt"+metric),ScoreApplicability(metric)))];
   CmbMapTemplate.ItemsSource=templateChoices;CmbMapSize.ItemsSource=sizeChoices;
   CmbMapTemplate.SelectedItem=templateChoices.Single(choice=>choice.Value==MapTemplateKind.Corners);CmbMapSize.SelectedItem=sizeChoices.Single(choice=>choice.Value==MapSizeKind.Large);
@@ -44,6 +53,9 @@ public partial class MainWindow:Window
   foreach(var box in cinisChecks)box.Checked+=CinisFertilityChecked;
   ((System.Collections.Specialized.INotifyCollectionChanged)GridResults.Items).CollectionChanged+=(_,_)=>{UpdateTableSeedsOption();UpdateTableTools();};UpdateTableSeedsOption();SetUpResultTableTools();
   cinisWarningTimer.Tick+=(_,_)=>{TxtCinisWarning.Visibility=Visibility.Collapsed;cinisWarningTimer.Stop();};
+#if !GAME21
+  ChkDlc03.IsChecked=dlc03;
+#endif
   ResultColumnsChanged(this,new RoutedEventArgs());
   UpdateConditionAddButtons();
   CmbLanguage.SelectedIndex=Localization.Instance.Language==AppLanguage.English?1:0;
@@ -80,6 +92,9 @@ public partial class MainWindow:Window
     MinimumGoldMines=MinimumText(CmbMinGoldMines),MinimumMarbleSites=MinimumText(CmbMinMarbleSites),MinimumMineralMines=MinimumText(CmbMinMineralMines),MinimumCopperMines=MinimumText(CmbMinCopperMines),MinimumSilverMines=MinimumText(CmbMinSilverMines),MinimumTinMines=MinimumText(CmbMinTinMines),
     GoldMinesEnabled=ChkMinGoldMines.IsChecked==true,MarbleSitesEnabled=ChkMinMarbleSites.IsChecked==true,MineralMinesEnabled=ChkMinMineralMines.IsChecked==true,CopperMinesEnabled=ChkMinCopperMines.IsChecked==true,SilverMinesEnabled=ChkMinSilverMines.IsChecked==true,TinMinesEnabled=ChkMinTinMines.IsChecked==true,
     ShowAdvancedFilters=ChkAdvanced.IsChecked==true,AdvancedMinimums=advancedRows.ToDictionary(row=>row.Filter.ToString(),row=>(int)row.Slider.Value*AdvancedStep),AdvancedEnabled=advancedRows.ToDictionary(row=>row.Filter.ToString(),row=>row.Enabled.IsChecked==true),
+#if !GAME21
+    Dlc03=ChkDlc03.IsChecked==true,EgyptMinimums=egyptRows.ToDictionary(row=>row.Definition.Filter.ToString(),row=>(int)row.Slider.Value*row.Definition.Step),EgyptEnabled=egyptRows.ToDictionary(row=>row.Definition.Filter.ToString(),row=>row.Enabled.IsChecked==true),
+#endif
     EnableScoring=ChkScoring.IsChecked==true,ExtendScoringOutliers=ChkScoreOutliers.IsChecked==true,ScoreWeights=scoreRows.ToDictionary(row=>row.Metric.ToString(),row=>(int)row.Slider.Value),
     CinisSlot1=(CmbSlot1.SelectedItem as FertilityChoice)?.Guid??0u,CinisFertilities=[..cinisChecks.Where(box=>box.IsChecked==true).Select(box=>uint.Parse(box.Tag.ToString()!))],CinisMaximumSites=ChkMaxSites.IsChecked==true,
     Conditions=[..LatiumConditions.Children.OfType<ConditionRowControl>().Concat(AlbionConditions.Children.OfType<ConditionRowControl>()).Select(row=>row.ExportPreset())],
@@ -120,8 +135,21 @@ public partial class MainWindow:Window
    if(preset.AdvancedMinimums.TryGetValue(key,out var tiles)&&tiles>0)row.Slider.Tag=tiles/AdvancedStep;
    row.Enabled.IsChecked=preset.AdvancedEnabled.TryGetValue(key,out var enabled)&&enabled;
   }
+#if !GAME21
+  ChkDlc03.IsChecked=preset.Dlc03;configuredEgypt.Clear();
+  foreach(var row in egyptRows)
+  {
+   var key=row.Definition.Filter.ToString();
+   if(preset.EgyptMinimums.TryGetValue(key,out var minimum)&&minimum>0)row.Slider.Tag=minimum/row.Definition.Step;
+   row.Enabled.IsChecked=preset.EgyptEnabled.TryGetValue(key,out var enabled)&&enabled;
+  }
+#endif
   // Presets from before the switch covered these filters: an enabled detail filter turns the switch on, so it keeps applying.
+#if GAME21
   if(DetailFilterChecks.Any(box=>box.IsChecked==true))ChkAdvanced.IsChecked=true;
+#else
+  if(DetailFilterChecks.Any(box=>box.IsChecked==true)||egyptRows.Any(row=>row.Enabled.IsChecked==true&&!EgyptBasicColumns.Contains(row.Definition.Filter)))ChkAdvanced.IsChecked=true;
+#endif
   CmbSlot1.SelectedItem=(CmbSlot1.Items.OfType<FertilityChoice>().First(choice=>choice.Guid==preset.CinisSlot1));
   foreach(var box in cinisChecks)box.IsChecked=preset.CinisFertilities.Contains(uint.Parse(box.Tag.ToString()!));ChkMaxSites.IsChecked=preset.CinisMaximumSites;
   ChkScoring.IsChecked=preset.EnableScoring;ChkScoreOutliers.IsChecked=preset.ExtendScoringOutliers;
@@ -154,7 +182,11 @@ public partial class MainWindow:Window
    var outputPath=TimestampedFileName(TxtOutput.Text,DateTime.Now);
    var request=new SearchRequest(tableSeeds is null?ParseSeed(TxtFirstSeed,Localization.Instance["FirstSeed"]):(int)tableSeeds.Min(),tableSeeds is null?ParseSeed(TxtMaxSeed,Localization.Instance["LastSeed"]):(int)tableSeeds.Max(),ParsePositive(TxtThreads,Localization.Instance["Threads"]),ParseNonNegative(TxtLimit,Localization.Instance["MaxHits"]),outputPath,cinisSlot1,selected,activeProfile.Dlc01&&ChkMaxSites.IsChecked==true,conditions,activeProfile,
     ActiveDetail(ChkMinGoldSites,CmbMinGoldSites),ActiveDetail(ChkMinSturgeonSites,CmbMinSturgeonSites),ActiveMinimum(ChkMinLatiumMountainSites,CmbMinLatiumMountainSites),ActiveMinimum(ChkMinLatiumRiverSites,CmbMinLatiumRiverSites),ActiveMinimum(ChkMinAlbionMountainSites,CmbMinAlbionMountainSites),ActiveAreaMinimum(ChkMinLatiumArea,SldMinLatiumArea),ActiveAreaMinimum(ChkMinAlbionArea,SldMinAlbionArea),ActiveAreaMinimum(ChkMinAlbionSwampArea,SldMinAlbionSwampArea),CurrentFertilitySetting(),CurrentSlotSetting(),
+#if GAME21
     ActiveDetail(ChkMinMineralMines,CmbMinMineralMines),ActiveDetail(ChkMinCopperMines,CmbMinCopperMines),ActiveDetail(ChkMinSilverMines,CmbMinSilverMines),ActiveDetail(ChkMinMarbleSites,CmbMinMarbleSites),ActiveDetail(ChkMinGoldMines,CmbMinGoldMines),ActiveDetail(ChkMinTinMines,CmbMinTinMines),tableSeeds,ActiveAdvancedMinimums());
+#else
+    ActiveDetail(ChkMinMineralMines,CmbMinMineralMines),ActiveDetail(ChkMinCopperMines,CmbMinCopperMines),ActiveDetail(ChkMinSilverMines,CmbMinSilverMines),ActiveDetail(ChkMinMarbleSites,CmbMinMarbleSites),ActiveDetail(ChkMinGoldMines,CmbMinGoldMines),ActiveDetail(ChkMinTinMines,CmbMinTinMines),tableSeeds,ActiveAdvancedMinimums(),ActiveEgyptMinimums());
+#endif
    SetRunning(true);GridResults.ItemsSource=null;SearchProgress.Value=0;LblProgress.Text=Localization.Instance["SearchStarting"];
    cancellation=new CancellationTokenSource();
    var reporter=new Progress<SearchProgress>(x=>{SearchProgress.Value=Math.Min(100,(long)x.Processed*100/x.Total);LblProgress.Text=Localization.Instance.Format("ProgressFormat",x.Processed.ToString("N0"),x.Total.ToString("N0"),x.Hits.ToString("N0"));});
@@ -191,7 +223,11 @@ public partial class MainWindow:Window
 
  void ShowResults(IReadOnlyList<SearchHit> hits)
  {
+#if GAME21
   GridResults.ItemsSource=hits.Select(hit=>SearchResultRow.From(hit,activeProfile)).ToArray();
+#else
+  GridResults.ItemsSource=hits.Select(hit=>SearchResultRow.From(hit,activeProfile,CurrentFertilitySetting(),CurrentSlotSetting())).ToArray();
+#endif
   BtnExportCsv.IsEnabled=hits.Count>0;RecomputeScores();
  }
 
@@ -207,7 +243,11 @@ public partial class MainWindow:Window
   if(rows.Any(row=>row.Seed==seed)){LblProgress.Text=Localization.Instance.Format("SeedAlreadyInTableFormat",seed.ToString("N0"));return;}
   try
   {
+#if GAME21
    rows.Add(SearchResultRow.From(SeedSearcher.Describe(seed,activeProfile,CurrentFertilitySetting(),CurrentSlotSetting()),activeProfile));
+#else
+   rows.Add(SearchResultRow.From(SeedSearcher.Describe(seed,activeProfile,CurrentFertilitySetting(),CurrentSlotSetting()),activeProfile,CurrentFertilitySetting(),CurrentSlotSetting()));
+#endif
    // While seeds are compared, an added seed joins the comparison.
    if(comparedRows.Count>0)comparedRows.Add(rows[^1]);
    // Replacing ItemsSource builds a fresh view, so the active sorting is carried over by hand.
@@ -224,16 +264,31 @@ public partial class MainWindow:Window
   if(GoldMinesColumn is null)return;
   // The table always shows the tile totals and the total mountain/river slots. One switch ("advanced fertility filters") adds the
   // advanced filters and every fertility-specific column: gold/sturgeon river sites, the single mines, the harbour/marsh tiles
+#if GAME21
   // of the advanced filters.
+#else
+  // of the advanced filters and, with DLC03, the fertility and mine columns of Aegyptus.
+#endif
   var advanced=ChkAdvanced.IsChecked==true;AdvancedFilterPanel.Visibility=advanced?Visibility.Visible:Visibility.Collapsed;
   // The same switch shows the fertility-specific filter rows (and only then are they applied, like the advanced filters).
   foreach(var box in DetailFilterChecks)((FrameworkElement)box.Parent).Visibility=advanced?Visibility.Visible:Visibility.Collapsed;
+#if !GAME21
+  foreach(var row in egyptRows)((FrameworkElement)row.Enabled.Parent).Visibility=advanced||EgyptBasicColumns.Contains(row.Definition.Filter)?Visibility.Visible:Visibility.Collapsed;
+#endif
   foreach(var column in DetailColumns)column.Visibility=advanced?Visibility.Visible:Visibility.Collapsed;
   foreach(var column in AdvancedColumns)column.Visibility=advanced?Visibility.Visible:Visibility.Collapsed;
+#if !GAME21
+  var egypt=ChkDlc03.IsChecked==true;EgyptFilterPanel.Visibility=egypt?Visibility.Visible:Visibility.Collapsed;
+  foreach(var definition in EgyptFilters.All)((DataGridColumn)FindName("EgyCol"+definition.Filter)).Visibility=egypt&&(advanced||EgyptBasicColumns.Contains(definition.Filter))?Visibility.Visible:Visibility.Collapsed;
+#endif
   RefreshScoreVisibility();RecomputeScores();FitResultColumns();
  }
  // Every result column gets a fixed width: its header (measured, so it follows the language) plus padding, but at least room for a
+#if GAME21
  // seven-digit number. Automatic widths are not used: WPF sizes them once, and a column shown later (advanced filters) came back
+#else
+ // seven-digit number. Automatic widths are not used: WPF sizes them once, and a column shown later (advanced, DLC03) came back
+#endif
  // squeezed. When all columns do not fit, the table scrolls sideways instead of cutting headers.
  void FitResultColumns()
  {
@@ -250,11 +305,20 @@ public partial class MainWindow:Window
   }
   static double Measure(FrameworkElement element){element.Measure(new Size(double.PositiveInfinity,double.PositiveInfinity));return element.DesiredSize.Width;}
  }
+#if !GAME21
+ DataGridColumn[] EgyptColumns=>[..EgyptFilters.All.Select(definition=>(DataGridColumn)FindName("EgyCol"+definition.Filter))];
+ // The Aegyptus columns shown without the advanced switch: tiles and total mine slots.
+ static readonly HashSet<EgyptFilter> EgyptBasicColumns=[EgyptFilter.Buildable,EgyptFilter.Riverbank,EgyptFilter.MineSlots];
+#endif
  CheckBox[] DetailFilterChecks=>[ChkMinGoldSites,ChkMinSturgeonSites,ChkMinMarbleSites,ChkMinMineralMines,ChkMinGoldMines,ChkMinSilverMines,ChkMinTinMines,ChkMinCopperMines];
  static readonly HashSet<ScoreMetric> DetailMetrics=[ScoreMetric.GoldRiverSites,ScoreMetric.SturgeonRiverSites,ScoreMetric.MarbleSites,ScoreMetric.MineralMines,ScoreMetric.GoldMines,ScoreMetric.SilverMines,ScoreMetric.TinMines,ScoreMetric.CopperMines];
  // A fertility-specific site/mine minimum counts only while the advanced switch shows it.
  int ActiveDetail(CheckBox box,ComboBox choice)=>ChkAdvanced.IsChecked==true?ActiveMinimum(box,choice):0;
  DataGridColumn[] DetailColumns=>[GoldRiverColumn,SturgeonRiverColumn,MarbleSitesColumn,MineralMinesColumn,GoldMinesColumn,SilverMinesColumn,TinMinesColumn,CopperMinesColumn];
+#if !GAME21
+ // The Aegyptus filters only count while DLC03 is on; each one also needs its own checkbox.
+ int[] ActiveEgyptMinimums()=>[..egyptRows.Select(row=>ChkDlc03.IsChecked==true&&row.Enabled.IsChecked==true&&(ChkAdvanced.IsChecked==true||EgyptBasicColumns.Contains(row.Definition.Filter))?(int)row.Slider.Value*row.Definition.Step:0)];
+#endif
  DataGridColumn[] AdvancedColumns=>[AdvColLatiumHarbourMurex,AdvColLatiumHarbourOysters,AdvColAlbionHarbourSaltwort,AdvColAlbionHarbourSeaShells,AdvColAlbionMarshSmallBirds,AdvColAlbionMarshBeaver];
  // The advanced filters only count while they are shown; each one also needs its own checkbox.
  int[] ActiveAdvancedMinimums()=>[..advancedRows.Select(row=>ChkAdvanced.IsChecked==true&&row.Enabled.IsChecked==true?(int)row.Slider.Value*AdvancedStep:0)];
@@ -277,6 +341,9 @@ public partial class MainWindow:Window
     row.GoldRiverSites,row.SturgeonRiverSites,
     row.MarbleSites,row.MineralMines,row.GoldMines,row.SilverMines,row.TinMines,row.CopperMines,
     string.Join(';',row.AdvancedTiles),
+#if !GAME21
+    string.Join(';',row.EgyptValues),
+#endif
     CinisNames(row.Seed),
     row.Score?.ToString("F1",System.Globalization.CultureInfo.InvariantCulture)??"")));
    File.WriteAllLines(dialog.FileName,lines,new System.Text.UTF8Encoding(true));
@@ -347,7 +414,11 @@ public partial class MainWindow:Window
  void RandomPreviewSeed(object sender,RoutedEventArgs e)=>TxtPreviewSeed.Text=Random.Shared.Next(SeedLimits.Minimum,SeedLimits.Maximum+1).ToString();
  void SetMinimumSeed(object sender,RoutedEventArgs e)=>TxtFirstSeed.Text=SeedLimits.Minimum.ToString();
  void SetMaximumSeed(object sender,RoutedEventArgs e)=>TxtMaxSeed.Text=SeedLimits.Maximum.ToString();
+#if GAME21
  internal bool SmokePreparedProfileControls()=>CmbStartMode.IsEnabled&&ChkDlc01.IsChecked==true&&ChkDlc01.IsEnabled&&ChkDlc03.IsChecked==false&&!ChkDlc03.IsEnabled&&Math.Abs(StartProfilePanel.ActualHeight-MapProfilePanel.ActualHeight)<.1&&Math.Abs(DlcProfilePanel.ActualHeight-MapProfilePanel.ActualHeight)<.1;
+#else
+ internal bool SmokePreparedProfileControls()=>CmbStartMode.IsEnabled&&ChkDlc01.IsChecked==true&&ChkDlc01.IsEnabled&&ChkDlc03.IsChecked==true&&ChkDlc03.IsEnabled&&Math.Abs(StartProfilePanel.ActualHeight-MapProfilePanel.ActualHeight)<.1&&Math.Abs(DlcProfilePanel.ActualHeight-MapProfilePanel.ActualHeight)<.1;
+#endif
  // The table option: off and disabled while the table is empty; on, and taking the seed range out of play, once seeds are in.
  internal bool SmokeTableSeeds()
  {
@@ -393,8 +464,16 @@ public partial class MainWindow:Window
   scoreRows.First(row=>row.Metric==ScoreMetric.CinisSturgeon).Slider.Value=7;scoreRows.First(row=>row.Metric==ScoreMetric.CinisGold).Slider.Value=7;
   var latium=new RegionMetrics(new SiteCounts(150,150),0,0,0,0,0,570_000,0);var albion=new RegionMetrics(new SiteCounts(110,0),0,0,0,0,0,230_000,88_000);
   // Fertility IDs must be real (icon-bearing) values, never 0 - a generated seed's Cinis pool never leaves a slot empty.
+#if GAME21
   var hitA=new SearchHit(1001,[2206,4062,4049,4051,2208,2205,2202],new SiteCounts(19,23),latium,albion);
+#else
+  var hitA=new SearchHit(1001,[2206,4062,4049,4051,2208,2205,2202],new SiteCounts(19,23),latium,albion,default);
+#endif
+#if GAME21
   var hitB=new SearchHit(1002,[2206,4062,4049,8577,32027,2205,2202],new SiteCounts(10,10),latium,albion);
+#else
+  var hitB=new SearchHit(1002,[2206,4062,4049,8577,32027,2205,2202],new SiteCounts(10,10),latium,albion,default);
+#endif
   ShowResults([hitA,hitB]);
   var rows=GridResults.Items.OfType<SearchResultRow>().ToArray();
   var rowA=rows.Single(row=>row.Seed==1001);var rowB=rows.Single(row=>row.Seed==1002);
@@ -414,7 +493,11 @@ public partial class MainWindow:Window
   var noAlbion=new RegionMetrics(new SiteCounts(0,0),0,0,0,0,0,0,0);
   var outlierLow=new RegionMetrics(new SiteCounts(0,0),0,0,0,0,0,(int)range.Max+500,0);
   var outlierHigh=new RegionMetrics(new SiteCounts(0,0),0,0,0,0,0,(int)range.Max+5000,0);
+#if GAME21
   ChkScoreOutliers.IsChecked=false;ShowResults([new(2001,[],default,outlierLow,noAlbion),new(2002,[],default,outlierHigh,noAlbion)]);
+#else
+  ChkScoreOutliers.IsChecked=false;ShowResults([new(2001,[],default,outlierLow,noAlbion,default),new(2002,[],default,outlierHigh,noAlbion,default)]);
+#endif
   var clamped=GridResults.Items.OfType<SearchResultRow>().ToArray();
   var clampedRowA=clamped.Single(row=>row.Seed==2001);var clampedRowB=clamped.Single(row=>row.Seed==2002);
   // The sort key must be a genuine tie here too (not just the displayed score), or Shift+click on another column
@@ -429,7 +512,14 @@ public partial class MainWindow:Window
  }
  // Preview aid for the progress row with a message as long as a real "no hits, table restored" line on a huge range.
  internal void SmokeLongProgressLabel(){SearchProgress.Value=100;LblProgress.Text=Localization.Instance.Format("NoHitsRestoredFormat",(20_000_000).ToString("N0"));}
+#if GAME21
  internal void SmokeScrollFilters(){UpdateLayout();var top=AdvancedFilterPanel.TranslatePoint(new Point(0,0),FilterScroll).Y;FilterScroll.ScrollToVerticalOffset(FilterScroll.VerticalOffset+top-30);UpdateLayout();}
+#else
+ internal void SmokeScrollFilters(bool egypt=false){UpdateLayout();var top=(egypt?EgyptFilterPanel:AdvancedFilterPanel).TranslatePoint(new Point(0,0),FilterScroll).Y;FilterScroll.ScrollToVerticalOffset(FilterScroll.VerticalOffset+top-30);UpdateLayout();}
+#endif
+#if !GAME21
+ internal void SmokeShowEgypt(){ChkDlc03.IsChecked=true;foreach(var row in egyptRows)row.Enabled.IsChecked=true;ShowResults([SeedSearcher.Describe(6153,activeProfile,FertilitySetting.Abundant),SeedSearcher.Describe(1,activeProfile,FertilitySetting.Abundant),SeedSearcher.Describe(2,activeProfile,FertilitySetting.Abundant)]);}
+#endif
  internal void SmokeScrollToEnd(){UpdateLayout();FilterScroll.ScrollToEnd();UpdateLayout();}
  internal void SmokeShowAdvanced(){ChkAdvanced.IsChecked=true;foreach(var row in advancedRows)row.Enabled.IsChecked=true;ShowResults([SeedSearcher.Describe(6153,activeProfile,FertilitySetting.Abundant),SeedSearcher.Describe(1,activeProfile,FertilitySetting.Abundant),SeedSearcher.Describe(2,activeProfile,FertilitySetting.Abundant)]);}
  // Switching the language must also refresh labels that are set imperatively in code rather than through a XAML binding.
@@ -463,7 +553,11 @@ public partial class MainWindow:Window
  {
   var latium=new RegionMetrics(new SiteCounts(0,0),0,0,0,0,0,571_940,0);
   var albion=new RegionMetrics(new SiteCounts(0,0),0,0,0,0,0,0,0);
+#if GAME21
   ShowResults([new SearchHit(9001,[],default,latium,albion)]);
+#else
+  ShowResults([new SearchHit(9001,[],default,latium,albion,default)]);
+#endif
   UpdateLayout();
   var row=GridResults.Items.OfType<SearchResultRow>().Single();
   var dictionaryOk=ScoreMetrics.NumericMetrics.All(metric=>row.Gauges.ContainsKey(metric.ToString()));
@@ -531,7 +625,11 @@ public partial class MainWindow:Window
   ShowPreview((uint)seed);
  }
  void PreviewSelectedResult(object sender,System.Windows.Input.MouseButtonEventArgs e){if(GridResults.SelectedItem is SearchResultRow row)ShowPreview(row.Seed);}
+#if GAME21
  void ShowPreview(uint seed){new SeedPreviewWindow(seed,activeProfile,CurrentFertilitySetting(),CurrentSlotSetting(),CurrentStartMode()){Owner=this}.ShowDialog();}
+#else
+ void ShowPreview(uint seed){new SeedPreviewWindow(seed,activeProfile,CurrentFertilitySetting(),CurrentSlotSetting(),ChkDlc03.IsChecked==true,CurrentStartMode()){Owner=this}.ShowDialog();}
+#endif
  StartModeKind CurrentStartMode()=>CmbStartMode.SelectedIndex==1?StartModeKind.StartIsland:StartModeKind.Flagship;
  FertilitySetting CurrentFertilitySetting()=>(FertilitySetting)CmbFertilitySetting.SelectedIndex;
  SlotSetting CurrentSlotSetting()=>(SlotSetting)CmbSlotSetting.SelectedIndex;
@@ -565,7 +663,11 @@ public partial class MainWindow:Window
  void SaveDlcSettings()
  {
   if(!RememberDlc||!profileControlsReady)return;
+#if GAME21
   string[] lines=[$"Dlc01={ChkDlc01.IsChecked==true}"];
+#else
+  string[] lines=[$"Dlc01={ChkDlc01.IsChecked==true}",$"Dlc03={ChkDlc03.IsChecked==true}"];
+#endif
   try{File.WriteAllLines(DlcSettingsPath,lines);}catch{}
  }
  void DlcProfileChanged(object sender,RoutedEventArgs e)
@@ -590,6 +692,10 @@ public partial class MainWindow:Window
  {
   if(!profileControlsReady)return;
   RefreshCinisPool();
+#if !GAME21
+  // So do the Egypt value ranges.
+  RefreshEgyptFilters();
+#endif
  }
  // Cinis has fewer pool slots outside Abundant: label them and uncheck the fertilities that no longer fit, last first.
  void RefreshCinisPool()
@@ -618,8 +724,38 @@ public partial class MainWindow:Window
   ConfigureAreaSlider(SldMinLatiumArea,ranges.LatiumAreaMin,ranges.LatiumAreaMax);ConfigureAreaSlider(SldMinAlbionArea,ranges.AlbionAreaMin,ranges.AlbionAreaMax);ConfigureAreaSlider(SldMinAlbionSwampArea,ranges.AlbionSwampMin,ranges.AlbionSwampMax);
   LblLatiumAreaRange.Text=AreaRangeLabel(ranges.LatiumAreaMin,ranges.LatiumAreaMax,ranges.LatiumAreaAverage,ranges.LatiumAreaMedian);LblAlbionAreaRange.Text=AreaRangeLabel(ranges.AlbionAreaMin,ranges.AlbionAreaMax,ranges.AlbionAreaAverage,ranges.AlbionAreaMedian);LblAlbionSwampAreaRange.Text=AreaRangeLabel(ranges.AlbionSwampMin,ranges.AlbionSwampMax,ranges.AlbionSwampAverage,ranges.AlbionSwampMedian);
   BtnLatiumAreaMedian.Tag=ranges.LatiumAreaMedian;BtnAlbionAreaMedian.Tag=ranges.AlbionAreaMedian;BtnAlbionSwampAreaMedian.Tag=ranges.AlbionSwampMedian;
+#if GAME21
   RefreshAdvancedFilters();
+#else
+  RefreshAdvancedFilters();RefreshEgyptFilters();
+#endif
  }
+#if !GAME21
+ // Slider range, median button and statistics of every Aegyptus filter for the map size and fertility setting (the Egypt map itself is fixed).
+ void RefreshEgyptFilters()
+ {
+  foreach(var row in egyptRows)
+  {
+   var step=row.Definition.Step;var range=EgyptRanges.For(activeProfile.Size,CurrentFertilitySetting(),CurrentSlotSetting(),row.Definition.Filter);
+   var minimum=range.Min/step;var maximum=(range.Max+step-1)/step;var median=Math.Clamp((int)range.Median/step,minimum,maximum);
+   var requested=row.Slider.Tag is int stored?stored:configuredEgypt.Contains(row.Definition.Filter)?(int)row.Slider.Value:median;
+   row.Slider.Tag=null;row.Slider.Minimum=minimum;row.Slider.Maximum=maximum;row.Slider.Value=Math.Clamp(requested,minimum,maximum);configuredEgypt.Add(row.Definition.Filter);
+   row.Value.Text=((int)row.Slider.Value*step).ToString("N0");row.Median.Tag=median;
+   row.Range.Text=step==1?StatisticsLabel(range.Min,range.Max,range.Average,range.Median):$"100k: {range.Min:N0}–{range.Max:N0} · Ø {range.Average:N0} · Median {range.Median:N0}";
+  }
+ }
+ void EgyptSliderValueChanged(object sender,RoutedPropertyChangedEventArgs<double> e)
+ {
+  var row=egyptRows.FirstOrDefault(candidate=>candidate.Slider==sender);
+  if(row is not null)row.Value.Text=((int)e.NewValue*row.Definition.Step).ToString("N0");
+ }
+ void SelectEgyptMedian(object sender,RoutedEventArgs e)
+ {
+  var row=egyptRows.FirstOrDefault(candidate=>candidate.Median==sender);
+  if(row?.Median.Tag is int median)row.Slider.Value=median;
+ }
+ void Dlc03Changed(object sender,RoutedEventArgs e){SaveDlcSettings();ResultColumnsChanged(sender,e);}
+#endif
  // Slider range, median button and statistics of every advanced filter for the current profile. An existing setting is kept and clamped to the new range.
  void RefreshAdvancedFilters()
  {
@@ -757,6 +893,9 @@ public partial class MainWindow:Window
   if(metric==ScoreMetric.CinisSlot1)return ()=>activeProfile.Dlc01&&(CmbSlot1.SelectedItem as FertilityChoice)?.Guid is > 0u;
   if(ScoreMetrics.IsCinis(metric))return ()=>activeProfile.Dlc01;
   if(ScoreMetrics.IsAdvanced(metric))return ()=>ChkAdvanced.IsChecked==true;
+#if !GAME21
+  if(ScoreMetrics.IsEgypt(metric)){var basic=EgyptBasicColumns.Contains(Enum.Parse<EgyptFilter>(metric.ToString()[3..]));return ()=>ChkDlc03.IsChecked==true&&(basic||ChkAdvanced.IsChecked==true);}
+#endif
   if(DetailMetrics.Contains(metric))return ()=>ChkAdvanced.IsChecked==true;
   return ()=>true;
  }
@@ -773,6 +912,9 @@ public partial class MainWindow:Window
   AreaWeightHeader.Visibility=enabled?Visibility.Visible:Visibility.Collapsed;
   SiteWeightHeader.Visibility=enabled?Visibility.Visible:Visibility.Collapsed;
   AdvWeightHeader.Visibility=enabled&&ChkAdvanced.IsChecked==true?Visibility.Visible:Visibility.Collapsed;
+#if !GAME21
+  EgyWeightHeader.Visibility=enabled&&ChkDlc03.IsChecked==true?Visibility.Visible:Visibility.Collapsed;
+#endif
  }
  void ScoringChanged(object sender,RoutedEventArgs e){RefreshScoreVisibility();RecomputeScores();}
  void ScoringOutliersChanged(object sender,RoutedEventArgs e)=>RecomputeScores();
@@ -819,6 +961,27 @@ internal sealed record SearchResultRow(uint Seed,int MarbleSites,int GoldMines,i
  public IReadOnlyDictionary<string, RangeGauge> Gauges { get; private set; } = new Dictionary<string, RangeGauge>();
  void ComputeGauges(MapProfile profile) => Gauges = ScoreMetrics.NumericMetrics.ToDictionary(metric => metric.ToString(), metric => ScoreMetrics.Gauge(metric, this, profile)!.Value);
 
+#if !GAME21
+ // Aegyptus (DLC03): the fertility setting the row was generated with (the Egypt ranges depend on it) and the filter values in
+ // EgyptFilter order; the properties give the grid one column each.
+ public FertilitySetting Setting { get; private set; }
+ public SlotSetting Slots { get; private set; }
+ public int[] EgyptValues { get; private set; } = new int[EgyptFilters.Count];
+ public int EgyBuildable=>EgyptValues[(int)EgyptFilter.Buildable];
+ public int EgyRiverbank=>EgyptValues[(int)EgyptFilter.Riverbank];
+ public int EgyMineSlots=>EgyptValues[(int)EgyptFilter.MineSlots];
+ public int EgyHippoRiverbank=>EgyptValues[(int)EgyptFilter.HippoRiverbank];
+ public int EgyPomegranateTiles=>EgyptValues[(int)EgyptFilter.PomegranateTiles];
+ public int EgyFertileGround=>EgyptValues[(int)EgyptFilter.FertileGround];
+ public int EgyLavenderTiles=>EgyptValues[(int)EgyptFilter.LavenderTiles];
+ public int EgyGrapeTiles=>EgyptValues[(int)EgyptFilter.GrapeTiles];
+ public int EgyOliveTiles=>EgyptValues[(int)EgyptFilter.OliveTiles];
+ public int EgyCopperMines=>EgyptValues[(int)EgyptFilter.CopperMines];
+ public int EgyTinMines=>EgyptValues[(int)EgyptFilter.TinMines];
+ public int EgyGoldIslands=>EgyptValues[(int)EgyptFilter.GoldIslands];
+ public int EgyGoldMines=>EgyptValues[(int)EgyptFilter.GoldMines];
+ public int EgyMineralMines=>EgyptValues[(int)EgyptFilter.MineralMines];
+#endif
 
  // The advanced filter values, in AdvancedFilter order; the properties give the grid one column each.
  public int LatiumHarbourMurex=>AdvancedTiles[(int)AdvancedFilter.LatiumHarbourMurex];
@@ -833,9 +996,16 @@ internal sealed record SearchResultRow(uint Seed,int MarbleSites,int GoldMines,i
  public string LatiumArea=>$"{LatiumAreaValue:N0}";
  public string AlbionArea=>$"{AlbionAreaValue:N0}";
  public string AlbionSwampArea=>$"{AlbionSwampValue:N0}";
+#if GAME21
  public static SearchResultRow From(SearchHit hit,MapProfile profile)
+#else
+ public static SearchResultRow From(SearchHit hit,MapProfile profile,FertilitySetting setting=FertilitySetting.Abundant,SlotSetting slots=SlotSetting.Abundant)
+#endif
  {
   var row=new SearchResultRow(hit.Seed,hit.Latium.MarbleSites,hit.Latium.GoldMineSites,hit.Latium.GoldSites,hit.Latium.SturgeonSites,hit.Latium.MineralMineSites,hit.Albion.CopperMineSites,hit.Albion.SilverMineSites,hit.Albion.TinMineSites,hit.Latium.BuildableTiles,hit.Albion.BuildableTiles,hit.Albion.SwampTiles,hit.Latium.Sites.Mountain,hit.Latium.Sites.River,hit.Albion.Sites.Mountain,[..AdvancedFilters.All.Select(definition=>(definition.Region==RegionKind.Latium?hit.Latium:hit.Albion).Tiles(definition.Filter))],hit.Fertilities,hit.CinisSites,[..hit.Fertilities.Select(FertilityIcons.Get)]);
+#if !GAME21
+  row.Setting=setting;row.Slots=slots;row.EgyptValues=EgyptFilters.Values(hit.Egypt);
+#endif
   row.ComputeGauges(profile);
   return row;
  }

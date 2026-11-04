@@ -4,7 +4,12 @@
 // the other Anno 117 tools use (e.g. the Layout Tool's "2.2.0.0").
 internal static class AppVersion
 {
+#if GAME21
  public const string GameVersion="2.1.0";
  public const int Patch=4;
+#else
+ public const string GameVersion="3.0.0";
+ public const int Patch=0;
+#endif
  public static string WindowTitle=>$"Anno 117 Seed Finder v{GameVersion}.{Patch}";
 }

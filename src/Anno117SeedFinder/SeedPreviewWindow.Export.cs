@@ -88,6 +88,9 @@ internal sealed partial class SeedPreviewWindow
   if(analysis is null)return;
   analysis.LatiumChoice=picks[PickLatium].Any&&analysis.LatiumIslands is {} latium?PickPlan(picks[PickLatium].A,latium.ToDictionary(island=>island.Slot),null):null;
   analysis.AlbionChoice=PickGuide(picks[PickAlbion],analysis.AlbionIslands,SettlingGuide.Roman,SettlingGuide.Celtic);
+#if !GAME21
+  analysis.EgyptChoice=PickGuide(picks[PickThird],analysis.EgyptIslands,SettlingGuide.Kumatic,SettlingGuide.GrecoRoman);
+#endif
  }
 
  // The marks of a region's map: the own selection when there is one (its panel above the guide's), else the guide (when shown).
@@ -107,6 +110,9 @@ internal sealed partial class SeedPreviewWindow
   {
    var chosen=region==PickAlbion?analysis.AlbionChoice:null;
    ((string Letter,string Name,Brush Color) A,(string Letter,string Name,Brush Color) B) pops=(("GuideRomanLetter","GuideRomans",RomanGuideColor),("GuideCelticLetter","GuideCelts",CelticGuideColor));
+#if !GAME21
+   if(region==PickThird){chosen=analysis.EgyptChoice;pops=(("GuideKumaticLetter","GuideKumatic",KumaticGuideColor),("GuideGrecoRomanLetter","GuideGrecoRoman",GrecoRomanGuideColor));}
+#endif
    if(chosen is not null)
     foreach(var(plan,isA) in new[]{(chosen.First,chosen.PopulationAFirst),(chosen.Second,!chosen.PopulationAFirst)})
     {
@@ -177,6 +183,9 @@ internal sealed partial class SeedPreviewWindow
   try
   {
    var regions=new List<(string Name,FrameworkElement Image)>{("latium",AtlasImage(RegionKind.Latium)),("albion",AtlasImage(RegionKind.Albion))};
+#if !GAME21
+   if(analysis.Egypt is not null)regions.Add(("aegyptus",AtlasEgyptImage()));
+#endif
    foreach(var(name,image) in regions)
    {
     var file=System.IO.Path.Combine(folder,$"{stem}_{name}_annotated.jpg");SaveJpeg(image,file,1.5);written.Add(file);urls.Add(urlBase+System.IO.Path.GetFileName(file));
@@ -186,7 +195,11 @@ internal sealed partial class SeedPreviewWindow
   foreach(var de in new[]{false,true})
   {
    var file=System.IO.Path.Combine(folder,$"{stem}{(de?"_de":"_en")}.json");
+#if GAME21
    File.WriteAllText(file,SeedRecommendation.ElementorJson(analysis,de,style,author,version,urls,albionRomanFirstOnMap));
+#else
+   File.WriteAllText(file,SeedRecommendation.ElementorJson(analysis,de,style,author,version,urls,albionRomanFirstOnMap,egyptKumaticFirstOnMap));
+#endif
    written.Add(file);
   }
   return written;
@@ -220,6 +233,13 @@ internal sealed partial class SeedPreviewWindow
    }
    return(marks,plans);
   }
+#if !GAME21
+  if(analysis!.ShownEgypt(egyptKumaticFirstOnMap) is {} egypt)
+  {
+   var(first,second)=egypt.PopulationAFirst?(("K",KumaticGuideColor),("G",GrecoRomanGuideColor)):(("G",GrecoRomanGuideColor),("K",KumaticGuideColor));
+   Add(egypt.First,first.Item1,first.Item2);Add(egypt.Second,second.Item1,second.Item2);
+  }
+#endif
   return(marks,plans);
  }
 
@@ -239,6 +259,15 @@ internal sealed partial class SeedPreviewWindow
    return sites;
   });
  }
+#if !GAME21
+ FrameworkElement AtlasEgyptImage()
+ {
+  var layout=analysis!.EgyptLayout!;var canvas=MapSchematic.CreateCanvas(RegionKind.Latium,profile,layout,AtlasMap,AtlasMap,true);var(marks,plans)=AtlasMarks(null);
+  var centres=DrawEgypt(canvas,analysis.Egypt!,layout,marks);var islands=analysis.EgyptIslands!.ToDictionary(island=>island.Slot);
+  return AtlasFrame("Aegyptus · Dawn of the Delta",canvas,marks,plans,centres,islands,slot=>
+   [("site_mountain",islands[slot].Mountain.ToString()),("",$"{EgyptGenerator.Tiles(analysis.Egypt!.Islands[slot].Variant).Buildable.ToString("N0",English)} tiles")]);
+ }
+#endif
 
  // The map in the middle, a title bar, and a card per island of the plan on the left or right (the side the island lies on), each
  // joined to its island by a line: badges and label, every fertility of the island (the ones it adds for the plan in full colour)

@@ -7,6 +7,9 @@ internal enum ScoreMetric
  LatiumMountainSites,LatiumRiverSites,AlbionMountainSites,GoldRiverSites,SturgeonRiverSites,
  MarbleSites,MineralMines,GoldMines,SilverMines,TinMines,CopperMines,
  AdvLatiumHarbourMurex,AdvLatiumHarbourOysters,AdvAlbionHarbourSaltwort,AdvAlbionHarbourSeaShells,AdvAlbionMarshSmallBirds,AdvAlbionMarshBeaver,
+#if !GAME21
+ EgyBuildable,EgyRiverbank,EgyMineSlots,EgyHippoRiverbank,EgyPomegranateTiles,EgyFertileGround,EgyLavenderTiles,EgyGrapeTiles,EgyOliveTiles,EgyMineralMines,EgyTinMines,EgyCopperMines,EgyGoldIslands,EgyGoldMines,
+#endif
  CinisGrapes,CinisFlax,CinisMurex,CinisOysters,CinisSturgeon,CinisGold,
  CinisSlot1,CinisMaxSites
 }
@@ -48,12 +51,20 @@ internal static class ScoreMetrics
  };
 
  public static bool IsAdvanced(ScoreMetric metric)=>Advanced.ContainsKey(metric);
+#if !GAME21
+ // The Aegyptus metrics are named "Egy"+EgyptFilter.
+ static readonly Dictionary<ScoreMetric,EgyptFilter> Egypt=EgyptFilters.All.ToDictionary(definition=>Enum.Parse<ScoreMetric>("Egy"+definition.Filter),definition=>definition.Filter);
+ public static bool IsEgypt(ScoreMetric metric)=>Egypt.ContainsKey(metric);
+#endif
  public static bool IsCinis(ScoreMetric metric)=>CinisPoolFertility.ContainsKey(metric)||metric is ScoreMetric.CinisSlot1 or ScoreMetric.CinisMaxSites;
 
  // The raw value read straight from an already-built result row. Cinis metrics are always 0 or 1 (see PopulationRange).
  public static double RawValue(ScoreMetric metric,SearchResultRow row,uint slot1Choice)
  {
   if(Advanced.TryGetValue(metric,out var filter))return row.AdvancedTiles[(int)filter];
+#if !GAME21
+  if(Egypt.TryGetValue(metric,out var egypt))return row.EgyptValues[(int)egypt];
+#endif
   if(CinisPoolFertility.TryGetValue(metric,out var fertility))return row.CinisFertilityIds.Contains(fertility)?1:0;
   return metric switch
   {
@@ -79,8 +90,15 @@ internal static class ScoreMetrics
 
  // The 100k-seed population range for the four numeric groups; null for the Cinis metrics, which are already 0/1
  // and need no range at all.
+#if GAME21
  public static ScoreRange? PopulationRange(ScoreMetric metric,MapProfile profile)
+#else
+ public static ScoreRange? PopulationRange(ScoreMetric metric,MapProfile profile,FertilitySetting setting=FertilitySetting.Abundant,SlotSetting slots=SlotSetting.Abundant)
+#endif
  {
+#if !GAME21
+  if(Egypt.TryGetValue(metric,out var egypt)){var range=EgyptRanges.For(profile.Size,setting,slots,egypt);return new(range.Min,range.Max,range.Average,range.Median);}
+#endif
   if(Advanced.TryGetValue(metric,out var filter)){var range=AdvancedRanges.For(profile,filter);return new(range.Min,range.Max,range.Average,range.Median);}
   var ranges=AggregateSiteRanges.For(profile);
   return metric switch
@@ -113,7 +131,11 @@ internal static class ScoreMetrics
  // NumericMetrics, but PopulationRange is the single source of truth so this stays consistent with it).
  public static RangeGauge? Gauge(ScoreMetric metric,SearchResultRow row,MapProfile profile)
  {
+#if GAME21
   var range=PopulationRange(metric,profile);
+#else
+  var range=PopulationRange(metric,profile,row.Setting,row.Slots);
+#endif
   if(range is null)return null;
   return new(Localization.Instance[LabelKey(metric)],RawValue(metric,row,0),range.Value);
  }
@@ -140,7 +162,11 @@ internal static class SeedScoring
   var ranges=new Dictionary<ScoreMetric,ScoreRange>();
   foreach(var (metric,_) in active)
   {
+#if GAME21
    var range=ScoreMetrics.PopulationRange(metric,profile);
+#else
+   var range=ScoreMetrics.PopulationRange(metric,profile,rows[0].Setting,rows[0].Slots);
+#endif
    if(range is null)continue;
    var effective=range.Value;
    if(weights.ExtendOutliers)foreach(var row in rows)effective=effective.Extend(ScoreMetrics.RawValue(metric,row,slot1Choice));

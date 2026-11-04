@@ -8,7 +8,12 @@
 // searches every order exactly (depth-first, only islands that add a missing fertility), so a map always gets the same guide.
 // After the main island the islands follow the population tiers: an island counts at the lowest tier among the fertilities it adds,
 // and the next island always adds a fertility of the lowest tier still missing (tier 2 before tier 3 before tier 4).
+#if GAME21
 internal sealed record GuideIsland(int Slot,string Label,string SizeClass,uint[] Fertilities,int Mountain,int River,int Marsh,bool Starter,(int X0,int Y0,int X1,int Y1) Box);
+#else
+// FertileTiles/RiverbankTiles: land counted by tile (Aegyptus); 0 elsewhere.
+internal sealed record GuideIsland(int Slot,string Label,string SizeClass,uint[] Fertilities,int Mountain,int River,int Marsh,bool Starter,(int X0,int Y0,int X1,int Y1) Box,int FertileTiles=0,int RiverbankTiles=0);
+#endif
 internal sealed record GuideStep(GuideIsland Island,uint[] NewFertilities);
 // The map around a region's islands: the raider islands, the map area and the edges the player wants to be near (as seen in the
 // preview: NorthWest = +y side, SouthEast = -y, SouthWest = -x, NorthEast = +x). Without it the plan ignores both.
@@ -131,6 +136,47 @@ internal static class SettlingGuide
   var shared=first.Steps.Select(step=>step.Island.Slot).ToHashSet();
   return Capped(aFirst?targetB:targetA,score(shared,reuseBonus),first.Steps[0].Island.Slot,1) is [var second,..]?new(aFirst,first,second):null;
  }
+#if !GAME21
+
+ // Aegyptus (DLC03): the Kumatic and the Greco-Roman chains, the same scheme; land counts by tile (fertile ground and riverbank,
+ // 1 point per 50 tiles, which puts a large island's land at about 100-200 points, on the scale of its mine slots and size).
+ static readonly Dictionary<uint,double> EgyptWeights=new()
+ {
+  [2212]=70,[2202]=120,[4063]=170,[4064]=50,[149818]=120,   // barley (beer), flax (shentis, kalasirises), copper (talismans, kalasirises, sistrums), tin (sistrums), sesame (oil lamps, perfumed oils)
+  [149819]=100,[2209]=70,[4053]=120,[2210]=70,[2205]=50,    // blue lotus (blue lotus tea, perfumed oils), lavender (soap), minerals (scribing sets, necklaces), olives (olive oil), grapes (wine)
+  [149820]=100,[150477]=100,[150506]=100,[4049]=70,[4066]=75, // hippos (rare meat platters, ivory caskets), pomegranates (rare meat platters, milk of poppaea), gold (necklaces, ivory caskets), iron, granite
+ };
+ // Minerals are a building material too (mosaics): +45 on top of their chain value.
+ const double EgyptMineralMaterial=45,EgyptTileWeight=0.02;
+ internal static double EgyptExtraIsland=200;
+ static readonly Dictionary<uint,double> EgyptTiers=new()
+ {
+  [2212]=2,[2202]=2,[4063]=2,[149818]=2,[4049]=2,[2210]=2,                 // barley, flax, copper, sesame, iron, olives
+  [4064]=2.5,[2209]=2.5,[4053]=2.5,                                         // tin, lavender, minerals: not needed to reach tier 3
+  [149819]=3,[4066]=3,[2205]=3,[149820]=3,[150477]=3,[150506]=3,                     // blue lotus, granite, grapes, hippos, pomegranates, gold
+ };
+ static readonly Dictionary<string,double> EgyptSize=new(){["L"]=250,["M"]=100,["S"]=50};
+ internal static readonly uint[] Kumatic=[2212,2202,4063,4064,149818,149819,4066,4049];
+ internal static readonly uint[] GrecoRoman=[2210,2209,2205,149820,150477,4053,150506,4049];
+ // First island: blue lotus and hippos (tier 3) get FirstIslandBonus.
+ static readonly HashSet<uint> EgyptFirstIslandGoods=[149819,149820];
+ // Reuse bonus as in Albion, with the Greco-Romans in the Romans' place: +500 after the Greco-Romans, +200 after the Kumatic.
+ public static PopulationGuide? Egypt(IReadOnlyList<GuideIsland> islands,bool kumaticFirst,GuideMap? map=null)=>TwoPopulations(islands,kumaticFirst,Kumatic,GrecoRoman,EgyptTiers,EgyptScore,EgyptExtraIsland,kumaticFirst?200:500,map,IronOptional);
+
+ static Func<GuideIsland,HashSet<uint>,int,double> EgyptScore(HashSet<int>? reused,double reuseBonus)=>(island,needed,step)=>
+ {
+  var value=0d;var bonus=reused is not null&&reused.Contains(island.Slot)?reuseBonus:0;
+  foreach(var fertility in island.Fertilities)
+  {
+   if(!needed.Contains(fertility)||!EgyptWeights.TryGetValue(fertility,out var weight))continue;
+   value+=bonus;
+   if(step==0&&EgyptFirstIslandGoods.Contains(fertility))value+=FirstIslandBonus;
+   value+=weight;
+   if(fertility==Minerals)value+=EgyptMineralMaterial;
+  }
+  return value+10*island.Mountain+EgyptTileWeight*(island.FertileTiles+island.RiverbankTiles)+EgyptSize.GetValueOrDefault(island.SizeClass);
+ };
+#endif
 
  static Func<GuideIsland,HashSet<uint>,int,double> AlbionScore(HashSet<int>? reused,double reuseBonus)=>(island,needed,step)=>
  {

@@ -15,7 +15,11 @@ internal sealed partial class SeedPreviewWindow:Window
  static readonly Brush Accent=new SolidColorBrush(Color.FromRgb(138,91,36));
  readonly List<(FrameworkElement Target,ToolTip ToolTip)> tooltipTargets=[];
  readonly MapProfile profile;
+#if GAME21
  readonly uint seed;readonly FertilitySetting fertilitySetting;readonly SlotSetting slotSetting;
+#else
+ readonly uint seed;readonly FertilitySetting fertilitySetting;readonly SlotSetting slotSetting;readonly bool dlc03;
+#endif
  // Zoom: the maps are scaled to fit the window (zoom 1) and can be enlarged up to MaxZoom times; Ctrl+mouse wheel zooms around the
  // cursor, dragging with the left mouse button pans.
  const double MaxZoom=12;
@@ -31,12 +35,27 @@ internal sealed partial class SeedPreviewWindow:Window
  // "Cinis off": the Latium plan leaves the Cinis out (only with DLC01, where the Cinis exists).
  internal static bool GuideWithoutCinis{get;set;}
  static bool? albionRomanFirstOnMap;
+#if !GAME21
+ static bool? egyptKumaticFirstOnMap;
+#endif
  readonly StartModeKind startMode;
 
+#if GAME21
  // The maps start scaled to fit the window and can be zoomed.
+#else
+ // With DLC03 the window shows Aegyptus as a third map. All maps start scaled to fit the window and can be zoomed.
+#endif
+#if GAME21
  public SeedPreviewWindow(uint seed,MapProfile? profile=null,FertilitySetting fertilitySetting=FertilitySetting.Abundant,SlotSetting slotSetting=SlotSetting.Abundant,StartModeKind startMode=StartModeKind.Flagship)
+#else
+ public SeedPreviewWindow(uint seed,MapProfile? profile=null,FertilitySetting fertilitySetting=FertilitySetting.Abundant,SlotSetting slotSetting=SlotSetting.Abundant,bool dlc03=false,StartModeKind startMode=StartModeKind.Flagship)
+#endif
  {
+#if GAME21
   AppCulture.Apply(this);this.profile=profile??MapProfiles.Default;this.seed=seed;this.fertilitySetting=fertilitySetting;this.slotSetting=slotSetting;
+#else
+  AppCulture.Apply(this);this.profile=profile??MapProfiles.Default;this.seed=seed;this.fertilitySetting=fertilitySetting;this.slotSetting=slotSetting;this.dlc03=dlc03;if(dlc03)DesiredWidth=2240;
+#endif
   this.startMode=startMode;
   Title=Localization.Instance.Format("PreviewTitleFormat",seed);Width=DesiredWidth;Height=DesiredHeight;MinWidth=1120;MinHeight=700;WindowStartupLocation=WindowStartupLocation.CenterOwner;Background=new SolidColorBrush(Color.FromRgb(243,245,248));
   SourceInitialized+=(_,_)=>FitToMonitor();
@@ -93,13 +112,24 @@ internal sealed partial class SeedPreviewWindow:Window
  {
   maps.Children.Clear();maps.ColumnDefinitions.Clear();tooltipTargets.Clear();
   // One analysis per build: the maps, the settling guides, the playstyle ratings and the Seed Atlas export all read it.
+#if GAME21
   if(reanalyze||analysis is null)analysis=new SeedAnalysis(seed,profile,fertilitySetting,slotSetting,true,startMode,GuideWithoutCinis);
+#else
+  if(reanalyze||analysis is null)analysis=new SeedAnalysis(seed,profile,fertilitySetting,slotSetting,true,startMode,GuideWithoutCinis,dlc03);
+#endif
   ApplyPicks();
   var latiumLayout=analysis.LatiumLayout!;var albionLayout=analysis.AlbionLayout!;var latium=analysis.Latium;var albion=analysis.Albion;
+#if GAME21
   for(var column=0;column<2;column++)maps.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});
+#else
+  for(var column=0;column<(dlc03?3:2);column++)maps.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});
+#endif
   var latiumGuide=RegionMarks(PickLatium,LatiumGuide);var albionGuide=RegionMarks(PickAlbion,AlbionGuide);
   maps.Children.Add(BuildMap(profile.Dlc01?"Latium · Prophecies of Ash":"Latium",RegionKind.Latium,latium.Islands,latiumLayout,latiumGuide));
   var albionMap=BuildMap("Albion",RegionKind.Albion,albion,albionLayout,albionGuide);Grid.SetColumn(albionMap,1);maps.Children.Add(albionMap);
+#if !GAME21
+  if(dlc03){var egyptMap=BuildEgyptMap(analysis.Egypt!);Grid.SetColumn(egyptMap,2);maps.Children.Add(egyptMap);}
+#endif
   UpdatePlaystyles();
   legend.Text=IslandImages.Style==IslandImageStyle.Tiles?Localization.Instance["PreviewTileLegend"]:"";
   legend.Visibility=legend.Text.Length==0?Visibility.Collapsed:Visibility.Visible;
@@ -132,6 +162,120 @@ internal sealed partial class SeedPreviewWindow:Window
  // Test hook: zoom in around a point given as a fraction of the viewport.
  internal void SmokeZoom(double zoom,double fx,double fy){UpdateLayout();ApplyZoom();UpdateLayout();SetZoom(zoom,new Point(scroll.ViewportWidth*fx,scroll.ViewportHeight*fy));UpdateLayout();}
 
+#if !GAME21
+ // Aegyptus: the fixed map with every element at its template position; the fertile islands carry this seed's variant and goods.
+ Border BuildEgyptMap(EgyptGeneration egypt)
+ {
+  var card=new Border{Background=Brushes.White,CornerRadius=new CornerRadius(10),Margin=new Thickness(5),Padding=new Thickness(12),BorderBrush=new SolidColorBrush(Color.FromRgb(228,231,236)),BorderThickness=new Thickness(1)};
+  var body=new StackPanel();card.Child=body;
+  body.Children.Add(new TextBlock{Text="Aegyptus · Dawn of the Delta",FontSize=17,FontWeight=FontWeights.SemiBold,Foreground=Ink,Margin=new Thickness(3,0,0,8)});
+  var layout=analysis!.EgyptLayout!;var canvas=MapSchematic.CreateCanvas(RegionKind.Latium,profile,layout);body.Children.Add(canvas);
+  var guide=RegionMarks(PickThird,EgyptGuide);DrawEgypt(canvas,egypt,layout,guide);
+  body.Children.Add(new TextBlock{Text=Localization.Instance["EgyptPreviewLegend"],Foreground=Muted,FontSize=11,TextWrapping=TextWrapping.Wrap,MaxWidth=MapSchematic.Width,Margin=new Thickness(3,8,0,0)});
+  if(guide is not null)body.Children.Add(guide.Panel);
+  return card;
+ }
+
+ // The Aegyptus pieces, labels and (with a guide) its badges on a canvas; returns the label centre of every fertile island by slot.
+ Dictionary<int,Point> DrawEgypt(Canvas canvas,EgyptGeneration egypt,MapLayout layout,GuideMarks? guide)
+ {
+  var byFile=egypt.Islands.ToDictionary(island=>EgyptGenerator.FileName(island.Variant));
+  // Labels go on last: the pieces overlap, so a label drawn early would be covered by a neighbour's image.
+  var labels=new List<(Point Centre,string Text,double Size)>();
+  // Game artwork: the four quadrant images first, the ground of each Nile complex (its coasts and channels between the pieces);
+  // every piece's own image goes on top, so a layered island shows its own variant.
+  if(IslandImages.Style==IslandImageStyle.Artwork)
+   foreach(var(quadrant,x,y) in EgyptQuadrants){var(ground,_)=MapSchematic.AddPlacedTile(canvas,new LayoutItem(quadrant,MapLayout.Decoration,-1,0,x,y),Brushes.Transparent,Brushes.Transparent,0);ground.IsHitTestVisible=false;}
+  // Aegyptus is one continuous landscape cut into pieces, so no piece gets a plate that would hide its neighbours: decorations and
+  // neutral parties are drawn bare, the fertile islands show a role-coloured outline only while hovered.
+  foreach(var item in layout.Items.Where(x=>x.Kind!=MapLayout.Island))
+  {
+   var(backdrop,backdropCentre)=MapSchematic.AddPlacedTile(canvas,item,Brushes.Transparent,Brushes.Transparent,1);backdrop.IsHitTestVisible=false;
+   if(item.Kind==MapLayout.Special)labels.Add((backdropCentre,item.Name.Contains("pirate")?"RAIDER":"3RD",10));
+   var tag=item.Name.Contains("vil")?"VILLAGE":item.Name.Contains("sectorproject")?"PROJECT":null;
+   if(tag is not null){var asset=IslandMasks.Asset(item.Name);var min=asset.Min(0);var size=asset.Size(0);labels.Add((((MapView)canvas.Tag).Project(item.X+min.X+size.X/2d,item.Y+min.Y+size.Y/2d),tag,10));}
+  }
+  var slotOf=egypt.Islands.Select((island,index)=>(island.Name,index)).ToDictionary(x=>x.Name,x=>x.index);var centres=new Dictionary<int,Point>();
+  foreach(var item in layout.Items.Where(x=>x.Kind==MapLayout.Island))
+  {
+   if(!byFile.TryGetValue(item.Name,out var island))continue;
+   var label=AddEgyptTile(canvas,item,island,slotOf[island.Name],guide?.Tooltips.GetValueOrDefault(slotOf[island.Name]));labels.Add(label);centres[slotOf[island.Name]]=label.Centre;
+  }
+  foreach(var label in labels)AddLabel(canvas,label.Centre,label.Text,label.Size);
+  if(guide is not null)DrawBadges(canvas,guide,centres);
+  return centres;
+ }
+
+ // The four quadrant files of the Nile complexes at their template origin (0 or 960 on each axis).
+ static readonly(string Name,int X,int Y)[] EgyptQuadrants=[("egypt_island_quadrant_01_x0_y0",0,0),("egypt_island_quadrant_01_x1_y0",960,0),("egypt_island_quadrant_01_x0_y1",0,960),("egypt_island_quadrant_01_x1_y1",960,960)];
+ // Settling guide for Aegyptus: the islands as the solver sees them (slot = position in EgyptGeneration.Islands).
+ GuideMarks EgyptGuide()
+ {
+  return PopulationMarks(analysis!.KumaticFirst,analysis.GrecoRomanFirst,"GuideEgyptHint",
+   ("GuideKumaticLetter","GuideKumatic","GuideKumaticFirstFormat",KumaticGuideColor),("GuideGrecoRomanLetter","GuideGrecoRoman","GuideGrecoRomanFirstFormat",GrecoRomanGuideColor),
+   egyptKumaticFirstOnMap,choice=>egyptKumaticFirstOnMap=choice,fertility=>EgyptFertilityNames.GetValueOrDefault(fertility,fertility.ToString()));
+ }
+
+ // The Aegyptus islands and map for the guide (also used by --guide-seed).
+ internal static (List<GuideIsland> Islands,GuideMap Map) EgyptGuideInput(EgyptGeneration egypt,MapLayout layout)
+ {
+  var items=layout.Items.Where(x=>x.Kind==MapLayout.Island).ToDictionary(x=>x.Name);var islands=new List<GuideIsland>();
+  for(var index=0;index<egypt.Islands.Count;index++)
+  {
+   var island=egypt.Islands[index];if(!items.TryGetValue(EgyptGenerator.FileName(island.Variant),out var item))continue;
+   var asset=IslandMasks.Asset(item.Name);var sizeClass=MapSchematic.SizeClass(item.Name);var tiles=EgyptGenerator.Tiles(island.Variant);
+   islands.Add(new(index,$"{sizeClass} {island.Name[^2..]}",sizeClass,island.Fertilities,island.MineSlots,0,0,island.Starter,(item.X+asset.X0,item.Y+asset.Y0,item.X+asset.X1,item.Y+asset.Y1),tiles.Farmland,tiles.Riverbank));
+  }
+  var raiders=layout.Items.Where(x=>x.Kind==MapLayout.Special&&x.Name.Contains("pirate")).Select(x=>{var asset=IslandMasks.Asset(x.Name);return(x.X+asset.X0,x.Y+asset.Y0,x.X+asset.X1,x.Y+asset.Y1);}).ToList();
+  // Aegyptus: the playable area (the rest of the 2560 map is open sea) and its north-east edge.
+  // Sea routes wind through the Nile arms: their length comes from a water grid of the pieces (EgyptWaterRoutes).
+  var slotOfFile=islands.ToDictionary(island=>EgyptGenerator.FileName(egypt.Islands[island.Slot].Variant),island=>island.Slot,StringComparer.OrdinalIgnoreCase);
+  var routes=new EgyptWaterRoutes(layout,slotOfFile);
+  return(islands,new GuideMap(raiders,(layout.BaseX,layout.BaseY,layout.BaseX+layout.BaseSize,layout.BaseY+layout.BaseSize),[MapEdge.NorthEast],routes.Length));
+ }
+ static readonly Brush KumaticGuideColor=new SolidColorBrush(Color.FromRgb(180,83,9)),GrecoRomanGuideColor=new SolidColorBrush(Color.FromRgb(29,78,216));
+ static readonly Dictionary<uint,string> EgyptFertilityNames=new()
+ {
+  [2212]="Barley",[2202]="Flax",[4063]="Copper",[4064]="Tin",[149818]="Sesame",[149819]="Blue lotus",[2209]="Lavender",[4053]="Minerals",
+  [2210]="Olives",[2205]="Grapes",[149820]="Hippos",[150477]="Pomegranates",[150506]="Gold",[4049]="Iron",[4066]="Granite",
+ };
+
+ (Point Centre,string Text,double Size) AddEgyptTile(Canvas canvas,LayoutItem item,EgyptIsland island,int slot,string? guideLine=null)
+ {
+  var sizeClass=MapSchematic.SizeClass(item.Name);
+  var roleColor=EgyptRoleColor(island);Brush stroke=Brushes.Transparent;
+  var(diamond,centre)=MapSchematic.AddPlacedTile(canvas,item,Brushes.Transparent,stroke,2,EgyptGenerator.Footprint(island.Variant));
+  var tooltip=EgyptTooltip(island,guideLine);
+  diamond.ToolTip=tooltip;ToolTipService.SetInitialShowDelay(diamond,0);ToolTipService.SetBetweenShowDelay(diamond,0);ToolTipService.SetShowDuration(diamond,30000);
+  tooltipTargets.Add((diamond,tooltip));
+  diamond.MouseEnter+=(_,_)=>{diamond.Stroke=roleColor;diamond.StrokeThickness=4;Panel.SetZIndex(diamond,1);};
+  diamond.MouseLeave+=(_,_)=>{diamond.Stroke=stroke;diamond.StrokeThickness=2;Panel.SetZIndex(diamond,0);};
+  diamond.MouseLeftButtonUp+=(_,e)=>{if(!PickMode)return;e.Handled=true;TogglePick(PickThird,slot);};
+  return(centre,$"{sizeClass} {island.Name[^2..]}",sizeClass=="L"?12:10);
+ }
+
+ static ToolTip EgyptTooltip(EgyptIsland island,string? guideLine=null)
+ {
+  var panel=new StackPanel{Margin=new Thickness(5),MinWidth=240};
+  panel.Children.Add(new TextBlock{Text=$"{island.Name} · {EgyptRole(island)} · {(island.Hard?Localization.Instance["EgyptNoGold"]:Localization.Instance["EgyptGold"])}",FontWeight=FontWeights.SemiBold,FontSize=14,Foreground=Brushes.White});
+  var file=EgyptGenerator.FileName(island.Variant)+(island.Variant.EndsWith("_layer01")?" · "+Localization.Instance["EgyptLayerVariant"]:"");
+  panel.Children.Add(new TextBlock{Text=file,Foreground=new SolidColorBrush(Color.FromRgb(203,213,225)),FontSize=11,Margin=new Thickness(0,2,0,8)});
+  var fertilityRow=new WrapPanel();panel.Children.Add(fertilityRow);
+  foreach(var fertility in island.Fertilities)fertilityRow.Children.Add(new Image{Source=FertilityIcons.Get(fertility),Width=28,Height=28,Margin=new Thickness(0,0,5,0)});
+  var siteRow=new StackPanel{Orientation=Orientation.Horizontal,Margin=new Thickness(0,9,0,0)};panel.Children.Add(siteRow);
+  AddSite(siteRow,"site_mountain",island.MineSlots);
+  var tiles=EgyptGenerator.Tiles(island.Variant);
+  panel.Children.Add(new TextBlock{Text=Localization.Instance.Format("EgyptTilesFormat",tiles.Buildable.ToString("N0"),tiles.Farmland.ToString("N0"),tiles.Riverbank.ToString("N0"),tiles.Harbour.ToString("N0")),Foreground=new SolidColorBrush(Color.FromRgb(203,213,225)),FontSize=12,Margin=new Thickness(0,8,0,0)});
+  if(guideLine is not null)panel.Children.Add(new TextBlock{Text=guideLine,Foreground=new SolidColorBrush(Color.FromRgb(253,186,116)),FontSize=12,FontWeight=FontWeights.SemiBold,Margin=new Thickness(0,8,0,0),TextWrapping=TextWrapping.Wrap,MaxWidth=320});
+  return new ToolTip{Content=panel,Placement=System.Windows.Controls.Primitives.PlacementMode.Mouse,Background=new SolidColorBrush(Color.FromRgb(10,23,34)),BorderBrush=new SolidColorBrush(Color.FromRgb(70,102,119)),BorderThickness=new Thickness(2),Padding=new Thickness(8),Foreground=Brushes.White};
+ }
+
+ // Egyptian sets: the four starter sets (both difficulties, all settings), then the 2nd sets; everything else is a 3rd set.
+ static readonly HashSet<uint> EgyptStarterSets=[149806,166396,149821,149824];
+ static readonly HashSet<uint> EgyptSecondSets=[149807,149822,149825,166383,166386,166392];
+ static string EgyptRole(EgyptIsland island)=>EgyptStarterSets.Contains(island.FertilitySet)?"Starter":EgyptSecondSets.Contains(island.FertilitySet)?"Secondary":"Tertiary";
+ static Brush EgyptRoleColor(EgyptIsland island)=>EgyptRole(island) switch{"Starter"=>new SolidColorBrush(Color.FromRgb(214,179,122)),"Secondary"=>new SolidColorBrush(Color.FromRgb(24,178,161)),_=>new SolidColorBrush(Color.FromRgb(194,112,180))};
+#endif
 
  // ---- Settling guide ---------------------------------------------------------------------------------------------------------
  // What the guide adds to one map: badges per island slot, a tooltip line per island slot and the panel under the map.
@@ -346,7 +490,11 @@ internal sealed partial class SeedPreviewWindow:Window
   var siteRow=new StackPanel{Orientation=Orientation.Horizontal,Margin=new Thickness(0,9,0,0)};panel.Children.Add(siteRow);
   AddSite(siteRow,"site_mountain",sites?.Mountain);
   if(region==RegionKind.Latium)AddSite(siteRow,"site_river",sites?.River);else AddSiteLabel(siteRow,Localization.Instance["SwampLabel"],sites?.Marsh);
+#if GAME21
   // Tile breakdown: buildable land (Albion: of it marsh) and harbour of the island.
+#else
+  // Tile breakdown, as for Aegyptus: buildable land (Albion: of it marsh) and harbour of the island.
+#endif
   var area=IslandAreas.Get(island.Name);
   var tiles=region==RegionKind.Latium?Localization.Instance.Format("LatiumTilesFormat",area.Total.ToString("N0"),area.Harbour.ToString("N0")):Localization.Instance.Format("AlbionTilesFormat",area.Total.ToString("N0"),area.Swamp.ToString("N0"),area.Harbour.ToString("N0"));
   panel.Children.Add(new TextBlock{Text=tiles,Foreground=new SolidColorBrush(Color.FromRgb(203,213,225)),FontSize=12,Margin=new Thickness(0,8,0,0)});

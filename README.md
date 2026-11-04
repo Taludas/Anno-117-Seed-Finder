@@ -14,6 +14,8 @@ This tool rebuilds that "World Generator" **without starting the game**. It can 
 
 It is reverse engineered from real savegames and from the game's own data files, and it is checked against 90 savegames that cover every combination of settings. In those maps it reproduces **every island, every position, every rotation, every fertility, every building slot and every decorative island exactly** - 11,844 individual checks without a single mismatch.
 
+For game version 3.0 and the DLC03 session Aegyptus, a second set of 52 savegames confirms it again: 11,734 more checks, again without a mismatch.
+
 ---
 
 ## Contents
@@ -66,10 +68,10 @@ These settings must match what you will later choose in the game's "New Game" sc
 |---|---|
 | **Map template** | The shape of the world: Archipelago, Atoll, Corners, Island Chains or Rift. Each one places the islands in a completely different and distinct pattern. |
 | **Map size** | Small, Medium or Large. Larger maps have more islands and more space between them. |
-| **DLC01 – PoA** | Whether *Prophecies of Ash* DLC is active. With it, Latium is expanded by the continental island Cinis, and gains several extra islands in the Northern corner of the map. On by default; the app remembers it when you switch it off (in `dlc.txt` next to the app). |
+| **DLC01 – PoA** | Whether *Prophecies of Ash* DLC is active. With it, Latium is expanded by the continental island Cinis, and gains several extra islands in the Northern corner of the map. On by default; the app remembers it when you switch it off, for DLC01 and DLC03 alike (in `dlc.txt` next to the app). |
 | **activated later (experimental)** | For maps that were **created without** the DLC01 and had it switched on afterwards. See [Switching the DLC on later](#switching-the-dlc-on-later). |
 | **after loading a save** | For games that were started **after a savegame had been loaded** (load a save, *Quit to Title*, then *New Game*). The game then places only 10 instead of 14 small decoration islands in Latium, and every island's slots and fertilities come out different. A game started right after launching Anno is the normal case. Count the small decoration islands in Latium: 10 means tick this box. |
-| **DLC03 – DotD** | Greyed out. DLC03 *Dawn of the Delta* is prepared for, but not active yet. |
+| **DLC03 – DotD** | Whether *Dawn of the Delta* is active. Shows the Aegyptus filters and their result columns (see [Aegyptus filters](#3-what-to-search-for---the-conditions)). Aegyptus is a fixed map: only the map size, the fertility setting and the resource slot setting change it, not the map template or DLC01. |
 | **Start mode** | Flagship or starting island. This is the game's choice of how you arrive in the map; it does **not** change the generated map. Tested with the starting-island option switched on, with the continental island forced as the start, and with DLC01 on and off (Archipelago and Corners, Large): all six savegames are identical to the plain ones. |
 
 ### 2. Additional map options
@@ -90,7 +92,8 @@ Everything in the middle of the window is optional. Leave it all empty and every
 **Island conditions.** For each region (Latium and Albion) you can demand specific characteristics on specific kinds of island:
 
 - **Starting island** – the island you actually begin on
-- **Secondary** and **Tertiary** – the two groups the remaining islands are split into (explained [further down](#step-8-which-goods-grow-where))
+- **Secondary** and **Tertiary** – the two groups the remaining islands are split into (explained
+  [further down](#step-8-which-goods-grow-where))
 - **Any combination** – the fertility simply has to exist somewhere in that region
 
 Use the "add" buttons to create a condition row, then pick the fertility distribution for the island. You can add as many rows as you like; a seed has to satisfy all of them. The position picker next to a row lets you demand the island on a **particular island slot** of the map, if you care where it is.
@@ -99,9 +102,20 @@ Use the "add" buttons to create a condition row, then pick the fertility distrib
 
 **Minimum sizes.** Three sliders demand a minimum amount of usable tiles: buildable area in Latium, in Albion, and marsh area in Albion. The "median" button next to each one fills in the typical value for the current map profile, so you can quickly ask for "better than average" (derived of 100k seeds).
 
-**Minimum building slots.** A row of boxes lets you demand a minimum number of mountain slots, river slots, gold river slots, sturgeon river slots, gold mines, raw marble mines and mineral mines in Latium, silver, tin and copper mines in Albion. Again each has a "median" button. The mountain and river slot totals are always shown; the fertility-specific ones (gold and sturgeon river slots and the single mines) appear with **Show advanced fertility filters** and only apply while it is on.
+**Minimum building slots.** A row of boxes lets you demand a minimum number of mountain slots, river slots, gold river slots, sturgeon river slots, gold mines, raw marble mines and mineral mines in Latium, silver, tin and copper mines in Albion. Again each has a "median" button.
 
 **Advanced fertility filters.** The check box **Show advanced fertility filters** above the results table reveals six more sliders and adds their columns to the table. Each one adds up the harbour or swamp tiles of all islands in the region that carry a given fertility: harbour tiles of the Murex islands and of the Oyster islands in Latium; harbour tiles of the Saltwort islands and of the Sea Shell islands in Albion; swamp tiles of the Small Birds islands and of the Beaver islands in Albion. The sliders move in steps of 500 tiles and have a "median" button like the others. Filters are only applied while the check box is on; the box is saved with the presets.
+
+**Aegyptus filters (with DLC03).** Ticking **DLC03 – DotD** reveals twelve sliders for the Egypt session and adds their columns to the table:
+
+- **Buildable area**, **riverbank tiles** and **mine slots** (total) of all Aegyptus islands.
+- **Riverbank · Hippos**: the riverbank tiles of the islands with Hippos. Hippos are hunted on riverbank tiles.
+- **Fertile ground (Dates)**: the natural fertile ground of all islands. Trees such as date palms grow only there, not on irrigated land (at least without tech research).
+- **Buildable area · Lavender / Grapes / Olives**: the whole buildable area of the islands with that fertility. These crops grow on any tile once it is irrigated.
+- **Copper / Tin / Mineral mines**: the active mine slots of the islands with that fertility. These three need a mine slot.
+- **Islands with gold** and **gold mines**: how many islands carry gold, and the active mine slots of those islands. Egyptian gold has a coastal production (only right on the coast line) and a mine on mountain slots.
+
+Each slider has a "median" button and the 100k-seed statistics for the current map size, fertility setting and resource slot setting. Aegyptus is a fixed map, so the map template and DLC01 do not change it. The filters, their weights for seed scoring and the DLC03 box are saved with the presets and exported in the CSV.
 
 **Seed scoring.** A hard filter is all-or-nothing; scoring lets you rank the seeds that pass by how well they match what you actually care about, instead of throwing away a seed that is 2,000 tiles short of a cutoff but excellent everywhere else. Tick **Enable seed scoring** (next to "Search only the seeds in the results table") to reveal a weight slider (0-10) next to every area, site, mine and advanced-fertility filter, next to the six Cinis pool fertilities, next to the Cinis slot 1 choice, and next to "only maximum building slots" - independently of whether that same thing is also a hard filter. Every seed then gets a score out of 10, shown in its own column (sortable, and part of multi-sort); a dash means no weight is set. Weights are normalized against the same 100k-seed statistics as the filters, so a weight of 10 on "mostly full range" and a weight of 10 on "narrow range" count the same. **Extend the scoring range for outliers** (next to "Show advanced fertility filters") stretches a metric's range to fit an unusually extreme hit from *this* search instead of just capping it at 1.0 - useful for metrics with a narrow 100k-seed spread, like tin mines. Hover a score to see the breakdown per metric. Weights and both switches are saved with presets and exported in the CSV.
 
@@ -121,17 +135,18 @@ Press **Start** to run and **Cancel** to stop early. Results appear in the table
 
 | Work per seed | 1 thread | 32 threads |
 |---|---|---|
-| A search with Latium filters (the usual case) | about 5,700 seeds/s | about 93,000 seeds/s |
-| Generating Latium alone | about 5,700 seeds/s | about 90,000 seeds/s |
-| Generating Albion alone | about 10,300 seeds/s | about 173,000 seeds/s |
+| A search with Latium filters (the usual case) | about 5,700 seeds/s | about 90,000 seeds/s |
+| Generating Latium alone | about 5,700 seeds/s | about 88,000 seeds/s |
+| Generating Albion alone | about 10,400 seeds/s | about 172,000 seeds/s |
+| Generating Aegyptus alone | about 16,600 seeds/s | about 319,000 seeds/s |
 
-So a million seeds take about 11 seconds on all cores, and the whole range the game accepts (almost a billion seeds) takes about three hours. Albion is generated only for seeds that already passed Latium (or first, when its filters are the stricter ones). A slower machine scales roughly with its core count.
+So a million seeds take about 11 seconds on all cores, and the whole range the game accepts (almost a billion seeds) takes about three hours. Albion is generated only for seeds that already passed Latium (or first, when its filters are the stricter ones), and Aegyptus is checked first when it has filters of its own, because it is the cheapest region. A slower machine scales roughly with its core count.
 
 ### 5. Results
 
-The table lists every matching seed with its key numbers: buildable tiles per region, marsh area, slot counts and the fertility distribution on Cinis. By default the table stays compact: the areas and the total mountain and river slots of each region. Headers marked ▦ are tile counts. Ticking **Show advanced fertility filters** adds every fertility-specific column (gold and sturgeon river slots, the single mines, the advanced filter columns) together with the matching filter rows. Numbers follow the window language: German groups thousands as 1.234, English as 1,234. When all columns do not fit the window, the table scrolls sideways. Hover any of these numbers for a small gauge: where this seed's value falls between the 100k-seed population's minimum and maximum, with the median marked, so a bare number like "145" gets context without opening the corresponding filter.
+The table lists every matching seed with its key numbers: buildable tiles per region, marsh area, slot counts and the fertility distribution on Cinis. By default the table stays compact: the areas and the total mountain and river slots of each region (with DLC03 also the Aegyptus area, riverbank and total mine slots). Headers marked ▦ are tile counts. Ticking **Show advanced fertility filters** adds every fertility-specific column: gold and sturgeon river slots, the single mines, the advanced filter columns and the Aegyptus fertility and mine columns, together with the matching filter rows in the middle of the window. Those filters only apply while the switch is on; a preset that uses one switches it on. Numbers follow the window language: German groups thousands as 1.234, English as 1,234. When all columns do not fit the window, the table scrolls sideways. Hover any of these numbers for a small gauge: where this seed's value falls between the 100k-seed population's minimum and maximum, with the median marked, so a bare number like "145" gets context without opening the corresponding filter.
 
-- **Preview** – type a seed and press Preview to see both regions drawn as a map: every island exactly where the game puts it and turned the way the game turns it, with its top-down image, plus the decoration islands and the third-party islands (traders and the raider). Hover an island for its fertilities and slot counts; the outline colour on hover shows its role. The border of the regular map and of the Prophecies of Ash area are drawn as the real rectangles. This works for any seed, whether it came from a search or not. **Random** puts a random valid seed into the box. The islands can be drawn as a **tile map** (the default: every tile coloured by type - buildable, marsh, river, harbour, not buildable) or with the game's **artwork**. Zoom with the slider, the + and − buttons or Ctrl + mouse wheel (around the cursor), drag with the left mouse button to move around, and **Fit** shows everything again; in the tile map every pixel is one tile. The island tooltips also show the tile breakdown: buildable land, marsh (Albion) and harbour.
+- **Preview** – type a seed and press Preview to see both regions drawn as a map: every island exactly where the game puts it and turned the way the game turns it, with its top-down image, plus the decoration islands and the third-party islands (traders and the raider). Hover an island for its fertilities and slot counts; the outline colour on hover shows its role. The border of the regular map and of the Prophecies of Ash area are drawn as the real rectangles. This works for any seed, whether it came from a search or not. **Random** puts a random valid seed into the box.
 - **Islands on the map** – **+ Island** (next to the condition buttons of each region) adds a rule for one specific island, named as in the game files (XL01, L06, M03, PoA M01 …): it **must appear** or **must not appear** on the map, either anywhere or only in the positions you pick (the position picker offers only the slots that can hold that island), and optionally only with a certain **rotation** (0°, 90°, 180°, 270°). Example: "M03 must not appear" drops every seed with Latium M03; "L02 must appear at #5 with 90°" keeps only seeds with exactly that. The preview's island tooltip shows each island's short name and rotation. Starting islands always turn to face the map centre, so their rotation follows from their position.
 - **Settling guide** – tick **Settling guide** in the preview to see which islands to settle, and in which order, to reach every fertility of a region with few, valuable islands close to each other. How it works and how it scores: [Settling guide and playstyle ratings](#settling-guide-and-playstyle-ratings).
 - **Playstyle fit and Seed Atlas export** – with the settling guide ticked, the preview rates the seed above the maps for three playstyles (Casual players, Full supply, Record builders), and **Seed Atlas export …** writes annotated map images and the seed description for the Seed Atlas on anno-companion.com; see [Settling guide and playstyle ratings](#settling-guide-and-playstyle-ratings).
@@ -162,19 +177,19 @@ language - in a small file, so you can come back to a search later or share it w
 
 ### The settling guide
 
-Tick **Settling guide** in the seed preview to see which islands to settle, and in which order, to reach every fertility of a region with few, valuable islands close to each other. Numbered badges mark the islands on the map (Latium 1, 2, 3 …; Albion R1 … for the Romans and C1 … for the Celts), the supply routes from the main island are drawn as dashed lines, and a panel under each map lists every step with the fertilities it adds. Albion needs their own islands for each population, so both orders are listed (for example Romans first, Celts first) with their scores; pick the one to draw on the map and to use in the export. With the start mode "starting island" the first Latium island is a starting island. Tick **Cinis off** to leave Cinis out of the Latium plan.
+Tick **Settling guide** in the seed preview to see which islands to settle, and in which order, to reach every fertility of a region with few, valuable islands close to each other. Numbered badges mark the islands on the map (Latium 1, 2, 3 …; Albion R1 … for the Romans and C1 … for the Celts; Aegyptus K1 … for the Kumatic and G1 … for the Greco-Romans), the supply routes from the main island are drawn as dashed lines, and a panel under each map lists every step with the fertilities it adds. Albion and Aegyptus need their own islands for each population, so both orders are listed (for example Romans first, Celts first) with their scores; pick the one to draw on the map and to use in the export. With the start mode "starting island" the first Latium island is a starting island. Tick **Cinis off** to leave Cinis out of the Latium plan.
 
-**What a plan is.** The first island is the population's main island: its hub, which supplies every later island. Each further island must add at least one fertility that is still missing, until every fertility of the region is covered; an island whose fertilities the others of the plan bring anyway is never part of it. After the main island the plan follows the population tiers: the next island always adds a fertility of the lowest tier still missing (an island counts at the lowest tier it adds). Iron is optional: it counts when an island brings it, but no island is settled for iron alone. The app tries every possible order and shows the best one, so a map always gets the same guide.
+**What a plan is.** The first island is the population's main island: its hub, which supplies/is supplied by every later island. Each further island must add at least one fertility that is still missing, until every fertility of the region is covered; an island whose fertilities the others of the plan bring anyway is never part of it. After the main island the plan follows the population tiers: the next island always adds a fertility of the lowest tier still missing (an island counts at the lowest tier it adds). Iron is optional: it counts when an island brings it, but no island is settled for iron alone. The app tries every possible order and shows the best one, so a map always gets the same guide.
 
 **How a plan is scored.** Every step earns points for the island, multiplied by 0.9 per step (the main island counts fully, the second island 0.9 times, the third 0.81 times …), and the plan loses points for its length and its distances:
 
-| | Latium | Albion |
-|---|---|---|
-| Each fertility the island adds | see the weights below | see the weights below |
-| Slots | +10 per river slot, +5 per mountain slot | +10 per mountain slot, +5 per marsh slot |
-| Island size | Cinis 500, XL 450, L 150, M 75, S 30 | L 200, M 100, S 10 |
-| 2nd, 3rd, 4th … island | −200, −400, −600 … | −150, −300, −450 … |
-| Open water to the main island | −0.2 per map unit | −0.2 per map unit |
+| | Latium | Albion | Aegyptus |
+|---|---|---|---|
+| Each fertility the island adds | see the weights below | see the weights below | see the weights below |
+| Slots | +10 per river slot, +5 per mountain slot | +10 per mountain slot, +5 per marsh slot | +10 per mine slot, +1 per 50 fertile-ground and riverbank tiles |
+| Island size | Cinis 500, XL 450, L 150, M 75, S 30 | L 200, M 100, S 10 | L 250, M 100, S 50 |
+| 2nd, 3rd, 4th … island | −200, −400, −600 … | −150, −300, −450 … | −200, −400, −600 … |
+| Open water to the main island | −0.2 per map unit | −0.2 per map unit | −0.2 per map unit of the water route |
 
 On top of that:
 
@@ -186,15 +201,17 @@ On top of that:
 
 - **Latium:** Mackerel, Lavender, Resin, Olives 70 · Grapes 50 · Flax, Murex 80 · Sandarac 140 · Minerals 125 · Marble 145 · Oysters 30 · Sturgeon 30 · Gold 90 · Iron 50.
 - **Albion:** Barley 70 · Dye Plants, Copper 190 · Tin 140 · Saltwort 100 · Beavers, Ponies 50 · Herbs 70 · Silver, Resin 120 · Small Birds, Flax, Sea Shells, Iron 50 · Granite 75.
+- **Aegyptus:** Barley 70 · Flax 120 · Copper 170 · Tin 50 · Sesame 120 · Blue Lotus 100 · Lavender 70 · Minerals 120, plus 45 as a building material · Olives 70 · Grapes 50 · Hippos, Pomegranates, Gold 100 · Iron 70 · Granite 75.
 
 **Population tiers** (the order after the main island):
 
 - **Latium:** tier 2 Resin, Olives, Iron; then Mackerel and Lavender (optional at tier 2, so they come after Resin and Olives); tier 3 Grapes, Flax, Murex, Sandarac, Minerals, Marble; tier 4 Oysters, Sturgeon, Gold.
 - **Albion:** tier 2 Barley, Dye Plants, Copper, Tin, Iron, Herbs, Silver, Resin; tier 3 Saltwort, Beavers, Ponies, Granite, Small Birds, Flax, Sea Shells.
+- **Aegyptus:** tier 2 Barley, Flax, Copper, Sesame, Iron, Olives; then Tin, Lavender and Minerals (not needed to reach tier 3); tier 3 Blue Lotus, Granite, Grapes, Hippos, Pomegranates, Gold.
 
-**Two populations (Albion).** Romans and Celts are planned one after the other: first the population you start with, then the second one, which may not use the first one's main island and has a main island of its own. The second population gets a bonus for every island it shares with the first plan: +500 per new fertility after the Romans, +200 after the Celts. A plan uses at most four islands per population (more only when no such plan covers every fertility). Two bonuses make an island a good main island or a good Celtic island:
+**Two populations (Albion and Aegyptus).** Romans and Celts (Greco-Romans and Kumatic) are planned one after the other: first the population you start with, then the second one, which may not use the first one's main island and has a main island of its own. The second population gets a bonus for every island it shares with the first plan: +500 per new fertility after the Romans or Greco-Romans, +200 after the Celts or Kumatic. A plan uses at most four islands per population (more only when no such plan covers every fertility). Two bonuses make an island a good main island or a good Celtic island:
 
-- **Tier-3 goods on the main island:** every Albion tier-3 good worth having from the start (Ponies, Small Birds, Sea Shells) on a population's main island earns +1,000.
+- **Tier-3 goods on the main island:** every Albion tier-3 good worth having from the start (Ponies, Small Birds, Sea Shells) on a population's main island earns +1,000; in Aegyptus Blue Lotus and Hippos.
 - **Tin and copper on one island** (Albion): most useful together for bronze, so the island earns +100 more.
 
 In Albion both bonuses scale with the island's building space, because they pay off only with room to produce the goods: a large island earns the full bonus, a medium island (about half the building space of a large one) half of it, a small island 15 %.
@@ -203,7 +220,7 @@ The idea and the scoring model come from **ewjax** (see [Credits](#credits)).
 
 ### Playstyle ratings
 
-With the settling guide ticked, the preview rates the seed above the maps for three playstyles from 0 to 100; hover a chip for the details. Each rated property gets a rating between 0 (the lowest value seen on this kind of map) and 1 (the highest); the score is the weighted mean of the ratings. "This kind of map" means the same template, size and difficulty: the ranges come from 100,000 seeds per template and size, and for the Regular and Sparse fertility and resource slot settings from 20,000 seeds per setting, as those maps have far fewer mines and fertile coasts. Properties of Cinis count only with DLC01 on. A ✓ means the seed meets every minimum of the playstyle; only Record builders have one.
+With the settling guide ticked, the preview rates the seed above the maps for three playstyles from 0 to 100; hover a chip for the details. Each rated property gets a rating between 0 (the lowest value seen on this kind of map) and 1 (the highest); the score is the weighted mean of the ratings. "This kind of map" means the same template, size and difficulty: the ranges come from 100,000 seeds per template and size, and for the Regular and Sparse fertility and resource slot settings from 20,000 seeds per setting, as those maps have far fewer mines and fertile coasts. Properties of Cinis count only with DLC01 on, properties of Aegyptus only with DLC03 ticked. A ✓ means the seed meets every minimum of the playstyle; only Record builders have one.
 
 **Casual players** – good fertility spread and an easy settling order on large islands close to each other.
 
@@ -216,8 +233,10 @@ With the settling guide ticked, the preview rates the seed above the maps for th
 | Cinis: Sturgeon, Oysters, Lavender, Gold and the most slots | 5 |
 | Ideal Roman starting island (Herbs, Resin, Silver, Flax, Small Birds; Sea Shells on another island) | 8 |
 | Ideal Celtic starting island | 8 |
+| Aegyptus islands with Olives, Lavender, Grapes (L/M) | 3 |
 | Settling guide, Latium: main island (Cinis, XL01 or XL04 best), number of islands (3 or fewer ideal), their sizes, open water, distance to the raiders | 4, 8, 6, 6, 3 |
 | Settling guide, Albion: number of islands (5 or fewer ideal), their sizes, open water | 7, 5, 5 |
+| Settling guide, Aegyptus: number of islands, their sizes, water route | 4, 3, 3 |
 
 **Full supply** – lots of building space and river slots, good coasts and marshes and enough mines to fully supply every residence. No minimums: some templates simply do not suit this playstyle, which shows in their scores.
 
@@ -231,34 +250,43 @@ With the settling guide ticked, the preview rates the seed above the maps for th
 | Harbour tiles of the Saltwort islands / marsh of the Small Bird islands | 4 / 8 |
 | Marsh of the Beaver islands / harbour tiles of the Sea Shell islands | 3 / 6 |
 | Silver mines | 8 |
-| Mineral mines / gold mines (Latium) | 6 / 6 |
-| Copper mines / tin mines (Albion) | 6 / 6 |
+| Mineral mines / gold mines (Latium + Aegyptus) | 6 / 6 |
+| Copper mines / tin mines (Albion + Aegyptus) | 6 / 6 |
+| Aegyptus building space / riverbank tiles / Hippo riverbank tiles | 10 / 10 / 6 |
+| Aegyptus L/M islands with Olives / Lavender / Grapes | 8 / 8 / 6 |
 
-**Record builders** – the most building space and river slots, plus marble and tin. Minimum: Latium and Albion building space each rated at least 95 %, i.e. close to the most the map allows.
+**Record builders** – the most building space and river slots. Minimum: Latium and Albion building space each rated at least 95 %, i.e. close to the most the map allows.
 
 | Property | Weight |
 |---|---|
 | Latium building space / Albion building space | 10 / 10 |
 | Latium river slots | 10 |
 | Harbour tiles of the Murex islands / Oyster islands | 4 / 2 |
-| Marble slots / tin mines (Albion) | 6 / 6 |
+| Marble slots / tin mines (Albion + Aegyptus) | 6 / 6 |
 | Albion islands with Resin (L/M) | 6 |
 | Harbour tiles of the Saltwort islands | 2 |
 | Murex on Cinis / Oysters on Cinis | 2 / 2 |
+| Aegyptus building space / riverbank tiles | 10 / 10 |
+| Aegyptus copper mines / mineral mines | 6 / 4 |
+| Aegyptus L/M islands with Olives / Lavender | 8 / 8 |
 
-**Seed Atlas export …** writes one annotated map image per region (the tile map with the settling guide and, for every island of the plan, a card with its fertilities and slots) and the seed description as an Elementor template in English and German for the Seed Atlas on anno-companion.com. The text follows the orders chosen in the guide panels. Tick **Pick islands** to choose the islands yourself: each click on an island adds it (in click order; in Albion each further click switches between Romans, Celts, both and none). Your selection then replaces the settling guide on that map and in the export, e.g. to point out a perfect Ceres island the guide passes over.
+**Seed Atlas export …** writes one annotated map image per region (the tile map with the settling guide and, for every island of the plan, a card with its fertilities and slots) and the seed description as an Elementor template in English and German for the Seed Atlas on anno-companion.com. The text follows the orders chosen in the guide panels. Tick **Pick islands** to choose the islands yourself: each click on an island adds it (in click order; in the two-population regions each further click switches between first population, second, both and none). Your selection then replaces the settling guide on that map and in the export, e.g. to point out a perfect Ceres island the guide passes over.
 
 ---
 
 ## How Anno 117 builds a map
 
-This is the part the tool had to reproduce. It is described here in plain language; you do not need any of it to use the app, but it explains what the settings really do.
+This is the part the tool had to reproduce. It is described here in plain language; you do not need any of it to use
+the app, but it explains what the settings really do.
 
 ### The dice
 
-Everything starts with the seed. The game turns it into a set of **17 numbers**: it takes the seed and repeatedly multiplies and adds a fixed amount, filling the 17 places one after another.
+Everything starts with the seed. The game turns it into a set of **17 numbers**: it takes the seed and repeatedly
+multiplies and adds a fixed amount, filling the 17 places one after another.
 
-From then on, every "roll of the dice" works the same way: the game takes two of those 17 numbers, rotates their bits (nine steps for one, thirteen for the other), adds them together, and writes the result back over one of the two. A pointer moves on, and the next roll uses the next pair. So the 17 numbers keep stirring each other, and out comes a
+From then on, every "roll of the dice" works the same way: the game takes two of those 17 numbers, rotates their bits
+(nine steps for one, thirteen for the other), adds them together, and writes the result back over one of the two.
+A pointer moves on, and the next roll uses the next pair. So the 17 numbers keep stirring each other, and out comes a
 stream of numbers that looks random but is completely determined by the seed.
 
 Two things matter for understanding the rest:
@@ -316,7 +344,7 @@ The rule is: take the number the table asks for (plus a small random variation),
 
 Marsh slots in Albion are always fixed and are not affected by the option.
 
-### Step 9: which goods grow where
+### Step 9: which fertilities grow where
 
 This is the part most searches care about.
 
@@ -344,6 +372,51 @@ Instead:
 
 The app supports this with the **"activated later (experimental)"** box. It is marked experimental for a reason: see the limits below.
 
+### Aegyptus (DLC03)
+
+*Dawn of the Delta* adds a third session, Aegyptus. It is built very differently from Latium and Albion:
+
+- **The map is fixed.** A single Egypt template serves all map shapes and sizes. Every island always sits at the same spot with the same rotation, so steps 2 to 7 above do not exist here.
+- **It has its own run of the dice**, started fresh from the same seed. Aegyptus never shifts Latium or Albion, and they never shift Aegyptus.
+- **The map size picks smaller island versions.** Twelve islands exist in a full and a smaller "layer01" version. The game shuffles them and swaps the first few for their smaller version: two islands on a large map, six on a medium map, ten on a small map. That is the only thing the map size changes.
+- **Then the game spends a long, fixed stretch of rolls** (about 25,600) on work that is the same for every seed, most likely a pass over the huge 2560 × 2560 map. The app simply skips them.
+- **Mine slots** are then activated exactly as in step 8, island by island, from the Egyptian row of the resource slot option. Aegyptus has mine slots only, no river slots. One exception: an island switched to its smaller "layer01" version still rolls the slots of its full version, but on the map it simply has all the mine slots of the smaller version, whatever the slot setting (for example 9 on Large 10 and 11 on Large 07).
+- **Fertilities** follow step 9 with Egyptian fertility sets. The template decides which islands are starters and which are "hard" (no gold) or "normal" (with gold). The dice decide which of the other islands gets the second and which the third set, and then the fertilities themselves.
+
+The islands' tiles come from the Egypt island files: buildable land, natural fertile ground, riverbank (the Nile banks) and harbour area.
+
+With DLC03 ticked, the seed preview shows Aegyptus as a third map next to Latium and Albion. The session is one continuous delta landscape cut into pieces, so the pieces are drawn without plates, coloured by tile type from the island files: dry buildable land, fertile ground, riverbank, river, harbour and unbuildable land. Hover over an island for its role, fertilities, mine slots and tiles (the outline then marks its buildable land); on medium and small maps the smaller island versions show their reduced buildable land.
+
+The preview can draw all three sessions this way (**Islands: Tile map**, the default) or with the game's island artwork (**Game artwork**); for Aegyptus that is the game's own map image of every piece of the delta, laid out into one continuous landscape. With three maps side by side, use the zoom: the slider, the + and − buttons or Ctrl + mouse wheel (it zooms around the cursor), drag with the left mouse button to move around, and **Fit** to see everything again. In the tile map every pixel is one tile, so zooming in shows single tiles. The island tooltips of Latium and Albion show the tile breakdown too: buildable land, marsh (Albion) and harbour.
+
+### What game update 3.0 changed
+
+Update 3.0 (the one that shipped with *Dawn of the Delta*) changed the map generation for **everyone**, with or without the DLC:
+
+- **Three Latium islands got random river slots.** Their river slots used to be fixed. Now they are drawn like all other random slots, and each random slot costs one roll of the dice in step 8. Every map with one of these islands spends 12 or 13 extra rolls before step 9. Because the order is everything, **all fertilities of such a map change**, even though the islands themselves stay where they were. Their river, gold-river and sturgeon-river counts change too.
+- **One Latium island got a new start direction.** When it is a starting island, it is turned slightly differently. That changes the layout of the maps where it starts.
+- **Archipelago Large moved two Albion slots.** Two island spots in the Albion template got new coordinates, so the islands placed there moved.
+
+The app generates maps as 3.0 does. A seed you found with an older version of the app can produce a different Latium in 3.0.
+
+### Why game updates can break fertility predictions
+
+The fertilities are the most fragile part of the whole generator. They are drawn last, at the end of one long chain of rolls. Anything a game update changes earlier in that chain moves every roll after it, and with it all fertilities of the region:
+
+- one slot more or less in an island file (as in 3.0),
+- a moved island spot in a template, which can change the nudging or the decorative islands,
+- a new or removed island, decoration or neutral party,
+- a changed size of the map or of its playable area,
+- a changed fertility set or pool.
+
+None of these needs to look like a change to the map generator. 3.0 changed a list of slots, and that alone reshuffled the fertilities of many Latium maps. Anno 117 gets fixes every so often, so a seed finder built for one version can go very wrong on the next.
+
+What this means for you:
+
+- **Games you already started are safe.** The game generates a map once, when you create it. Updates do not change existing savegames.
+- **A seed only promises a map for one game version.** After an update, check a seed in the game before you start a long playthrough on it.
+- **This project checks every new game version** against fresh savegames with its savegame checker (`tools/check_savegame.py`). A mismatch shows exactly which region and which step moved. Please report differences with the seed and all settings.
+
 ---
 
 ## How exact is this?
@@ -358,14 +431,28 @@ Every rule was derived from real savegames and from the game's own island and te
 | Decorative islands | 1080 / 1080 | 900 / 900 |
 
 **11,844 checks, no mismatches.** On top of that, a larger archive of several hundred older savegames is used as a
-regression test after every change, and the three slot settings and the retroactive DLC were each verified against their own savegames.
+regression test after every change, and the three slot settings and the retroactive DLC were each verified against
+their own savegames.
+
+The table above was made with game version 2.1. For **game version 3.0 and DLC03** a second set of **52 savegames** was made: 12 seeds, all five templates, all three sizes, all three fertility settings and all three slot settings, all three sessions in every save, including saves made after the hotfix of 2026-09-25.
+
+| What was compared | Latium | Albion | Aegyptus |
+|---|---|---|---|
+| Island type, position and rotation | 1262 / 1262 | 832 / 832 | 2028 / 2028 |
+| Neutral parties | 156 / 156 | 156 / 156 | – |
+| Decorative islands | 720 / 720 | 520 / 520 | – |
+| Fertility (Aegyptus: in the order drawn) | 1262 / 1262 | 832 / 832 | 936 / 936 |
+| Building slot counts | 1262 / 1262 | 832 / 832 | 936 / 936 |
+
+**11,734 checks, no mismatches.**
 
 ---
 
 ## Known limits
 
 - **"DLC activated later" is experimental.** The extra dice rolls the game makes before placing the new islands are known only for the map sizes that appear in the savegames we have. For an untested size the app falls back to a formula that is right for most values but wrong for some, and then the **fertilities on the newly added islands** can be wrong. The old part of the map is always correct. It has also not been tested with the regular and sparse fertility settings.
-- **DLC03** is prepared for, but not active yet; the box does nothing.
+- **Game version 3.0.** The app generates maps as game version 3.0 does. Update 3.0 changed the river slots of three Latium islands, so a seed found with an older version of the app can have different river, gold river and sturgeon river counts in 3.0.
+- **Aegyptus** was checked against 52 savegames (12 seeds, every template, size, fertility and slot setting). For the Regular and Sparse fertility settings a few details are backed by fewer savegames than for Abundant. The Aegyptus preview draws the islands from their tile grids, not with the game's artwork.
 
 ---
 
@@ -399,8 +486,8 @@ The `tools` folder holds the scripts that compare the generator with your own sa
 
 ## Credits
 
-This app started as **Drullo321**'s project. He reverse engineered how Anno 117's World Generator actually works - the RNG chain behind island slots, rotations, fertilities and building slots described throughout this document and built the first working version of it: the initial UI, and the first generator covering the Corners map and, building on that, the initial Archipelago and Island Chain seeds. That reverse engineering is the foundation everything else here stands on.
+This app started as **Drullo321**'s project. He reverse engineered how Anno 117's World Generator actually works - the RNG chain behind island slots, rotations, fertilities and building slots described throughout this document and he also built the first working version of the app: the initial UI, and the first generator covering the Corners map and, building on that, the initial Archipelago and Island Chain seeds. That reverse engineering is the foundation everything else here stands on.
 
-Due to time and motivational constrains after game update 2.1 he then handed the project over for me to finish it. Since then it has been extended to validate against every map template, every size and every game setting, not only the shapes above;updated for the 2.1 map templates; extended to cover DLC01 correctly both when it is off from the start and when it is switched on retroactively mid-game; and given the features added after that point - namely the advanced fertility filters, the seed scoring feature, and the UI work around them.
+Due to time and motivational constrains after game update 2.1 he then handed the project over for me to finish it. Since then it has been extended to validate against every map template, every size and every game setting, not only the shapes above; updated for the 2.1 map templates; extended to cover DLC01 correctly both when it is off from the start and when it is switched on retroactively mid-game; and given the features added after that point - namely the advanced fertility filters, the seed scoring feature, and the UI work around them as well as DLC03 support.
 
 The **settling guide** in the seed preview was **ewjax**'s idea, including the scoring model behind it. His project [Anno 117 Island Selection](https://github.com/ewjax/Anno-117-IslandSelection) scores settling orders by the production chains each fertility feeds and searches them with simulated annealing; the app uses the same model, adds the distance between the islands and searches every order exactly.

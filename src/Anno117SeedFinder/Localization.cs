@@ -80,16 +80,35 @@ internal sealed class Localization:INotifyPropertyChanged
   ["AfterLoadShort"]=("nach Laden","after load"),
   ["DlcRetroLabel"]=("nachträglich aktiviert (experimentell)","activated later (experimental)"),
   ["DlcRetroTooltip"]=("Karte ohne DLC erstellt, Prophecies of Ash erst danach im Spiel aktiviert. Alte Inseln bleiben, nur die neuen Inseln und Cinis kommen dazu. Neue Inseln: Fruchtbarkeit nur für gemessene Erweiterungsgrößen sicher.","Map created without DLC, Prophecies of Ash switched on afterwards. Old islands stay, only the new islands and Cinis are added. New islands: fertility is only reliable for measured enlargement sizes."),
+#if GAME21
   ["Dlc03Tooltip"]=("Dawn of the Delta · vorbereitet für eine spätere Generatorerweiterung","Dawn of the Delta · prepared for a future generator extension"),
+#else
+  ["Dlc03Tooltip"]=("Dawn of the Delta · blendet die Aegyptus-Filter und ihre Ergebnisspalten ein. Aegyptus ist eine feste Karte: nur Kartengröße, Fruchtbarkeit und Rohstoffvorkommen zählen, Vorlage und DLC01 nicht.","Dawn of the Delta · shows the Aegyptus filters and their result columns. Aegyptus is a fixed map: only the map size, fertility and resource slot settings matter, not the template or DLC01."),
+#endif
+#if !GAME21
+  ["EgyptPreviewLegend"]=("Feste Karte: jede Insel liegt immer an ihrem Platz. Die Insel-Tooltips zeigen Rolle, Fruchtbarkeiten, Minenbauplätze und Kacheln.","Fixed map: every island always sits at its spot. The island tooltips show role, fertilities, mine slots and tiles."),
+#endif
+#if GAME21
   ["PreviewTileLegend"]=("Kachelkarte: sandfarben = Baufläche, oliv = Sumpf (Albion), blau = Fluss, hellblau = Hafen, braun = nicht bebaubar.","Tile map: sand = buildable, olive = marsh (Albion), blue = river, light blue = harbour, brown = not buildable."),
+#else
+  ["PreviewTileLegend"]=("Kachelkarte: sandfarben = Baufläche, oliv = Sumpf (Albion), grün = fruchtbarer Boden (Aegyptus, Bäume wie Datteln), dunkelgrün = Ufer (Aegyptus, Flusspferde), blau = Fluss, hellblau = Hafen, braun = nicht bebaubar.","Tile map: sand = buildable, olive = marsh (Albion), green = fertile ground (Aegyptus, trees such as dates), dark green = riverbank (Aegyptus, Hippos), blue = river, light blue = harbour, brown = not buildable."),
+#endif
   ["GuideToggle"]=("Siedlungsplan","Settling guide"),
+#if GAME21
   ["GuideToggleTooltip"]=("Schlägt vor, welche Inseln du in welcher Reihenfolge besiedeln solltest, um alle Fruchtbarkeiten einer Region mit wenigen, wertvollen und nah beieinander liegenden Inseln zu erreichen. Die gestrichelten Linien sind die Versorgungsrouten von der Hauptinsel; Routen nah an Piratenbasen und Inseln fern der bevorzugten Kartenränder (Latium Nordwest und Südost und Albion Südwest) kosten Punkte. Idee und Bewertungsmodell: ewjax (Anno 117 Island Selection).","Suggests which islands to settle, and in which order, to reach every fertility of a region with few, valuable islands close to each other. The dashed lines are the supply routes from the main island; routes close to raider bases and islands far from the preferred map edges (Latium north-west and south-east and Albion south-west) cost points. Idea and scoring model: ewjax (Anno 117 Island Selection)."),
+#else
+  ["GuideToggleTooltip"]=("Schlägt vor, welche Inseln du in welcher Reihenfolge besiedeln solltest, um alle Fruchtbarkeiten einer Region mit wenigen, wertvollen und nah beieinander liegenden Inseln zu erreichen. Die gestrichelten Linien sind die Versorgungsrouten von der Hauptinsel; Routen nah an Piratenbasen und Inseln fern der bevorzugten Kartenränder (Latium Nordwest und Südost, Albion Südwest, Aegyptus Nordost) kosten Punkte. Idee und Bewertungsmodell: ewjax (Anno 117 Island Selection).","Suggests which islands to settle, and in which order, to reach every fertility of a region with few, valuable islands close to each other. The dashed lines are the supply routes from the main island; routes close to raider bases and islands far from the preferred map edges (Latium north-west and south-east, Albion south-west, Aegyptus north-east) cost points. Idea and scoring model: ewjax (Anno 117 Island Selection)."),
+#endif
   ["PlaystyleLabel"]=("Spielstil:","Playstyle fit:"),
   ["PlaystylePartFormat"]=("{0}: {1} → {2} % (Gewicht {3})","{0}: {1} → {2} % (weight {3})"),
   ["PlaystyleMinimumsMet"]=("Alle Mindestwerte erfüllt.","Every minimum met."),
   ["PlaystyleMinimumsMissed"]=("Mindestwerte verfehlt: {0}","Minimums missed: {0}"),
   ["AtlasPickMode"]=("Inseln wählen","Pick islands"),
+#if GAME21
   ["AtlasPickModeTooltip"]=("Klicks auf Inseln stellen deine eigene Auswahl für den Seed-Atlas-Export zusammen (in Klick-Reihenfolge). Sie ersetzt in Karte und Export den Siedlungsplan der Region. In Albion wechselt jeder weitere Klick zwischen Römern, Kelten, beiden und keinen.","Clicks on islands build your own selection for the Seed Atlas export (in click order). It replaces the region's settling guide on the map and in the export. In Albion each further click switches between Romans, Celts, both and none."),
+#else
+  ["AtlasPickModeTooltip"]=("Klicks auf Inseln stellen deine eigene Auswahl für den Seed-Atlas-Export zusammen (in Klick-Reihenfolge). Sie ersetzt in Karte und Export den Siedlungsplan der Region. In Albion und Aegyptus wechselt jeder weitere Klick die Bevölkerung: erste, zweite, beide, keine.","Clicks on islands build your own selection for the Seed Atlas export (in click order). It replaces the region's settling guide on the map and in the export. In Albion and Aegyptus each further click switches the population: first, second, both, none."),
+#endif
   ["AtlasPickHeader"]=("Eigene Auswahl für den Seed Atlas","Own selection for the Seed Atlas"),
   ["AtlasPickHintLatium"]=("Karte und Export zeigen diese Inseln in dieser Reihenfolge. Ein weiterer Klick auf eine gewählte Insel nimmt sie wieder heraus.","Map and export show these islands in this order. Click a chosen island again to remove it."),
   ["AtlasPickHintPopulations"]=("Karte und Export zeigen diese Inseln. Jeder Klick auf eine Insel wechselt: erste Bevölkerung, zweite, beide, keine.","Map and export show these islands. Each click on an island switches: first population, second, both, none."),
@@ -137,6 +156,15 @@ internal sealed class Localization:INotifyPropertyChanged
   ["GuideCelts"]=("Kelten","Celts"),
   ["GuideTooltipFormat"]=("Siedlungsplan {0} · neu: {1}","Settling guide {0} · adds: {1}"),
   ["GuideNone"]=("Keine Reihenfolge erreicht alle Fruchtbarkeiten.","No order reaches every fertility."),
+#if !GAME21
+  ["GuideEgyptHint"]=("Kumatische und griechisch-römische Bevölkerung brauchen jeweils eigene Fruchtbarkeiten. Beide Reihenfolgen stehen hier; die gewählte ist auf der Karte eingezeichnet (K = kumatisch, G = griechisch-römisch). Fruchtbarer Boden und Ufer zählen je Kachel mit.","The Kumatic and the Greco-Roman population each need their own fertilities. Both orders are listed; the selected one is drawn on the map (K = Kumatic, G = Greco-Roman). Fertile ground and riverbank count per tile."),
+  ["GuideKumaticLetter"]=("K","K"),
+  ["GuideGrecoRomanLetter"]=("G","G"),
+  ["GuideKumatic"]=("Kumatisch","Kumatic"),
+  ["GuideGrecoRoman"]=("Griechisch-römisch","Greco-Roman"),
+  ["GuideKumaticFirstFormat"]=("Kumatisch zuerst · Wertung {0}","Kumatic first · score {0}"),
+  ["GuideGrecoRomanFirstFormat"]=("Griechisch-römisch zuerst · Wertung {0}","Greco-Roman first · score {0}"),
+#endif
   ["PreviewStyleLabel"]=("Inseln:","Islands:"),
   ["PreviewStyleTiles"]=("Kachelkarte","Tile map"),
   ["PreviewStyleArtwork"]=("Spielgrafik","Game artwork"),
@@ -145,6 +173,16 @@ internal sealed class Localization:INotifyPropertyChanged
   ["PreviewZoomHint"]=("Strg + Mausrad zoomt, Ziehen mit der linken Maustaste verschiebt","Ctrl + mouse wheel zooms, drag with the left mouse button to pan"),
   ["LatiumTilesFormat"]=("Baufläche {0} · Hafen {1}","Buildable {0} · harbour {1}"),
   ["AlbionTilesFormat"]=("Baufläche {0} · davon Sumpf {1} · Hafen {2}","Buildable {0} · of it marsh {1} · harbour {2}"),
+#if !GAME21
+  ["EgyptTilesFormat"]=("Baufläche {0} · fruchtbarer Boden {1} · Ufer {2} · Hafen {3}","Buildable {0} · fertile ground {1} · riverbank {2} · harbour {3}"),
+  ["EgyptLayerVariant"]=("kleinere Layer-Version","smaller layer version"),
+  ["EgyptGold"]=("mit Gold","gold"),
+  ["EgyptNoGold"]=("ohne Gold","no gold"),
+#endif
+#if !GAME21
+  ["EgyptFiltersHeader"]=("Aegyptus (DLC03) · Flächen in Kacheln, Minen als aktive Minenbauplätze","Aegyptus (DLC03) · areas in tiles, mines as active mine slots"),
+  ["EgyptFiltersHeaderTooltip"]=("Lavendel, Weintrauben und Oliven wachsen auf jeder bewässerten Kachel, daher zählt die ganze Baufläche ihrer Inseln. Bäume wie Dattelpalmen wachsen nur auf natürlich fruchtbarem Boden. Flusspferde brauchen Uferkacheln. Kupfer, Zinn und Mineralien brauchen einen Minenbauplatz; Gold wird an der Küste oder in einer Mine gewonnen. Die Werte hängen von Kartengröße, Fruchtbarkeit und Rohstoffvorkommen ab.","Lavender, grapes and olives grow on any irrigated tile, so the whole buildable area of their islands counts. Trees such as dates grow only on the native fertile ground. Hippos need riverbank tiles. Copper, tin and minerals need a mine slot; gold is won on the coast or in a mine. The values depend on map size, fertility and resource slot setting."),
+#endif
   ["MapProfileHeader"]=("KARTENPROFIL","MAP PROFILE"),
   ["MapTemplateLabel"]=("KARTENFORM","SHAPE"),
   ["MapSizeLabel"]=("GRÖSSE","SIZE"),
@@ -217,7 +255,11 @@ internal sealed class Localization:INotifyPropertyChanged
   ["TinMinesAlbion"]=("Zinn-Minen · Albion","Tin mines · Albion"),
   ["AdvancedFiltersHeader"]=("Erweiterte Fruchtbarkeitsfilter · Kacheln der Inseln mit der Fruchtbarkeit · Schritte zu je 500 Kacheln","Advanced fertility filters · tiles of the islands that carry the fertility · steps of 500 tiles"),
   ["ShowAdvancedFilters"]=("Erweiterte Fruchtbarkeitsfilter anzeigen","Show advanced fertility filters"),
+#if GAME21
   ["ShowAdvancedFiltersTooltip"]=("Blendet die erweiterten Filter (Hafen- und Sumpfkacheln der Inseln mit einer bestimmten Fruchtbarkeit) und alle fruchtbarkeitsbezogenen Spalten und Filterzeilen ein: Gold- und Störfluss, die einzelnen Minen und die Spalten der erweiterten Filter. Ohne den Haken zeigt die Tabelle nur Flächen und Bauplätze gesamt. Ausgeblendete Filter werden bei der Suche nicht angewendet.","Shows the advanced filters (harbour and swamp tiles of the islands that carry a given fertility) and every fertility-specific column and filter row: gold and sturgeon river, the single mines and the advanced filter columns. Without it the table shows only areas and total slots. Hidden filters are not applied to the search."),
+#else
+  ["ShowAdvancedFiltersTooltip"]=("Blendet die erweiterten Filter (Hafen- und Sumpfkacheln der Inseln mit einer bestimmten Fruchtbarkeit) und alle fruchtbarkeitsbezogenen Spalten ein: Gold- und Störfluss, die einzelnen Minen, die Spalten der erweiterten Filter und mit DLC03 die Fruchtbarkeits- und Minenspalten von Aegyptus. Ohne den Haken zeigt die Tabelle nur Flächen und Bauplätze gesamt. Ausgeblendete erweiterte Filter werden bei der Suche nicht angewendet.","Shows the advanced filters (harbour and swamp tiles of the islands that carry a given fertility) and every fertility-specific column: gold and sturgeon river, the single mines, the advanced filter columns and, with DLC03, the Aegyptus fertility and mine columns. Without it the table shows only areas and total slots. Hidden advanced filters are not applied to the search."),
+#endif
   ["AdvLatiumHarbourMurex"]=("Hafenfläche · Purpurschnecken · Latium","Harbour tiles · Murex · Latium"),
   ["AdvEnableLatiumHarbourMurex"]=("Hafenfläche der Purpurschnecken-Inseln in Latium als Filter aktivieren","Enable the harbour tiles of the Murex islands in Latium as a filter"),
   ["AdvColumnLatiumHarbourMurex"]=("Hafenfläche der Inseln mit Purpurschnecken · Latium","Harbour tiles of the islands with Murex · Latium"),
@@ -262,6 +304,67 @@ internal sealed class Localization:INotifyPropertyChanged
   ["ScoreAdvAlbionHarbourSeaShells"]=("Hafenfläche · Kammmuscheln · Albion","Harbour tiles · Sea Shells · Albion"),
   ["ScoreAdvAlbionMarshSmallBirds"]=("Sumpffläche · Kleine Vögel · Albion","Swamp tiles · Small Birds · Albion"),
   ["ScoreAdvAlbionMarshBeaver"]=("Sumpffläche · Biber · Albion","Swamp tiles · Beaver · Albion"),
+#if !GAME21
+  ["EgyBuildable"]=("Baufläche · Aegyptus","Buildable area · Aegyptus"),
+  ["EgyEnableBuildable"]=("Baufläche · Aegyptus als Filter aktivieren","Enable buildable area · Aegyptus as a filter"),
+  ["EgyColumnBuildable"]=("Baufläche aller Inseln · Aegyptus","Buildable area of all islands · Aegyptus"),
+  ["ScoreEgyBuildable"]=("Baufläche · Aegyptus","Buildable area · Aegyptus"),
+  ["EgyHeaderBuildable"]=("▦ Aegyptus","▦ Aegyptus"),
+  ["EgyRiverbank"]=("Uferfläche gesamt · Aegyptus","Riverbank tiles, total · Aegyptus"),
+  ["EgyEnableRiverbank"]=("Uferfläche gesamt · Aegyptus als Filter aktivieren","Enable riverbank tiles, total · Aegyptus as a filter"),
+  ["EgyColumnRiverbank"]=("Uferfläche aller Inseln · Aegyptus","Riverbank tiles of all islands · Aegyptus"),
+  ["ScoreEgyRiverbank"]=("Uferfläche gesamt · Aegyptus","Riverbank tiles, total · Aegyptus"),
+  ["EgyHeaderRiverbank"]=("▦ Ufer","▦ Bank"),
+  ["EgyMineSlots"]=("Minenbauplätze gesamt · Aegyptus","Mine slots, total · Aegyptus"),
+  ["EgyEnableMineSlots"]=("Minenbauplätze gesamt · Aegyptus als Filter aktivieren","Enable mine slots, total · Aegyptus as a filter"),
+  ["EgyColumnMineSlots"]=("Aktive Minenbauplätze aller Inseln · Aegyptus","Active mine slots of all islands · Aegyptus"),
+  ["ScoreEgyMineSlots"]=("Minenbauplätze gesamt · Aegyptus","Mine slots, total · Aegyptus"),
+  ["EgyHeaderMineSlots"]=("Aegyptus","Aegyptus"),
+  ["EgyHippoRiverbank"]=("Uferfläche · Flusspferde · Aegyptus","Riverbank tiles · Hippos · Aegyptus"),
+  ["EgyEnableHippoRiverbank"]=("Uferfläche · Flusspferde · Aegyptus als Filter aktivieren","Enable riverbank tiles · Hippos · Aegyptus as a filter"),
+  ["EgyColumnHippoRiverbank"]=("Uferfläche der Inseln mit Flusspferden (Flusspferde brauchen Uferkacheln) · Aegyptus","Riverbank tiles of the islands with Hippos (Hippos need riverbank tiles) · Aegyptus"),
+  ["ScoreEgyHippoRiverbank"]=("Uferfläche · Flusspferde · Aegyptus","Riverbank tiles · Hippos · Aegyptus"),
+  ["EgyPomegranateTiles"]=("Baufläche · Granatapfel · Aegyptus","Buildable area · Pomegranates · Aegyptus"),
+  ["EgyEnablePomegranateTiles"]=("Baufläche · Granatapfel · Aegyptus als Filter aktivieren","Enable buildable area · Pomegranates · Aegyptus as a filter"),
+  ["EgyColumnPomegranateTiles"]=("Baufläche der Inseln mit Granatapfel (wächst auf jeder bewässerten Kachel) · Aegyptus","Buildable area of the islands with Pomegranates (grow on any irrigated tile) · Aegyptus"),
+  ["ScoreEgyPomegranateTiles"]=("Baufläche · Granatapfel · Aegyptus","Buildable area · Pomegranates · Aegyptus"),
+  ["EgyFertileGround"]=("Fruchtbarer Boden (Datteln) · Aegyptus","Fertile ground (Dates) · Aegyptus"),
+  ["EgyEnableFertileGround"]=("Fruchtbarer Boden (Datteln) · Aegyptus als Filter aktivieren","Enable fertile ground (Dates) · Aegyptus as a filter"),
+  ["EgyColumnFertileGround"]=("Natürlich fruchtbarer Boden aller Inseln - nur hier wachsen Bäume wie Dattelpalmen, nicht auf bewässertem Land · Aegyptus","Native fertile ground of all islands - trees such as dates grow only here, not on irrigated land · Aegyptus"),
+  ["ScoreEgyFertileGround"]=("Fruchtbarer Boden (Datteln) · Aegyptus","Fertile ground (Dates) · Aegyptus"),
+  ["EgyLavenderTiles"]=("Baufläche · Lavendel · Aegyptus","Buildable area · Lavender · Aegyptus"),
+  ["EgyEnableLavenderTiles"]=("Baufläche · Lavendel · Aegyptus als Filter aktivieren","Enable buildable area · Lavender · Aegyptus as a filter"),
+  ["EgyColumnLavenderTiles"]=("Baufläche der Inseln mit Lavendel (wächst auf jeder bewässerten Kachel) · Aegyptus","Buildable area of the islands with Lavender (grows on any irrigated tile) · Aegyptus"),
+  ["ScoreEgyLavenderTiles"]=("Baufläche · Lavendel · Aegyptus","Buildable area · Lavender · Aegyptus"),
+  ["EgyGrapeTiles"]=("Baufläche · Weintrauben · Aegyptus","Buildable area · Grapes · Aegyptus"),
+  ["EgyEnableGrapeTiles"]=("Baufläche · Weintrauben · Aegyptus als Filter aktivieren","Enable buildable area · Grapes · Aegyptus as a filter"),
+  ["EgyColumnGrapeTiles"]=("Baufläche der Inseln mit Weintrauben (wachsen auf jeder bewässerten Kachel) · Aegyptus","Buildable area of the islands with Grapes (grow on any irrigated tile) · Aegyptus"),
+  ["ScoreEgyGrapeTiles"]=("Baufläche · Weintrauben · Aegyptus","Buildable area · Grapes · Aegyptus"),
+  ["EgyOliveTiles"]=("Baufläche · Oliven · Aegyptus","Buildable area · Olives · Aegyptus"),
+  ["EgyEnableOliveTiles"]=("Baufläche · Oliven · Aegyptus als Filter aktivieren","Enable buildable area · Olives · Aegyptus as a filter"),
+  ["EgyColumnOliveTiles"]=("Baufläche der Inseln mit Oliven (wachsen auf jeder bewässerten Kachel) · Aegyptus","Buildable area of the islands with Olives (grow on any irrigated tile) · Aegyptus"),
+  ["ScoreEgyOliveTiles"]=("Baufläche · Oliven · Aegyptus","Buildable area · Olives · Aegyptus"),
+  ["EgyMineralMines"]=("Mineralien-Minen · Aegyptus","Mineral mines · Aegyptus"),
+  ["EgyEnableMineralMines"]=("Mineralien-Minen · Aegyptus als Filter aktivieren","Enable mineral mines · Aegyptus as a filter"),
+  ["EgyColumnMineralMines"]=("Aktive Minenbauplätze der Inseln mit Mineralien · Aegyptus","Active mine slots of the islands with minerals · Aegyptus"),
+  ["ScoreEgyMineralMines"]=("Mineralien-Minen · Aegyptus","Mineral mines · Aegyptus"),
+  ["EgyTinMines"]=("Zinn-Minen · Aegyptus","Tin mines · Aegyptus"),
+  ["EgyEnableTinMines"]=("Zinn-Minen · Aegyptus als Filter aktivieren","Enable tin mines · Aegyptus as a filter"),
+  ["EgyColumnTinMines"]=("Aktive Minenbauplätze der Inseln mit Zinn · Aegyptus","Active mine slots of the islands with tin · Aegyptus"),
+  ["ScoreEgyTinMines"]=("Zinn-Minen · Aegyptus","Tin mines · Aegyptus"),
+  ["EgyCopperMines"]=("Kupfer-Minen · Aegyptus","Copper mines · Aegyptus"),
+  ["EgyEnableCopperMines"]=("Kupfer-Minen · Aegyptus als Filter aktivieren","Enable copper mines · Aegyptus as a filter"),
+  ["EgyColumnCopperMines"]=("Aktive Minenbauplätze der Inseln mit Kupfer · Aegyptus","Active mine slots of the islands with copper · Aegyptus"),
+  ["ScoreEgyCopperMines"]=("Kupfer-Minen · Aegyptus","Copper mines · Aegyptus"),
+  ["EgyGoldIslands"]=("Inseln mit Gold · Aegyptus","Islands with gold · Aegyptus"),
+  ["EgyEnableGoldIslands"]=("Inseln mit Gold · Aegyptus als Filter aktivieren","Enable islands with gold · Aegyptus as a filter"),
+  ["EgyColumnGoldIslands"]=("Anzahl der Inseln mit Gold · Aegyptus","Number of islands with gold · Aegyptus"),
+  ["ScoreEgyGoldIslands"]=("Inseln mit Gold · Aegyptus","Islands with gold · Aegyptus"),
+  ["EgyGoldMines"]=("Gold-Minen · Aegyptus","Gold mines · Aegyptus"),
+  ["EgyEnableGoldMines"]=("Gold-Minen · Aegyptus als Filter aktivieren","Enable gold mines · Aegyptus as a filter"),
+  ["EgyColumnGoldMines"]=("Aktive Minenbauplätze der Inseln mit Gold (ägyptisches Gold gibt es auch als Mine) · Aegyptus","Active mine slots of the islands with gold (Egyptian gold also has a mine) · Aegyptus"),
+  ["ScoreEgyGoldMines"]=("Gold-Minen · Aegyptus","Gold mines · Aegyptus"),
+#endif
   ["ScoreCinisGrapes"]=("Cinis-Pool · Grapes","Cinis pool · Grapes"),
   ["ScoreCinisFlax"]=("Cinis-Pool · Flax","Cinis pool · Flax"),
   ["ScoreCinisMurex"]=("Cinis-Pool · Murex","Cinis pool · Murex"),

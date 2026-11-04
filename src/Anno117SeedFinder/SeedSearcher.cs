@@ -5,9 +5,16 @@ using System.Security.Cryptography;
 using System.Text;
 
 internal sealed record SearchRequest(int FirstSeed,int MaxSeed,int Threads,int Limit,string Output,uint CinisSlot1,uint[] CinisPool,bool CinisMaxSites,IReadOnlyList<IslandCondition>? Conditions=null,MapProfile? Profile=null,int MinLatiumGoldSites=0,int MinLatiumSturgeonSites=0,int MinLatiumMountainSites=0,int MinLatiumRiverSites=0,int MinAlbionMountainSites=0,int MinLatiumBuildableTiles=0,int MinAlbionBuildableTiles=0,int MinAlbionSwampTiles=0,FertilitySetting FertilitySetting=FertilitySetting.Abundant,SlotSetting SlotSetting=SlotSetting.Abundant,int MinLatiumMineralMines=0,int MinAlbionCopperMines=0,int MinAlbionSilverMines=0,int MinLatiumMarbleSites=0,int MinLatiumGoldMines=0,int MinAlbionTinMines=0,IReadOnlyList<uint>? SeedList=null,IReadOnlyList<int>? AdvancedMinimums=null
+#if !GAME21
+ ,IReadOnlyList<int>? EgyptMinimums=null
+#endif
  ,IReadOnlyList<IslandRule>? IslandRules=null
  )
 {
+#if !GAME21
+ // Minimums of the Aegyptus (DLC03) filters, indexed by EgyptFilter; 0 (or no list) means the filter is off.
+ public int EgyptMinimum(EgyptFilter filter)=>EgyptMinimums is null||(int)filter>=EgyptMinimums.Count?0:EgyptMinimums[(int)filter];
+#endif
  // Minimum tile counts of the advanced fertility filters, indexed by AdvancedFilter; 0 (or no list) means the filter is off.
  public int AdvancedMinimum(AdvancedFilter filter)=>AdvancedMinimums is null||(int)filter>=AdvancedMinimums.Count?0:AdvancedMinimums[(int)filter];
  // With a seed list the search runs over exactly those seeds (FirstSeed and MaxSeed are then only their smallest and largest);
@@ -15,7 +22,12 @@ internal sealed record SearchRequest(int FirstSeed,int MaxSeed,int Threads,int L
  public int SeedCount=>SeedList?.Count??MaxSeed-FirstSeed+1;
  public uint SeedAt(int position)=>SeedList is null?(uint)(FirstSeed+position):SeedList[position];
 }
+#if !GAME21
+// Egypt is cheap (a fixed map) and always computed for a hit; the window only shows it while DLC03 is on.
+internal sealed record SearchHit(uint Seed,uint[] Fertilities,SiteCounts CinisSites,RegionMetrics Latium,RegionMetrics Albion,EgyptMetrics Egypt);
+#else
 internal sealed record SearchHit(uint Seed,uint[] Fertilities,SiteCounts CinisSites,RegionMetrics Latium,RegionMetrics Albion);
+#endif
 internal sealed record PartialSearchHit(uint Seed,uint[] Fertilities,SiteCounts CinisSites,RegionMetrics Latium,RegionMetrics? Albion);
 internal sealed record SearchProgress(int Processed,int Total,int Hits);
 internal sealed record SearchSummary(SearchHit[] Hits,TimeSpan Elapsed,string Output,string Strategy,bool Canceled,int Processed,int FoundCount);
@@ -56,6 +68,10 @@ internal static class SeedSearcher
        {
         var seed=request.SeedAt(position);
         options.CancellationToken.ThrowIfCancellationRequested();LatiumGeneration? latium=null;List<GeneratedIsland>? albion=null;RegionMetrics? albionMetrics=null;var matches=false;
+#if !GAME21
+        // Aegyptus first: a fixed map is far cheaper than Latium, so its filters reject most seeds before the expensive regions run.
+        if(plan.NeedsEgypt&&!plan.MatchesEgypt(EgyptGenerator.Metrics(seed,profile.Size,request.FertilitySetting,request.SlotSetting))){completedInRange++;continue;}
+#endif
         if(order==SearchRegionOrder.AlbionFirst)
         {
          albion=AlbionGenerator.Generate(seed,profile,fertilitySetting:request.FertilitySetting,slotSetting:request.SlotSetting);
@@ -85,7 +101,11 @@ internal static class SeedSearcher
    {
     // The displayed rows carry fertility-derived counts (copper, silver, beaver …), so the
     // shown hits always use the full Albion generation rather than the totals-only fast path.
+#if GAME21
     var hit=selected[index];var albion=hit.Albion??RegionMetrics.Calculate(AlbionGenerator.Generate(hit.Seed,profile,fertilitySetting:request.FertilitySetting,slotSetting:request.SlotSetting));result[index]=new(hit.Seed,hit.Fertilities,hit.CinisSites,hit.Latium,albion);
+#else
+    var hit=selected[index];var albion=hit.Albion??RegionMetrics.Calculate(AlbionGenerator.Generate(hit.Seed,profile,fertilitySetting:request.FertilitySetting,slotSetting:request.SlotSetting));result[index]=new(hit.Seed,hit.Fertilities,hit.CinisSites,hit.Latium,albion,EgyptGenerator.Metrics(hit.Seed,profile.Size,request.FertilitySetting,request.SlotSetting));
+#endif
    });
    var output=Path.GetFullPath(request.Output);
    Directory.CreateDirectory(Path.GetDirectoryName(output)!);
@@ -106,19 +126,30 @@ internal static class SeedSearcher
  {
   var latium=Generator.GenerateLatium(seed,new GeneratorScratch(),profile,fertilitySetting:setting,slotSetting:slots);
   var albion=RegionMetrics.Calculate(AlbionGenerator.Generate(seed,profile,fertilitySetting:setting,slotSetting:slots));
+#if GAME21
   return new(seed,latium.CinisFertilities,latium.CinisSites,latium.Metrics,albion);
+#else
+  return new(seed,latium.CinisFertilities,latium.CinisSites,latium.Metrics,albion,EgyptGenerator.Metrics(seed,profile.Size,setting,slots));
+#endif
  }
 
  // Shared by the window's CSV export and the headless --describe-seeds switch so both
  // always produce the same columns.
  // Same order as the result table: tiles, total slots, fertility-specific slots, Cinis.
+#if GAME21
  public const string CsvHeader="Seed;LatiumFlaeche;AlbionFlaeche;AlbionSumpf;LatiumBerg;LatiumFluss;AlbionBerg;GoldFluss;StoerFluss;RohmarmorMinen;MineralienMinen;GoldMinen;SilberMinen;ZinnMinen;KupferMinen;LatiumHafenMurex;LatiumHafenOysters;AlbionHafenSaltwort;AlbionHafenSeaShells;AlbionSumpfSmallBirds;AlbionSumpfBeaver;CinisFruchtbarkeiten";
+#else
+ public const string CsvHeader="Seed;LatiumFlaeche;AlbionFlaeche;AlbionSumpf;LatiumBerg;LatiumFluss;AlbionBerg;GoldFluss;StoerFluss;RohmarmorMinen;MineralienMinen;GoldMinen;SilberMinen;ZinnMinen;KupferMinen;LatiumHafenMurex;LatiumHafenOysters;AlbionHafenSaltwort;AlbionHafenSeaShells;AlbionSumpfSmallBirds;AlbionSumpfBeaver;AegyptusFlaeche;AegyptusUfer;AegyptusMinenplaetze;AegyptusUferHippos;AegyptusFlaecheGranatapfel;AegyptusFruchtbarerBoden;AegyptusFlaecheLavendel;AegyptusFlaecheWein;AegyptusFlaecheOliven;AegyptusMineralienMinen;AegyptusZinnMinen;AegyptusKupferMinen;AegyptusGoldInseln;AegyptusGoldMinen;CinisFruchtbarkeiten";
+#endif
  public static string CsvRow(SearchHit hit)=>string.Join(';',
   hit.Seed,hit.Latium.BuildableTiles,hit.Albion.BuildableTiles,hit.Albion.SwampTiles,
   hit.Latium.Sites.Mountain,hit.Latium.Sites.River,hit.Albion.Sites.Mountain,
   hit.Latium.GoldSites,hit.Latium.SturgeonSites,
   hit.Latium.MarbleSites,hit.Latium.MineralMineSites,hit.Latium.GoldMineSites,hit.Albion.SilverMineSites,hit.Albion.TinMineSites,hit.Albion.CopperMineSites,
   string.Join(';',AdvancedFilters.All.Select(definition=>(definition.Region==RegionKind.Latium?hit.Latium:hit.Albion).Tiles(definition.Filter))),
+#if !GAME21
+  string.Join(';',EgyptFilters.Values(hit.Egypt)),
+#endif
   string.Join(' ',hit.Fertilities.Select(Generator.Label)));
 
  static SearchRegionOrder ChooseOrder(SearchRequest request,CompiledSearchPlan plan,CancellationToken cancellationToken)
@@ -170,8 +201,57 @@ internal static class SeedSearcher
   }
  }
 
-
+#if !GAME21
+ // The stored references below come from the 2.1 validation savegames and run in 2.1 mode; the game-version-3.0 references
+ // (DLC03 savegames, including Aegyptus) are checked by Version30References.
  public static SelfTestResult RunSelfTest()
+ {
+  SelfTestResult legacy;using(GameVersion.Use21())legacy=RunSelfTest21();
+  List<(uint Seed,string Label,string Expected,string Actual)> references30;using(GameVersion.Use30())references30=Version30References();
+  var failed30=references30.Where(x=>x.Actual!=x.Expected).Select(x=>x.Seed).Distinct().ToArray();var total30=references30.Count;
+  return new(legacy.Success&&failed30.Length==0,legacy.Passed+total30-failed30.Length,legacy.Total+total30,[..legacy.Failed,..failed30]);
+ }
+
+ // Game version 3.0 references, each from a DLC03 savegame in .research/DLC3 saves that tools/check_savegame.py matches completely:
+ // Latium fertilities and site counts (the three islands with new random river slots), placements (roman_island_extralarge_04's
+ // new start coast: Rift Large seed 2 and Archipelago Medium seed 1204) and Aegyptus (layer variants, sets and fertilities in order).
+ internal static List<(uint Seed,string Label,string Expected,string Actual)> Version30References()
+ {
+  var result=new List<(uint,string,string,string)>();
+  foreach(var(seed,template,size,setting,expected)in new[]
+  {
+   (1u,MapTemplateKind.Archipelago,MapSizeKind.Large,FertilitySetting.Abundant,"0333BBEE978BB8B94C7AD8AF46F8C5D217A4D898DD4CDDDB9E71C501D97A91EF"),
+   (2u,MapTemplateKind.Rift,MapSizeKind.Large,FertilitySetting.Abundant,"231642D70F58CF7F7CB16C5B6447F35F0FB4EAED746C537ACD759C0D3E6E9D9E"),
+   (1204u,MapTemplateKind.Archipelago,MapSizeKind.Medium,FertilitySetting.Abundant,"14F5381B2D7B0A2DF15F0FE0A9D9453343086488CD78D686DE3AD95127B84922"),
+   (3u,MapTemplateKind.Archipelago,MapSizeKind.Medium,FertilitySetting.Regular,"C977BCEB846ABC2004B6598C6277F4BBC1041366FBE210242DFAFBA7A77525FF"),
+  })
+  {
+   var profile=MapProfiles.Get(template,size);var latium=Generator.GenerateLatium(seed,new GeneratorScratch(),profile,fertilitySetting:setting);
+   var actual=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(LatiumDigest(latium.Islands)+SiteDigest(latium.Islands)+PlacementDigest(Generator.DebugPlacements(seed,profile)))));
+   result.Add((seed,$"Latium {template} {size} {setting}",expected,actual));
+  }
+  foreach(var(seed,size,setting,expected)in new[]
+  {
+   (1u,MapSizeKind.Large,FertilitySetting.Abundant,"B6D609E22060D19DC3090CD9C67EF1D0695B71F7FE51852738B7DCBF4270C89E"),(1u,MapSizeKind.Medium,FertilitySetting.Regular,"DE5E5E3F96A29C9816E5B51090DD89C597EBA9AD3F82793F5F25863DE48CB212"),(1u,MapSizeKind.Small,FertilitySetting.Sparse,"787ED326CCE62E3F703445F945CBAA01243CF7033F282A77FFF3B93B02877382"),
+   (2u,MapSizeKind.Large,FertilitySetting.Abundant,"50256F5D43441B5D41F6C7543887B106FD815AF549E283A6FF6A6DC7004F21DB"),(802u,MapSizeKind.Medium,FertilitySetting.Abundant,"57A76164B8F9AEB52AAB952B9AE6BE5787B151A571523EB62844A59658C4DDE0"),
+  })
+  {
+   var egypt=EgyptGenerator.Generate(seed,size,setting);
+   var actual=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(string.Join(";",egypt.Islands.Select(x=>$"{x.Variant}|{x.FertilitySet}|{string.Join(',',x.Fertilities)}")))));
+   result.Add((seed,$"Aegyptus {size} {setting}",expected,actual));
+  }
+  // Game 3.0 moved two Albion slot anchors of Archipelago Large; the 2.1 test above keeps the old ones.
+  var albion30=AlbionGenerator.Generate(8941790,MapProfiles.Get(MapTemplateKind.Archipelago,MapSizeKind.Large));
+  result.Add((8941790u,"Albion Archipelago Large","9DCA34D2B30904E6F709CB71F7FEAA49EC59432F1C6593776F482F9F0B1F1931",AlbionDigest(albion30)));
+  return result;
+ }
+#endif
+
+#if GAME21
+ public static SelfTestResult RunSelfTest()
+#else
+ static SelfTestResult RunSelfTest21()
+#endif
  {
   var refs=new Dictionary<uint,(uint[] Fertilities,SiteCounts Sites)>
   {

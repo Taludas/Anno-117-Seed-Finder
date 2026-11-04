@@ -51,6 +51,13 @@ internal sealed class FinderSettingsPreset
  // Advanced fertility filters by AdvancedFilter name: the minimum tile count and whether the filter is switched on.
  public Dictionary<string,int> AdvancedMinimums { get; set; }=[];
  public Dictionary<string,bool> AdvancedEnabled { get; set; }=[];
+#if !GAME21
+ // Aegyptus (DLC03): whether DLC03 is on (on, like DLC01, for a preset from before DLC03), and per EgyptFilter name the minimum and
+ // whether the filter is switched on.
+ public bool Dlc03 { get; set; }=true;
+ public Dictionary<string,int> EgyptMinimums { get; set; }=[];
+ public Dictionary<string,bool> EgyptEnabled { get; set; }=[];
+#endif
  // Seed scoring (see ScoreMetrics.cs/SCORING-PLAN.md): the master switch, the outlier-range option, and one weight
  // (0-10) per ScoreMetric name; a metric missing from the dictionary defaults to 0 (not scored).
  public bool EnableScoring { get; set; }

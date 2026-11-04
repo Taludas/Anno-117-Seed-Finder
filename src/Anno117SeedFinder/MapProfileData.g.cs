@@ -23,7 +23,11 @@ internal static class MapProfileData{
    new(17,1056,600,"XL",1),
   },new MapSlot[]{
    new(0,1520,136,"Large",0),
+#if GAME21
    new(1,72,1592,"Large",0),
+#else
+   new(1,104,1544,"Large",0),
+#endif
    new(2,112,728,"Medium",0),
    new(3,1600,600,"Medium",0),
    new(4,40,1080,"Medium",0),
@@ -31,7 +35,11 @@ internal static class MapProfileData{
    new(6,520,224,"Small",0),
    new(7,1304,1560,"Medium",0),
    new(8,816,264,"Medium",0),
+#if GAME21
    new(9,528,1632,"Small",0),
+#else
+   new(9,552,1616,"Small",0),
+#endif
    new(10,1472,984,"Large",0),
    new(11,824,1536,"Large",0),
    new(12,520,648,"Large",1),
@@ -73,7 +81,11 @@ internal static class MapProfileData{
    new(22,1056,600,"XL",1),
   },new MapSlot[]{
    new(0,1520,136,"Large",0),
+#if GAME21
    new(1,72,1592,"Large",0),
+#else
+   new(1,104,1544,"Large",0),
+#endif
    new(2,112,728,"Medium",0),
    new(3,1600,600,"Medium",0),
    new(4,40,1080,"Medium",0),
@@ -81,7 +93,11 @@ internal static class MapProfileData{
    new(6,520,224,"Small",0),
    new(7,1304,1560,"Medium",0),
    new(8,816,264,"Medium",0),
+#if GAME21
    new(9,528,1632,"Small",0),
+#else
+   new(9,552,1616,"Small",0),
+#endif
    new(10,1472,984,"Large",0),
    new(11,824,1536,"Large",0),
    new(12,520,648,"Large",1),

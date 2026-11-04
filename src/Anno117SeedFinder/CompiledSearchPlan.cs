@@ -24,6 +24,9 @@ internal sealed class CompiledSearchPlan
  readonly int[] advancedAlbion;
  readonly AdvancedFilter[] advancedLatiumFilters;
  readonly AdvancedFilter[] advancedAlbionFilters;
+#if !GAME21
+ readonly int[] egyptMinimums;
+#endif
  readonly CompiledIslandCondition[] latium;
  readonly CompiledIslandCondition[] albion;
  readonly IslandRule[] latiumRules,albionRules;
@@ -37,14 +40,27 @@ internal sealed class CompiledSearchPlan
   minLatiumGoldMines=request.MinLatiumGoldMines;minLatiumMarbleSites=request.MinLatiumMarbleSites;minLatiumMineralMines=request.MinLatiumMineralMines;minAlbionCopperMines=request.MinAlbionCopperMines;minAlbionSilverMines=request.MinAlbionSilverMines;minAlbionTinMines=request.MinAlbionTinMines;
   advancedLatiumFilters=[..AdvancedFilters.All.Where(x=>x.Region==RegionKind.Latium&&request.AdvancedMinimum(x.Filter)>0).Select(x=>x.Filter)];advancedAlbionFilters=[..AdvancedFilters.All.Where(x=>x.Region==RegionKind.Albion&&request.AdvancedMinimum(x.Filter)>0).Select(x=>x.Filter)];
   advancedLatium=[..advancedLatiumFilters.Select(request.AdvancedMinimum)];advancedAlbion=[..advancedAlbionFilters.Select(request.AdvancedMinimum)];
+#if !GAME21
+  egyptMinimums=[..EgyptFilters.All.Select(definition=>request.EgyptMinimum(definition.Filter))];
+#endif
   latium=(request.Conditions??[]).Where(x=>x.Region==RegionKind.Latium).Select(x=>new CompiledIslandCondition(x)).ToArray();
   albion=(request.Conditions??[]).Where(x=>x.Region==RegionKind.Albion).Select(x=>new CompiledIslandCondition(x)).ToArray();
   latiumRules=[..(request.IslandRules??[]).Where(x=>x.Region==RegionKind.Latium)];albionRules=[..(request.IslandRules??[]).Where(x=>x.Region==RegionKind.Albion)];
  }
 
  public bool NeedsAlbion=>albion.Length!=0||albionRules.Length!=0||minAlbionMountainSites>0||minAlbionBuildableTiles>0||minAlbionSwampTiles>0||minAlbionCopperMines>0||minAlbionSilverMines>0||minAlbionTinMines>0||advancedAlbionFilters.Length!=0;
+#if !GAME21
+ public bool NeedsEgypt=>egyptMinimums.Any(minimum=>minimum>0);
+#endif
  public static CompiledSearchPlan Create(SearchRequest request)=>new(request);
 
+#if !GAME21
+ public bool MatchesEgypt(EgyptMetrics metrics)
+ {
+  for(var index=0;index<egyptMinimums.Length;index++)if(egyptMinimums[index]>0&&EgyptFilters.All[index].Value(metrics)<egyptMinimums[index])return false;
+  return true;
+ }
+#endif
 
  public bool MatchesLatium(LatiumGeneration region)
  {

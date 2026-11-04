@@ -50,6 +50,7 @@ from typing import Optional
 SESSION_REGIONS: dict[int, str] = {
     3245: "Latium",
     6627: "Albion",
+    149679: "Aegyptus",  # DLC03 "Dawn of the Delta"
 }
 
 # Where the two external tools are looked for besides PATH; the layout tool's cache is included so a machine that already
