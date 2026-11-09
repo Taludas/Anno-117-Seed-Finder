@@ -57,6 +57,8 @@ internal sealed class FinderSettingsPreset
  public bool Dlc03 { get; set; }=true;
  public Dictionary<string,int> EgyptMinimums { get; set; }=[];
  public Dictionary<string,bool> EgyptEnabled { get; set; }=[];
+ // Aegyptus island rules (EgyptIslandRules.cs).
+ public List<EgyptIslandRulePreset> EgyptIslandRules { get; set; }=[];
 #endif
  // Seed scoring (see ScoreMetrics.cs/SCORING-PLAN.md): the master switch, the outlier-range option, and one weight
  // (0-10) per ScoreMetric name; a metric missing from the dictionary defaults to 0 (not scored).

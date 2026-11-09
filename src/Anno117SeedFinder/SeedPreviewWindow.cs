@@ -39,6 +39,12 @@ internal sealed partial class SeedPreviewWindow:Window
  static bool? egyptKumaticFirstOnMap;
 #endif
  readonly StartModeKind startMode;
+ // The islands that meet the last search's filters get a yellow outline while the toolbar box is ticked (SearchHighlights.cs).
+ readonly SearchHighlights? highlights;
+ internal static bool ShowFilterMatches{get;set;}=true;
+ static readonly Brush FilterMatchColor=new SolidColorBrush(Color.FromRgb(250,204,21));
+ // How many islands the current maps mark (for the checks).
+ internal int HighlightedIslands{get;private set;}
 
 #if GAME21
  // The maps start scaled to fit the window and can be zoomed.
@@ -46,9 +52,9 @@ internal sealed partial class SeedPreviewWindow:Window
  // With DLC03 the window shows Aegyptus as a third map. All maps start scaled to fit the window and can be zoomed.
 #endif
 #if GAME21
- public SeedPreviewWindow(uint seed,MapProfile? profile=null,FertilitySetting fertilitySetting=FertilitySetting.Abundant,SlotSetting slotSetting=SlotSetting.Abundant,StartModeKind startMode=StartModeKind.Flagship)
+ public SeedPreviewWindow(uint seed,MapProfile? profile=null,FertilitySetting fertilitySetting=FertilitySetting.Abundant,SlotSetting slotSetting=SlotSetting.Abundant,StartModeKind startMode=StartModeKind.Flagship,SearchHighlights? highlights=null)
 #else
- public SeedPreviewWindow(uint seed,MapProfile? profile=null,FertilitySetting fertilitySetting=FertilitySetting.Abundant,SlotSetting slotSetting=SlotSetting.Abundant,bool dlc03=false,StartModeKind startMode=StartModeKind.Flagship)
+ public SeedPreviewWindow(uint seed,MapProfile? profile=null,FertilitySetting fertilitySetting=FertilitySetting.Abundant,SlotSetting slotSetting=SlotSetting.Abundant,bool dlc03=false,StartModeKind startMode=StartModeKind.Flagship,SearchHighlights? highlights=null)
 #endif
  {
 #if GAME21
@@ -56,7 +62,7 @@ internal sealed partial class SeedPreviewWindow:Window
 #else
   AppCulture.Apply(this);this.profile=profile??MapProfiles.Default;this.seed=seed;this.fertilitySetting=fertilitySetting;this.slotSetting=slotSetting;this.dlc03=dlc03;if(dlc03)DesiredWidth=2240;
 #endif
-  this.startMode=startMode;
+  this.startMode=startMode;this.highlights=highlights;
   Title=Localization.Instance.Format("PreviewTitleFormat",seed);Width=DesiredWidth;Height=DesiredHeight;MinWidth=1120;MinHeight=700;WindowStartupLocation=WindowStartupLocation.CenterOwner;Background=new SolidColorBrush(Color.FromRgb(243,245,248));
   SourceInitialized+=(_,_)=>FitToMonitor();
 
@@ -84,6 +90,11 @@ internal sealed partial class SeedPreviewWindow:Window
    withoutCinis.Checked+=(_,_)=>{GuideWithoutCinis=true;BuildMaps();};withoutCinis.Unchecked+=(_,_)=>{GuideWithoutCinis=false;BuildMaps();};toolbar.Children.Add(withoutCinis);
    guide.Checked+=(_,_)=>withoutCinis.IsEnabled=true;guide.Unchecked+=(_,_)=>withoutCinis.IsEnabled=false;
   }
+  if(highlights is not null)
+  {
+   var filterMatches=new CheckBox{Content=Localization.Instance["PreviewFilterMatches"],IsChecked=ShowFilterMatches,VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(24,0,0,0),ToolTip=Localization.Instance["PreviewFilterMatchesTooltip"]};
+   filterMatches.Checked+=(_,_)=>{ShowFilterMatches=true;BuildMaps(false);};filterMatches.Unchecked+=(_,_)=>{ShowFilterMatches=false;BuildMaps(false);};toolbar.Children.Add(filterMatches);
+  }
   // Seed Atlas: annotated map images and the description for anno-companion.com (SeedPreviewWindow.Export.cs).
   var pickMode=new CheckBox{Content=Localization.Instance["AtlasPickMode"],VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(24,0,0,0),ToolTip=Localization.Instance["AtlasPickModeTooltip"]};
   pickMode.Checked+=(_,_)=>PickMode=true;pickMode.Unchecked+=(_,_)=>PickMode=false;toolbar.Children.Add(pickMode);
@@ -110,7 +121,7 @@ internal sealed partial class SeedPreviewWindow:Window
  // reanalyze false: the seed's analysis stays (e.g. after a change of the Seed Atlas selection).
  void BuildMaps(bool reanalyze=true)
  {
-  maps.Children.Clear();maps.ColumnDefinitions.Clear();tooltipTargets.Clear();
+  maps.Children.Clear();maps.ColumnDefinitions.Clear();tooltipTargets.Clear();HighlightedIslands=0;
   // One analysis per build: the maps, the settling guides, the playstyle ratings and the Seed Atlas export all read it.
 #if GAME21
   if(reanalyze||analysis is null)analysis=new SeedAnalysis(seed,profile,fertilitySetting,slotSetting,true,startMode,GuideWithoutCinis);
@@ -131,7 +142,7 @@ internal sealed partial class SeedPreviewWindow:Window
   if(dlc03){var egyptMap=BuildEgyptMap(analysis.Egypt!);Grid.SetColumn(egyptMap,2);maps.Children.Add(egyptMap);}
 #endif
   UpdatePlaystyles();
-  legend.Text=IslandImages.Style==IslandImageStyle.Tiles?Localization.Instance["PreviewTileLegend"]:"";
+  legend.Text=string.Join("  ·  ",new[]{IslandImages.Style==IslandImageStyle.Tiles?Localization.Instance["PreviewTileLegend"]:"",HighlightedIslands>0?Localization.Instance["PreviewFilterLegend"]:""}.Where(text=>text.Length>0));
   legend.Visibility=legend.Text.Length==0?Visibility.Collapsed:Visibility.Visible;
  }
 
@@ -243,18 +254,19 @@ internal sealed partial class SeedPreviewWindow:Window
  (Point Centre,string Text,double Size) AddEgyptTile(Canvas canvas,LayoutItem item,EgyptIsland island,int slot,string? guideLine=null)
  {
   var sizeClass=MapSchematic.SizeClass(item.Name);
-  var roleColor=EgyptRoleColor(island);Brush stroke=Brushes.Transparent;
-  var(diamond,centre)=MapSchematic.AddPlacedTile(canvas,item,Brushes.Transparent,stroke,2,EgyptGenerator.Footprint(island.Variant));
-  var tooltip=EgyptTooltip(island,guideLine);
+  var roleColor=EgyptRoleColor(island);var match=ShowFilterMatches&&highlights?.Matches(island)==true;if(match)HighlightedIslands++;
+  Brush stroke=match?FilterMatchColor:Brushes.Transparent;var thickness=match?4d:2;
+  var(diamond,centre)=MapSchematic.AddPlacedTile(canvas,item,Brushes.Transparent,stroke,thickness,EgyptGenerator.Footprint(island.Variant));
+  var tooltip=EgyptTooltip(island,guideLine,match);
   diamond.ToolTip=tooltip;ToolTipService.SetInitialShowDelay(diamond,0);ToolTipService.SetBetweenShowDelay(diamond,0);ToolTipService.SetShowDuration(diamond,30000);
   tooltipTargets.Add((diamond,tooltip));
   diamond.MouseEnter+=(_,_)=>{diamond.Stroke=roleColor;diamond.StrokeThickness=4;Panel.SetZIndex(diamond,1);};
-  diamond.MouseLeave+=(_,_)=>{diamond.Stroke=stroke;diamond.StrokeThickness=2;Panel.SetZIndex(diamond,0);};
+  diamond.MouseLeave+=(_,_)=>{diamond.Stroke=stroke;diamond.StrokeThickness=thickness;Panel.SetZIndex(diamond,0);};
   diamond.MouseLeftButtonUp+=(_,e)=>{if(!PickMode)return;e.Handled=true;TogglePick(PickThird,slot);};
   return(centre,$"{sizeClass} {island.Name[^2..]}",sizeClass=="L"?12:10);
  }
 
- static ToolTip EgyptTooltip(EgyptIsland island,string? guideLine=null)
+ static ToolTip EgyptTooltip(EgyptIsland island,string? guideLine=null,bool filterMatch=false)
  {
   var panel=new StackPanel{Margin=new Thickness(5),MinWidth=240};
   panel.Children.Add(new TextBlock{Text=$"{island.Name} · {EgyptRole(island)} · {(island.Hard?Localization.Instance["EgyptNoGold"]:Localization.Instance["EgyptGold"])}",FontWeight=FontWeights.SemiBold,FontSize=14,Foreground=Brushes.White});
@@ -267,6 +279,7 @@ internal sealed partial class SeedPreviewWindow:Window
   var tiles=EgyptGenerator.Tiles(island.Variant);
   panel.Children.Add(new TextBlock{Text=Localization.Instance.Format("EgyptTilesFormat",tiles.Buildable.ToString("N0"),tiles.Farmland.ToString("N0"),tiles.Riverbank.ToString("N0"),tiles.Harbour.ToString("N0")),Foreground=new SolidColorBrush(Color.FromRgb(203,213,225)),FontSize=12,Margin=new Thickness(0,8,0,0)});
   if(guideLine is not null)panel.Children.Add(new TextBlock{Text=guideLine,Foreground=new SolidColorBrush(Color.FromRgb(253,186,116)),FontSize=12,FontWeight=FontWeights.SemiBold,Margin=new Thickness(0,8,0,0),TextWrapping=TextWrapping.Wrap,MaxWidth=320});
+  AddFilterMatchLine(panel,filterMatch);
   return new ToolTip{Content=panel,Placement=System.Windows.Controls.Primitives.PlacementMode.Mouse,Background=new SolidColorBrush(Color.FromRgb(10,23,34)),BorderBrush=new SolidColorBrush(Color.FromRgb(70,102,119)),BorderThickness=new Thickness(2),Padding=new Thickness(8),Foreground=Brushes.White};
  }
 
@@ -460,13 +473,14 @@ internal sealed partial class SeedPreviewWindow:Window
   var(schematicFill,stroke,_)=MapSchematic.TileColors(sizeClass);
   Brush fill=sizeClass switch{"M"=>new SolidColorBrush(Color.FromRgb(40,62,92)),"S"=>new SolidColorBrush(Color.FromRgb(74,104,145)),_=>schematicFill};
   var roleColor=RoleColor(island.FertilitySet);
-  var(diamond,centre)=MapSchematic.AddPlacedTile(canvas,item,fill,stroke,2);
+  var match=ShowFilterMatches&&highlights?.Matches(region,island)==true;if(match){HighlightedIslands++;stroke=FilterMatchColor;}var thickness=match?5d:2;
+  var(diamond,centre)=MapSchematic.AddPlacedTile(canvas,item,fill,stroke,thickness);
   var position=new MapPositionDefinition(item.Slot,item.Slot<0?"Cinis":$"#{item.Slot} · {sizeClass}",sizeClass,centre.X,centre.Y,0,0);
-  var tooltip=IslandTooltip(position,island,region,island.Sites,guideLine);
+  var tooltip=IslandTooltip(position,island,region,island.Sites,guideLine,match);
   diamond.ToolTip=tooltip;ToolTipService.SetInitialShowDelay(diamond,0);ToolTipService.SetBetweenShowDelay(diamond,0);ToolTipService.SetShowDuration(diamond,30000);
   tooltipTargets.Add((diamond,tooltip));
   diamond.MouseEnter+=(_,_)=>{diamond.Stroke=roleColor;diamond.StrokeThickness=4;};
-  diamond.MouseLeave+=(_,_)=>{diamond.Stroke=stroke;diamond.StrokeThickness=2;};
+  diamond.MouseLeave+=(_,_)=>{diamond.Stroke=stroke;diamond.StrokeThickness=thickness;};
   diamond.MouseLeftButtonUp+=(_,e)=>{if(!PickMode)return;e.Handled=true;TogglePick(region==RegionKind.Latium?PickLatium:PickAlbion,item.Slot);};
   // Over an image the label is small and one line; on a plain plate (no image) it is the large two-line label.
   var hasImage=IslandImages.Get(item.Name) is not null;
@@ -475,7 +489,7 @@ internal sealed partial class SeedPreviewWindow:Window
   return centre;
  }
 
- static ToolTip IslandTooltip(MapPositionDefinition position,GeneratedIsland island,RegionKind region,SiteCounts? sites,string? guideLine=null)
+ static ToolTip IslandTooltip(MapPositionDefinition position,GeneratedIsland island,RegionKind region,SiteCounts? sites,string? guideLine=null,bool filterMatch=false)
  {
   var panel=new StackPanel{Margin=new Thickness(5),MinWidth=220};
   panel.Children.Add(new TextBlock{Text=$"{position.Label} · {Role(island.FertilitySet)}",FontWeight=FontWeights.SemiBold,FontSize=14,Foreground=Brushes.White});
@@ -499,7 +513,13 @@ internal sealed partial class SeedPreviewWindow:Window
   var tiles=region==RegionKind.Latium?Localization.Instance.Format("LatiumTilesFormat",area.Total.ToString("N0"),area.Harbour.ToString("N0")):Localization.Instance.Format("AlbionTilesFormat",area.Total.ToString("N0"),area.Swamp.ToString("N0"),area.Harbour.ToString("N0"));
   panel.Children.Add(new TextBlock{Text=tiles,Foreground=new SolidColorBrush(Color.FromRgb(203,213,225)),FontSize=12,Margin=new Thickness(0,8,0,0)});
   if(guideLine is not null)panel.Children.Add(new TextBlock{Text=guideLine,Foreground=new SolidColorBrush(Color.FromRgb(253,186,116)),FontSize=12,FontWeight=FontWeights.SemiBold,Margin=new Thickness(0,8,0,0),TextWrapping=TextWrapping.Wrap,MaxWidth=320});
+  AddFilterMatchLine(panel,filterMatch);
   return new ToolTip{Content=panel,Placement=System.Windows.Controls.Primitives.PlacementMode.Mouse,Background=new SolidColorBrush(Color.FromRgb(10,23,34)),BorderBrush=new SolidColorBrush(Color.FromRgb(70,102,119)),BorderThickness=new Thickness(2),Padding=new Thickness(8),Foreground=Brushes.White};
+ }
+
+ static void AddFilterMatchLine(Panel panel,bool filterMatch)
+ {
+  if(filterMatch)panel.Children.Add(new TextBlock{Text=Localization.Instance["FilterMatchTooltip"],Foreground=FilterMatchColor,FontSize=12,FontWeight=FontWeights.SemiBold,Margin=new Thickness(0,8,0,0)});
  }
 
  internal void SmokeTooltips()

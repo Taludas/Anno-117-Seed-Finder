@@ -184,7 +184,7 @@
                     <TextBlock Text="{Binding [AdditionalConditions], Source={x:Static loc:Localization.Instance}}" FontWeight="SemiBold" FontSize="14" Margin="8,0,0,8"/>
                     <CheckBox x:Name="ChkAdvancedCard" Grid.Row="1" Margin="8,0,0,10" Content="{Binding [ShowAdvancedFilters], Source={x:Static loc:Localization.Instance}}" ToolTip="{Binding [ShowAdvancedFiltersTooltip], Source={x:Static loc:Localization.Instance}}" IsChecked="{Binding IsChecked, ElementName=ChkAdvanced, Mode=TwoWay}"/>
                     <Grid x:Name="ConditionsArea" Grid.Row="2" Margin="4,0,4,0">
-                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="1"/><RowDefinition Height="Auto"/><RowDefinition Height="1"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="1"/><RowDefinition Height="Auto"/><RowDefinition Height="1"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                         <Grid Margin="0,2,0,10">
                             <StackPanel HorizontalAlignment="Left" Grid.IsSharedSizeScope="True">
                                 <TextBlock Text="{Binding [AreaMinimumsHeader], Source={x:Static loc:Localization.Instance}}" FontWeight="SemiBold"/>
@@ -378,6 +378,18 @@
                             </StackPanel>
                             <StackPanel x:Name="AlbionConditions"/>
                         </DockPanel>
+                        <!--DLC03-BEGIN-->
+                        <Border x:Name="EgyptConditionsSeparator" Grid.Row="5" Height="1" Background="#E4E7EC" Visibility="Collapsed"/>
+                        <DockPanel x:Name="EgyptConditionsSection" Grid.Row="6" Margin="0,8,0,4" Visibility="Collapsed">
+                            <StackPanel DockPanel.Dock="Top">
+                                <TextBlock Text="{Binding [EgyptIslandRulesHeader], Source={x:Static loc:Localization.Instance}}" FontWeight="SemiBold"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,6,0,8">
+                                    <Button x:Name="BtnAddEgyptIsland" Content="{Binding [AddIslandRule], Source={x:Static loc:Localization.Instance}}" Click="AddEgyptIslandRule" Padding="12,6" ToolTip="{Binding [AddEgyptIslandRuleTooltip], Source={x:Static loc:Localization.Instance}}"/>
+                                </StackPanel>
+                            </StackPanel>
+                            <StackPanel x:Name="EgyptConditions"/>
+                        </DockPanel>
+                        <!--DLC03-END-->
                     </Grid>
                 </Grid>
             </Border>

@@ -9,7 +9,7 @@ internal static class AppVersion
  public const int Patch=4;
 #else
  public const string GameVersion="3.0.0";
- public const int Patch=0;
+ public const int Patch=1;
 #endif
  public static string WindowTitle=>$"Anno 117 Seed Finder v{GameVersion}.{Patch}";
 }

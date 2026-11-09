@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using System.Security.Cryptography;
@@ -9,6 +9,9 @@ internal sealed record SearchRequest(int FirstSeed,int MaxSeed,int Threads,int L
  ,IReadOnlyList<int>? EgyptMinimums=null
 #endif
  ,IReadOnlyList<IslandRule>? IslandRules=null
+#if !GAME21
+ ,IReadOnlyList<EgyptIslandRule>? EgyptIslandRules=null
+#endif
  )
 {
 #if !GAME21
@@ -70,7 +73,7 @@ internal static class SeedSearcher
         options.CancellationToken.ThrowIfCancellationRequested();LatiumGeneration? latium=null;List<GeneratedIsland>? albion=null;RegionMetrics? albionMetrics=null;var matches=false;
 #if !GAME21
         // Aegyptus first: a fixed map is far cheaper than Latium, so its filters reject most seeds before the expensive regions run.
-        if(plan.NeedsEgypt&&!plan.MatchesEgypt(EgyptGenerator.Metrics(seed,profile.Size,request.FertilitySetting,request.SlotSetting))){completedInRange++;continue;}
+        if(plan.NeedsEgypt&&!plan.MatchesEgypt(EgyptGenerator.Generate(seed,profile.Size,request.FertilitySetting,request.SlotSetting))){completedInRange++;continue;}
 #endif
         if(order==SearchRegionOrder.AlbionFirst)
         {
@@ -192,6 +195,9 @@ internal static class SeedSearcher
   if(request.CinisPool.Length>cinisPoolSlots.Count||request.CinisPool.Distinct().Count()!=request.CinisPool.Length||request.CinisPool.Any(x=>!Generator.Pool6.Contains(x)))
    throw new ArgumentException(Localization.Instance.Format("InvalidCinisPoolCount",cinisPoolSlots.First+1,cinisPoolSlots.First+cinisPoolSlots.Count,cinisPoolSlots.Count));
   if(string.IsNullOrWhiteSpace(request.Output))throw new ArgumentException(Localization.Instance["OutputFileRequired"]);
+#if !GAME21
+  if(request.EgyptIslandRules?.Any(rule=>!rule.IsValid((request.Profile??MapProfiles.Default).Size,request.FertilitySetting))==true)throw new ArgumentException(Localization.Instance["EgyptRuleInvalid"]);
+#endif
   if(request.MinLatiumGoldMines<0||request.MinLatiumMarbleSites<0||request.MinLatiumMineralMines<0||request.MinAlbionCopperMines<0||request.MinAlbionSilverMines<0||request.MinAlbionTinMines<0||request.MinLatiumGoldSites<0||request.MinLatiumSturgeonSites<0||request.MinLatiumMountainSites<0||request.MinLatiumRiverSites<0||request.MinAlbionMountainSites<0||request.MinLatiumBuildableTiles<0||request.MinAlbionBuildableTiles<0||request.MinAlbionSwampTiles<0||(request.AdvancedMinimums??[]).Any(value=>value<0))throw new ArgumentException(Localization.Instance["MinimumsNotNegative"]);
   foreach(var condition in request.Conditions??[])
   {

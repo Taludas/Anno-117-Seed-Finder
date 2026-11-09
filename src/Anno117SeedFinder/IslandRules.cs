@@ -68,6 +68,7 @@ internal sealed class IslandRuleRowControl:Border
  readonly ComboBox rotation=new(){Width=124,Margin=new Thickness(8,0,0,0)};
  readonly Button positions=new(){Padding=new Thickness(8,3,8,3)};
  readonly Button remove=new(){Padding=new Thickness(9,4,9,4),Margin=new Thickness(10,0,0,0)};
+ readonly TextBlock title=new(){FontWeight=FontWeights.SemiBold,Width=112,VerticalAlignment=VerticalAlignment.Center};
  int[] selectedSlots=[];
  public RegionKind Region{get;}
  public event EventHandler? RemoveRequested;
@@ -79,7 +80,7 @@ internal sealed class IslandRuleRowControl:Border
   var root=new DockPanel();Child=root;
   DockPanel.SetDock(remove,Dock.Right);root.Children.Add(remove);remove.Click+=(_,_)=>RemoveRequested?.Invoke(this,EventArgs.Empty);
   var row=new StackPanel{Orientation=Orientation.Horizontal};root.Children.Add(row);
-  row.Children.Add(new TextBlock{Text=Localization.Instance["IslandRuleTitle"],FontWeight=FontWeights.SemiBold,Width=112,VerticalAlignment=VerticalAlignment.Center});
+  row.Children.Add(title);
   row.Children.Add(mode);row.Children.Add(island);row.Children.Add(positions);row.Children.Add(rotation);
   foreach(var entry in IslandCatalog.For(profile,region))island.Items.Add(new ComboBoxItem{Content=entry.Label,Tag=entry.Asset,ToolTip=entry.Asset});
   island.SelectedIndex=0;island.SelectionChanged+=(_,_)=>{selectedSlots=[..selectedSlots.Intersect(IslandCatalog.Slots(profile,Region,Asset))];Refresh();};
@@ -98,7 +99,7 @@ internal sealed class IslandRuleRowControl:Border
 
  void Refresh()
  {
-  ((ComboBoxItem)mode.Items[0]).Content=Localization.Instance["IslandRuleMustAppear"];((ComboBoxItem)mode.Items[1]).Content=Localization.Instance["IslandRuleMustNotAppear"];
+  title.Text=Localization.Instance["IslandRuleTitle"];((ComboBoxItem)mode.Items[0]).Content=Localization.Instance["IslandRuleMustAppear"];((ComboBoxItem)mode.Items[1]).Content=Localization.Instance["IslandRuleMustNotAppear"];
   foreach(ComboBoxItem item in rotation.Items)item.Content=IslandCatalog.RotationLabel((int)item.Tag);
   rotation.ToolTip=Localization.Instance["IslandRuleRotationTooltip"];remove.Content=Localization.Instance["Remove"];
   positions.Content=selectedSlots.Length==0?Localization.Instance["IslandRuleAnywhere"]:Localization.Instance.Format("PositionsButtonCountFormat",selectedSlots.Length);

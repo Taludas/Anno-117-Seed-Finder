@@ -93,7 +93,7 @@ public partial class MainWindow:Window
     GoldMinesEnabled=ChkMinGoldMines.IsChecked==true,MarbleSitesEnabled=ChkMinMarbleSites.IsChecked==true,MineralMinesEnabled=ChkMinMineralMines.IsChecked==true,CopperMinesEnabled=ChkMinCopperMines.IsChecked==true,SilverMinesEnabled=ChkMinSilverMines.IsChecked==true,TinMinesEnabled=ChkMinTinMines.IsChecked==true,
     ShowAdvancedFilters=ChkAdvanced.IsChecked==true,AdvancedMinimums=advancedRows.ToDictionary(row=>row.Filter.ToString(),row=>(int)row.Slider.Value*AdvancedStep),AdvancedEnabled=advancedRows.ToDictionary(row=>row.Filter.ToString(),row=>row.Enabled.IsChecked==true),
 #if !GAME21
-    Dlc03=ChkDlc03.IsChecked==true,EgyptMinimums=egyptRows.ToDictionary(row=>row.Definition.Filter.ToString(),row=>(int)row.Slider.Value*row.Definition.Step),EgyptEnabled=egyptRows.ToDictionary(row=>row.Definition.Filter.ToString(),row=>row.Enabled.IsChecked==true),
+    Dlc03=ChkDlc03.IsChecked==true,EgyptIslandRules=[..EgyptConditions.Children.OfType<EgyptIslandRuleRowControl>().Select(row=>row.ExportPreset())],EgyptMinimums=egyptRows.ToDictionary(row=>row.Definition.Filter.ToString(),row=>(int)row.Slider.Value*row.Definition.Step),EgyptEnabled=egyptRows.ToDictionary(row=>row.Definition.Filter.ToString(),row=>row.Enabled.IsChecked==true),
 #endif
     EnableScoring=ChkScoring.IsChecked==true,ExtendScoringOutliers=ChkScoreOutliers.IsChecked==true,ScoreWeights=scoreRows.ToDictionary(row=>row.Metric.ToString(),row=>(int)row.Slider.Value),
     CinisSlot1=(CmbSlot1.SelectedItem as FertilityChoice)?.Guid??0u,CinisFertilities=[..cinisChecks.Where(box=>box.IsChecked==true).Select(box=>uint.Parse(box.Tag.ToString()!))],CinisMaximumSites=ChkMaxSites.IsChecked==true,
@@ -161,6 +161,9 @@ public partial class MainWindow:Window
    var row=AddCondition(condition.Region,condition.Set,target);row.ApplyPreset(condition);
   }
   foreach(var rule in preset.IslandRules)AddIslandRule(rule.Region,rule.Region==RegionKind.Latium?LatiumConditions:AlbionConditions).ApplyPreset(rule);
+#if !GAME21
+  EgyptConditions.Children.Clear();foreach(var rule in preset.EgyptIslandRules)AddEgyptRule().ApplyPreset(rule);
+#endif
   profileControlsReady=true;RefreshDlcPresentation();RefreshProfileLabels();UpdateConditionAddButtons();
  }
 
@@ -192,6 +195,12 @@ public partial class MainWindow:Window
    var reporter=new Progress<SearchProgress>(x=>{SearchProgress.Value=Math.Min(100,(long)x.Processed*100/x.Total);LblProgress.Text=Localization.Instance.Format("ProgressFormat",x.Processed.ToString("N0"),x.Total.ToString("N0"),x.Hits.ToString("N0"));});
    // Island filter rules (IslandRules.cs) of both regions.
    request=request with{IslandRules=[..LatiumConditions.Children.OfType<IslandRuleRowControl>().Concat(AlbionConditions.Children.OfType<IslandRuleRowControl>()).Select(row=>row.BuildRule())]};
+#if !GAME21
+   // The Aegyptus island rules count only with DLC03 ticked, as their section is hidden otherwise.
+   if(ChkDlc03.IsChecked==true)request=request with{EgyptIslandRules=[..EgyptConditions.Children.OfType<EgyptIslandRuleRowControl>().Select(row=>row.BuildRule())]};
+#endif
+   // The preview marks the islands that meet this search's island filters.
+   lastHighlights=SearchHighlights.From(request);
    var summary=await SeedSearcher.SearchAsync(request,reporter,cancellation.Token);
    ShowResults(summary.Hits);
    lastOutput=summary.Output;BtnOpen.IsEnabled=true;
@@ -279,6 +288,7 @@ public partial class MainWindow:Window
   foreach(var column in AdvancedColumns)column.Visibility=advanced?Visibility.Visible:Visibility.Collapsed;
 #if !GAME21
   var egypt=ChkDlc03.IsChecked==true;EgyptFilterPanel.Visibility=egypt?Visibility.Visible:Visibility.Collapsed;
+  EgyptConditionsSeparator.Visibility=EgyptConditionsSection.Visibility=egypt?Visibility.Visible:Visibility.Collapsed;
   foreach(var definition in EgyptFilters.All)((DataGridColumn)FindName("EgyCol"+definition.Filter)).Visibility=egypt&&(advanced||EgyptBasicColumns.Contains(definition.Filter))?Visibility.Visible:Visibility.Collapsed;
 #endif
   RefreshScoreVisibility();RecomputeScores();FitResultColumns();
@@ -518,7 +528,7 @@ public partial class MainWindow:Window
  internal void SmokeScrollFilters(bool egypt=false){UpdateLayout();var top=(egypt?EgyptFilterPanel:AdvancedFilterPanel).TranslatePoint(new Point(0,0),FilterScroll).Y;FilterScroll.ScrollToVerticalOffset(FilterScroll.VerticalOffset+top-30);UpdateLayout();}
 #endif
 #if !GAME21
- internal void SmokeShowEgypt(){ChkDlc03.IsChecked=true;foreach(var row in egyptRows)row.Enabled.IsChecked=true;ShowResults([SeedSearcher.Describe(6153,activeProfile,FertilitySetting.Abundant),SeedSearcher.Describe(1,activeProfile,FertilitySetting.Abundant),SeedSearcher.Describe(2,activeProfile,FertilitySetting.Abundant)]);}
+ internal void SmokeShowEgypt(){ChkDlc03.IsChecked=true;AddEgyptRule().ApplyPreset(new(){Island="large_08",Layer=EgyptLayerMode.Layer,Set=EgyptGenerator.CandidateSets("large_08",CurrentFertilitySetting())[0].Guid,Fertilities=[EgyptGenerator.Barley,0,0,EgyptGenerator.Copper]});AddEgyptRule().ApplyPreset(new(){Island="large_07",Set=EgyptGenerator.CandidateSets("large_07",CurrentFertilitySetting())[0].Guid,Fertilities=[0,EgyptGenerator.Lavender]});AddEgyptRule().ApplyPreset(new(){Fertilities=[EgyptGenerator.Olives,EgyptGenerator.Grapes],Minimum=2});foreach(var row in egyptRows)row.Enabled.IsChecked=true;ShowResults([SeedSearcher.Describe(6153,activeProfile,FertilitySetting.Abundant),SeedSearcher.Describe(1,activeProfile,FertilitySetting.Abundant),SeedSearcher.Describe(2,activeProfile,FertilitySetting.Abundant)]);}
 #endif
  internal void SmokeScrollToEnd(){UpdateLayout();FilterScroll.ScrollToEnd();UpdateLayout();}
  internal void SmokeShowAdvanced(){ChkAdvanced.IsChecked=true;foreach(var row in advancedRows)row.Enabled.IsChecked=true;ShowResults([SeedSearcher.Describe(6153,activeProfile,FertilitySetting.Abundant),SeedSearcher.Describe(1,activeProfile,FertilitySetting.Abundant),SeedSearcher.Describe(2,activeProfile,FertilitySetting.Abundant)]);}
@@ -626,10 +636,12 @@ public partial class MainWindow:Window
  }
  void PreviewSelectedResult(object sender,System.Windows.Input.MouseButtonEventArgs e){if(GridResults.SelectedItem is SearchResultRow row)ShowPreview(row.Seed);}
 #if GAME21
- void ShowPreview(uint seed){new SeedPreviewWindow(seed,activeProfile,CurrentFertilitySetting(),CurrentSlotSetting(),CurrentStartMode()){Owner=this}.ShowDialog();}
+ void ShowPreview(uint seed){new SeedPreviewWindow(seed,activeProfile,CurrentFertilitySetting(),CurrentSlotSetting(),CurrentStartMode(),lastHighlights){Owner=this}.ShowDialog();}
 #else
- void ShowPreview(uint seed){new SeedPreviewWindow(seed,activeProfile,CurrentFertilitySetting(),CurrentSlotSetting(),ChkDlc03.IsChecked==true,CurrentStartMode()){Owner=this}.ShowDialog();}
+ void ShowPreview(uint seed){new SeedPreviewWindow(seed,activeProfile,CurrentFertilitySetting(),CurrentSlotSetting(),ChkDlc03.IsChecked==true,CurrentStartMode(),lastHighlights){Owner=this}.ShowDialog();}
 #endif
+ // The island filters of the last search, for the preview's highlight; a new map profile drops them, as its islands differ.
+ SearchHighlights? lastHighlights;
  StartModeKind CurrentStartMode()=>CmbStartMode.SelectedIndex==1?StartModeKind.StartIsland:StartModeKind.Flagship;
  FertilitySetting CurrentFertilitySetting()=>(FertilitySetting)CmbFertilitySetting.SelectedIndex;
  SlotSetting CurrentSlotSetting()=>(SlotSetting)CmbSlotSetting.SelectedIndex;
@@ -638,9 +650,12 @@ public partial class MainWindow:Window
  {
   if(!profileControlsReady||CmbMapTemplate.SelectedItem is not ProfileChoice<MapTemplateKind> template||CmbMapSize.SelectedItem is not ProfileChoice<MapSizeKind> size)return;
   var selected=MapProfiles.Get(template.Value,size.Value,ChkDlc01.IsChecked==true,ChkDlc01.IsChecked==true&&ChkDlcRetro.IsChecked==true,ChkDlcAfterLoad.IsChecked==true);if(selected==activeProfile)return;
-  activeProfile=selected;
+  activeProfile=selected;lastHighlights=null;
   LatiumConditions.Children.Clear();AlbionConditions.Children.Clear();GridResults.ItemsSource=null;
   RefreshProfileLabels();UpdateConditionAddButtons();
+#if !GAME21
+  RefreshEgyptRules();
+#endif
  }
 
  // DLC01 and DLC03 are on by default; a switch turned off stays off at the next start (dlc.txt next to the exe, like language.txt).
@@ -675,7 +690,7 @@ public partial class MainWindow:Window
   if(!profileControlsReady)return;RefreshDlcPresentation();SaveDlcSettings();
   if(CmbMapTemplate.SelectedItem is ProfileChoice<MapTemplateKind> template&&CmbMapSize.SelectedItem is ProfileChoice<MapSizeKind> size)
   {
-   activeProfile=MapProfiles.Get(template.Value,size.Value,ChkDlc01.IsChecked==true,ChkDlc01.IsChecked==true&&ChkDlcRetro.IsChecked==true,ChkDlcAfterLoad.IsChecked==true);LatiumConditions.Children.Clear();AlbionConditions.Children.Clear();GridResults.ItemsSource=null;RefreshProfileLabels();UpdateConditionAddButtons();
+   activeProfile=MapProfiles.Get(template.Value,size.Value,ChkDlc01.IsChecked==true,ChkDlc01.IsChecked==true&&ChkDlcRetro.IsChecked==true,ChkDlcAfterLoad.IsChecked==true);lastHighlights=null;LatiumConditions.Children.Clear();AlbionConditions.Children.Clear();GridResults.ItemsSource=null;RefreshProfileLabels();UpdateConditionAddButtons();
   }
  }
  void StartModeChanged(object sender,SelectionChangedEventArgs e){if(profileControlsReady)GridResults.ItemsSource=null;}
@@ -693,8 +708,8 @@ public partial class MainWindow:Window
   if(!profileControlsReady)return;
   RefreshCinisPool();
 #if !GAME21
-  // So do the Egypt value ranges.
-  RefreshEgyptFilters();
+  // So do the Egypt value ranges and the fertilities of the Aegyptus island rules.
+  RefreshEgyptFilters();RefreshEgyptRules();
 #endif
  }
  // Cinis has fewer pool slots outside Abundant: label them and uncheck the fertilities that no longer fit, last first.
@@ -844,6 +859,39 @@ public partial class MainWindow:Window
  static FertilitySetKind SetFromButton(object sender)=>Enum.Parse<FertilitySetKind>(((Button)sender).Tag.ToString()!);
  void AddLatiumIslandRule(object sender,RoutedEventArgs e)=>AddIslandRule(RegionKind.Latium,LatiumConditions);
  void AddAlbionIslandRule(object sender,RoutedEventArgs e)=>AddIslandRule(RegionKind.Albion,AlbionConditions);
+#if !GAME21
+ void AddEgyptIslandRule(object sender,RoutedEventArgs e)=>AddEgyptRule();
+ EgyptIslandRuleRowControl AddEgyptRule()
+ {
+  var row=new EgyptIslandRuleRowControl(activeProfile.Size,CurrentFertilitySetting());row.RemoveRequested+=(_,_)=>EgyptConditions.Children.Remove(row);EgyptConditions.Children.Add(row);return row;
+ }
+ // Aegyptus does not depend on the map template, so its rules survive a profile change and only follow the size and the fertility setting.
+ void RefreshEgyptRules(){foreach(var row in EgyptConditions.Children.OfType<EgyptIslandRuleRowControl>())row.SetMap(activeProfile.Size,CurrentFertilitySetting());}
+ // The rows follow the map size and fertility setting, and a preset brings a rule back exactly.
+ internal bool SmokeEgyptRules()
+ {
+  CmbFertilitySetting.SelectedIndex=0;EgyptConditions.Children.Clear();
+  var size=activeProfile.Size;var row=AddEgyptRule();
+  // A new row starts on any island in Any Combination, which offers every fertility; "at least N" comes back from a preset and is capped by the version.
+  var fresh=row.BuildRule();var ok=fresh is {Island:EgyptGenerator.AnyIsland,Set:0u,Minimum:1}&&row.GroupChoices(0).Contains(EgyptGenerator.Olives);
+  row.ApplyPreset(new(){Fertilities=[EgyptGenerator.Olives],Minimum=3});ok&=row.BuildRule() is {Minimum:3,Island:EgyptGenerator.AnyIsland}&&row.ExportPreset().Minimum==3;
+  bool Rejected(EgyptIslandRulePreset preset){try{row.ApplyPreset(preset);return false;}catch(InvalidDataException){return true;}}
+  ok&=Rejected(new(){Layer=EgyptLayerMode.Layer,Minimum=18});
+  // Slot by slot: L 08's sets; slot 1 holds only Barley or Flax, so Gold there is refused; a preset comes back in its boxes.
+  var secondary=EgyptGenerator.CandidateSets("large_08",FertilitySetting.Abundant).First(choice=>choice.Role=="Secondary");
+  var rule=new EgyptIslandRulePreset{Island="large_08",Layer=EgyptLayerMode.Layer,Set=secondary.Guid,Fertilities=[EgyptGenerator.Barley,0,0,EgyptGenerator.Copper]};row.ApplyPreset(rule);
+  var built=row.BuildRule();ok&=built.Set==secondary.Guid&&built.Groups[0] is {First:0,Last:0}&&built.Groups[0].Required.SequenceEqual([EgyptGenerator.Barley])&&built.Groups[3].Required.SequenceEqual([EgyptGenerator.Copper])&&row.FertilityBoxCount==6&&row.LayerSelectable;
+  ok&=row.GroupChoices(0).Length==2&&!row.GroupChoices(0).Contains(EgyptGenerator.Gold)&&row.ExportPreset().Fertilities.SequenceEqual(new uint[]{EgyptGenerator.Barley,0,0,EgyptGenerator.Copper,0,0});
+  ok&=Rejected(new(){Island="large_08",Set=secondary.Guid,Fertilities=[EgyptGenerator.Gold]})&&Rejected(new(){Island="large_01",Set=secondary.Guid});
+  // Another setting keeps the role of the set and fits the slots.
+  row.ApplyPreset(rule);CmbFertilitySetting.SelectedIndex=2;ok&=row.FertilityBoxCount==4&&row.BuildRule().Set==EgyptGenerator.CandidateSets("large_08",FertilitySetting.Sparse).First(choice=>choice.Role=="Secondary").Guid&&row.BuildRule().Groups[0].Required.SequenceEqual([EgyptGenerator.Barley]);
+  CmbFertilitySetting.SelectedIndex=0;
+  row.ApplyPreset(new(){Island="large_04"});ok&=!row.LayerSelectable;
+  if(size==MapSizeKind.Large){row.ApplyPreset(new(){Island="medium_02"});ok&=!row.LayerSelectable;}else{row.ApplyPreset(new(){Island="medium_02",Layer=EgyptLayerMode.Layer});ok&=row.LayerSelectable;}
+  ok&=Rejected(new(){Island="large_04",Layer=EgyptLayerMode.Layer});
+  EgyptConditions.Children.Clear();return ok;
+ }
+#endif
  IslandRuleRowControl AddIslandRule(RegionKind region,Panel target)
  {
   var row=new IslandRuleRowControl(region,activeProfile);row.RemoveRequested+=(_,_)=>target.Children.Remove(row);target.Children.Add(row);return row;

@@ -42,6 +42,9 @@ internal sealed record EgyptGeneration(uint Seed,IReadOnlyList<EgyptIsland> Isla
 // (value 1: the band right next to the water, measured on every island),
 // and harbour water.
 internal readonly record struct EgyptTiles(int Buildable,int Farmland,int Riverbank,int Harbour);
+// A fertility set an island can draw: its role and whether it can bring gold; and one group of its slots with what they can hold.
+internal sealed record EgyptSetChoice(uint Guid,string Role,bool Gold);
+internal sealed record EgyptSlotGroup(int First,int Last,uint[] Choices);
 
 internal static class EgyptGenerator
 {
@@ -153,6 +156,45 @@ internal static class EgyptGenerator
   }
   var islands=Fertile.Select(x=>byName[x.Name]).ToArray();
   return new(seed,islands,EgyptMetrics.Calculate(islands));
+ }
+
+ // For the island filter: the fertile islands, whether an island can be its smaller variant on a map size, and which fertilities it
+ // can get on a setting (the sets its kind can draw, with their pools opened up).
+ internal static IReadOnlyList<(string Name,bool Starter,bool Hard)> FertileIslands=>Fertile;
+ internal static bool IsStarter(string name)=>Array.Exists(Fertile,x=>x.Name==name&&x.Starter);
+ internal const string AnyIsland="";
+ // The sets an island can draw (any island: all of them), and a set's slots: neighbouring slots with the same pool form one group.
+ internal static EgyptSetChoice[] CandidateSets(string name,FertilitySetting setting)
+ {
+  var s=SetsFor(setting);(uint Guid,string Role)[] all=[(s.SH,"Starter"),(s.SN,"Starter"),(s.H2,"Secondary"),(s.H3,"Tertiary"),(s.N2,"Secondary"),(s.N3,"Tertiary")];
+  IEnumerable<(uint Guid,string Role)> picks=all;
+  if(name!=AnyIsland){var island=Array.Find(Fertile,x=>x.Name==name);picks=island.Starter?[all[island.Hard?0:1]]:island.Hard?[all[2],all[3]]:[all[4],all[5]];}
+  return[..picks.DistinctBy(x=>x.Guid).Select(x=>new EgyptSetChoice(x.Guid,x.Role,SlotGroups(x.Guid).Any(group=>group.Choices.Contains(Gold))))];
+ }
+ internal static EgyptSlotGroup[] SlotGroups(uint set)
+ {
+  var definitions=Sets[set];var result=new List<EgyptSlotGroup>();
+  for(var first=0;first<definitions.Length;)
+  {
+   var last=first;while(last+1<definitions.Length&&definitions[last+1]==definitions[first])last++;
+   result.Add(new(first,last,Pools.TryGetValue(definitions[first],out var pool)?[..pool.Distinct()]:[definitions[first]]));first=last+1;
+  }
+  return[..result];
+ }
+ internal static bool CanBeLayered(string name,MapSizeKind size)=>name==AnyIsland||LayerLarges.Contains(name)||size!=MapSizeKind.Large&&LayerMediums.Contains(name);
+ // How many islands can be of a version at once: the map size decides how many use their smaller variant.
+ internal static int MaximumIslands(MapSizeKind size,EgyptLayerMode layer)
+ {
+  var layered=size switch{MapSizeKind.Large=>2,MapSizeKind.Medium=>6,_=>10};
+  return layer switch{EgyptLayerMode.Layer=>layered,EgyptLayerMode.Full=>Fertile.Length-layered,_=>Fertile.Length};
+ }
+ internal static int FertilitySlots(FertilitySetting setting)=>Sets[SetsFor(setting).SH].Length;
+ internal static uint[] PossibleFertilities(string name,FertilitySetting setting)
+ {
+  if(name==AnyIsland)return[..Fertile.SelectMany(x=>PossibleFertilities(x.Name,setting)).Distinct()];
+  var island=Array.Find(Fertile,x=>x.Name==name);var s=SetsFor(setting);
+  uint[] sets=island.Starter?[island.Hard?s.SH:s.SN]:island.Hard?[s.H2,s.H3]:[s.N2,s.N3];
+  return[..sets.SelectMany(set=>Sets[set]).SelectMany(entry=>Pools.TryGetValue(entry,out var pool)?pool:[entry]).Distinct()];
  }
 
  // Only the metrics; the same work, kept as its own entry point for the search.

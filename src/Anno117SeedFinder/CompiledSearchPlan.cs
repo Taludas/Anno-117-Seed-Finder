@@ -26,6 +26,7 @@ internal sealed class CompiledSearchPlan
  readonly AdvancedFilter[] advancedAlbionFilters;
 #if !GAME21
  readonly int[] egyptMinimums;
+ readonly EgyptIslandRule[] egyptRules;
 #endif
  readonly CompiledIslandCondition[] latium;
  readonly CompiledIslandCondition[] albion;
@@ -41,7 +42,7 @@ internal sealed class CompiledSearchPlan
   advancedLatiumFilters=[..AdvancedFilters.All.Where(x=>x.Region==RegionKind.Latium&&request.AdvancedMinimum(x.Filter)>0).Select(x=>x.Filter)];advancedAlbionFilters=[..AdvancedFilters.All.Where(x=>x.Region==RegionKind.Albion&&request.AdvancedMinimum(x.Filter)>0).Select(x=>x.Filter)];
   advancedLatium=[..advancedLatiumFilters.Select(request.AdvancedMinimum)];advancedAlbion=[..advancedAlbionFilters.Select(request.AdvancedMinimum)];
 #if !GAME21
-  egyptMinimums=[..EgyptFilters.All.Select(definition=>request.EgyptMinimum(definition.Filter))];
+  egyptMinimums=[..EgyptFilters.All.Select(definition=>request.EgyptMinimum(definition.Filter))];egyptRules=[..request.EgyptIslandRules??[]];
 #endif
   latium=(request.Conditions??[]).Where(x=>x.Region==RegionKind.Latium).Select(x=>new CompiledIslandCondition(x)).ToArray();
   albion=(request.Conditions??[]).Where(x=>x.Region==RegionKind.Albion).Select(x=>new CompiledIslandCondition(x)).ToArray();
@@ -50,14 +51,15 @@ internal sealed class CompiledSearchPlan
 
  public bool NeedsAlbion=>albion.Length!=0||albionRules.Length!=0||minAlbionMountainSites>0||minAlbionBuildableTiles>0||minAlbionSwampTiles>0||minAlbionCopperMines>0||minAlbionSilverMines>0||minAlbionTinMines>0||advancedAlbionFilters.Length!=0;
 #if !GAME21
- public bool NeedsEgypt=>egyptMinimums.Any(minimum=>minimum>0);
+ public bool NeedsEgypt=>egyptMinimums.Any(minimum=>minimum>0)||egyptRules.Length>0;
 #endif
  public static CompiledSearchPlan Create(SearchRequest request)=>new(request);
 
 #if !GAME21
- public bool MatchesEgypt(EgyptMetrics metrics)
+ public bool MatchesEgypt(EgyptGeneration egypt)
  {
-  for(var index=0;index<egyptMinimums.Length;index++)if(egyptMinimums[index]>0&&EgyptFilters.All[index].Value(metrics)<egyptMinimums[index])return false;
+  for(var index=0;index<egyptMinimums.Length;index++)if(egyptMinimums[index]>0&&EgyptFilters.All[index].Value(egypt.Metrics)<egyptMinimums[index])return false;
+  foreach(var rule in egyptRules)if(!rule.Passes(egypt))return false;
   return true;
  }
 #endif
@@ -125,7 +127,8 @@ internal sealed class CompiledIslandCondition
   return total>=minimum&&positioned>=requiredPositionMatches;
  }
 
- bool MatchesIsland(GeneratedIsland island)
+ public RegionKind Region=>region;
+ internal bool MatchesIsland(GeneratedIsland island)
  {
   if(anyCombination)
   {
