@@ -119,6 +119,8 @@ internal sealed class Localization:INotifyPropertyChanged
   ["IslandRuleMustAppear"]=("muss vorkommen","must appear"),
   ["IslandRuleMustNotAppear"]=("darf nicht vorkommen","must not appear"),
   ["IslandRuleAnywhere"]=("Überall","Anywhere"),
+  ["IslandRuleNoFertilities"]=("Beliebige Fertilitäten","Any fertilities"),
+  ["IslandRuleFertilitiesTooltip"]=("Optional: Fertilitätsset, das die Insel zusätzlich tragen muss. Danach lässt sich pro Slot festlegen, welche Fertilitäten sie haben soll.","Optional: the fertility set the island must carry as well. Then choose per slot which fertilities it should have."),
   ["IslandRuleAnywhereTooltip"]=("Gilt für jede Position, an der die Insel liegen kann. Klicken, um Positionen zu wählen.","Applies to every position the island can take. Click to choose positions."),
   ["IslandRuleAnyRotation"]=("Jede Drehung","Any rotation"),
   ["IslandRuleRotationTooltip"]=("Drehung der Insel in Vierteldrehungen, wie die Vorschau sie zeigt (siehe Insel-Tooltip). Startinseln drehen sich immer zur Kartenmitte.","Rotation of the island in quarter turns, as the preview shows it (see the island tooltip). Starting islands always face the map centre."),

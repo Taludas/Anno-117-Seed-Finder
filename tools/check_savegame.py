@@ -93,6 +93,26 @@ def compare(truth: list, produced: list) -> tuple[int, int, int, list]:
     return both, sum(a.values()), sum(b.values()), [f"in the savegame only: {x}" for x in list((a - b))[:3]] + [f"in the app only:      {x}" for x in list((b - a))[:3]]
 
 
+def modded_fertilities(dump: Path) -> list[str]:
+    """Fertility GUIDs of a savegame that none of the other extracted (vanilla) savegames in tools/dumps contains. Needs at least
+    three other dumps to know what is normal; otherwise nothing is reported."""
+    known: set[str] = set()
+    others = [d for d in common.DUMPS.glob("*/map_dump.txt") if d.parent.resolve() != Path(dump).resolve()]
+    if len(others) < 3:
+        return []
+    for other in others:
+        for line in other.read_text(encoding="utf-8").splitlines():
+            p = line.split("|")
+            if len(p) > 5 and not line.startswith("#"):
+                known.update(g for g in p[5].split(",") if g)
+    mine: set[str] = set()
+    for line in (Path(dump) / "map_dump.txt").read_text(encoding="utf-8").splitlines():
+        p = line.split("|")
+        if len(p) > 5 and not line.startswith("#"):
+            mine.update(g for g in p[5].split(",") if g)
+    return sorted(mine - known, key=int)
+
+
 def run_case(case: common.Case, truth: dict, exe: Path, work: Path) -> dict:
     """Runs the app for one savegame's settings; returns {(region, category): (match, truth, produced, examples)}."""
     tag = re.sub(r"\W+", "_", case.label())
@@ -209,6 +229,7 @@ def main() -> int:
             case.size = infer_size(case, truth, exe, work)
         return name, case, run_case(case, truth, exe, work)
 
+    dump_of = {name: dump for name, dump, _ in jobs}
     failures = 0
     totals = collections.Counter()
     with cf.ThreadPoolExecutor(max(1, args.jobs)) as pool:
@@ -220,6 +241,11 @@ def main() -> int:
                 cells = " ".join(f"{SHORT[c]} {result[(region, c)][0]}/{result[(region, c)][1]}" for c in CATEGORIES)
                 parts.append(f"{region[:3]}: {cells}")
             print(f"{'PASS' if ok else 'FAIL'}  {case.label():42s} {' | '.join(parts)}")
+            odd = modded_fertilities(dump_of[name])
+            if odd:
+                print(f"      WARNING: this savegame holds fertilities that no vanilla fertility set can produce ({', '.join(odd)}): it was "
+                      "probably made with a mod that changes the fertility sets (e.g. one that adds farm fertilities). Fertility and slot "
+                      "results are not comparable then; make the check save with mods off.")
             for key, (m, t, g, examples) in result.items():
                 totals[key[1], "match"] += m
                 totals[key[1], "total"] += t

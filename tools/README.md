@@ -68,3 +68,8 @@ Things the game options do **not** change (checked): the Woods option and the st
 ## Credits
 
 `savegame_map_dump.py` is adapted from code of the Anno 117 Layout Tool; see `THIRD-PARTY-NOTICES.md`.
+## After a game update: `update_game_data.py` (one click: `Update-Game-Data.bat` in the repository root)
+
+Re-extracts the island, template and `assets.xml` files from the game's archives (layered: base archives first, then `zz_patchfiles_*` in numeric order), compares them with the previous run (`tools/game_data/state.json`, ignored by git), writes the changed island data into the app (Aegyptus outlines, tile images, tile table, footprints), regenerates the Aegyptus filter ranges, rebuilds, runs the self-test and re-exports the 2.1 source. Changed templates and fertility sets/pools are only reported, because the generator's rules live in code. Savegames can be checked in the same run (`--check <save or folder>`, or drag them onto the .bat). The report is `tools/game_data/report.md`. Needs RdaConsole, FileDBReader (with its `FileFormats` folder) and `pip install pillow`; `--help` lists the options.
+
+`check_savegame.py` warns when a savegame contains fertilities that no vanilla set can produce (a mod that changes fertility sets was active): its fertility results are then meaningless.

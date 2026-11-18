@@ -985,7 +985,7 @@ public partial class MainWindow:Window
   SeedScoring.Apply(rows,activeProfile,slot1Choice,CurrentScoreWeights());
   GridResults.Items.Refresh();
  }
- internal void AddPreviewConditions(){AddCondition(RegionKind.Latium,FertilitySetKind.Tertiary,LatiumConditions);AddCondition(RegionKind.Latium,FertilitySetKind.AnyCombination,LatiumConditions);AddCondition(RegionKind.Albion,FertilitySetKind.Secondary,AlbionConditions);AddCondition(RegionKind.Albion,FertilitySetKind.AnyCombination,AlbionConditions);AddIslandRule(RegionKind.Latium,LatiumConditions);AddIslandRule(RegionKind.Albion,AlbionConditions);CmbSlot1.SelectedIndex=1;}
+ internal void AddPreviewConditions(){AddCondition(RegionKind.Latium,FertilitySetKind.Tertiary,LatiumConditions);AddCondition(RegionKind.Latium,FertilitySetKind.AnyCombination,LatiumConditions);AddCondition(RegionKind.Albion,FertilitySetKind.Secondary,AlbionConditions);AddCondition(RegionKind.Albion,FertilitySetKind.AnyCombination,AlbionConditions);AddIslandRule(RegionKind.Latium,LatiumConditions).ApplyPreset(new IslandRulePreset{Region=RegionKind.Latium,Asset="roman_island_extralarge_01",FertilitySet=(int)FertilitySetKind.Starter,Fertilities=[2206,4049,8577,2208,4051,0]});AddIslandRule(RegionKind.Albion,AlbionConditions);CmbSlot1.SelectedIndex=1;}
 }
 
 internal sealed record SearchResultRow(uint Seed,int MarbleSites,int GoldMines,int GoldRiverSites,int SturgeonRiverSites,int MineralMines,int CopperMines,int SilverMines,int TinMines,int LatiumAreaValue,int AlbionAreaValue,int AlbionSwampValue,int LatiumMountain,int LatiumRiver,int AlbionMountain,int[] AdvancedTiles,uint[] CinisFertilityIds,SiteCounts CinisSiteCounts,ImageSource[] CinisFertilities)
